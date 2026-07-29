@@ -1,0 +1,59 @@
+/**
+ * @pimia/sdk — cliente TypeScript de la API de Pimia para apps de partner.
+ *
+ * Un tenant = una base URL = un token (modelo un-token-por-tienda). Empieza
+ * por README.md; el contrato completo de endpoints está en el OpenAPI del que
+ * salen los tipos de `./api`.
+ */
+
+export { PimiaClient } from './client.js'
+export type { PimiaClientOptions, RateLimit, RequestOptions } from './client.js'
+
+export { OAuth, createPkceChallenge, createState } from './oauth.js'
+export type {
+  AuthorizationServerMetadata,
+  AuthorizeUrlOptions,
+  OAuthConfig,
+  PkceChallenge,
+} from './oauth.js'
+
+export { MemoryTokenStore, isExpired, tokenSetFromResponse } from './tokens.js'
+export type { TokenSet, TokenStore } from './tokens.js'
+
+export {
+  ForbiddenError,
+  MissingScopeError,
+  NotAuthenticatedError,
+  NotFoundError,
+  OAuthError,
+  PimiaApiError,
+  PimiaError,
+  RateLimitError,
+  UnauthorizedError,
+  ValidationError,
+} from './errors.js'
+
+/** Scopes granulares del catálogo de Pimia (paso 4). Pide siempre lo mínimo. */
+export const SCOPES = {
+  invoicesRead: 'invoices:read',
+  invoicesWrite: 'invoices:write',
+  estimatesRead: 'estimates:read',
+  estimatesWrite: 'estimates:write',
+  customersRead: 'customers:read',
+  customersWrite: 'customers:write',
+  expensesRead: 'expenses:read',
+  expensesWrite: 'expenses:write',
+  paymentsRead: 'payments:read',
+  paymentsWrite: 'payments:write',
+  itemsRead: 'items:read',
+  itemsWrite: 'items:write',
+  bankingRead: 'banking:read',
+  bankingWrite: 'banking:write',
+  crmRead: 'crm:read',
+  crmWrite: 'crm:write',
+  agendaRead: 'agenda:read',
+  agendaWrite: 'agenda:write',
+  reportsRead: 'reports:read',
+} as const
+
+export type Scope = (typeof SCOPES)[keyof typeof SCOPES]

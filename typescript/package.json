@@ -1,0 +1,44 @@
+{
+  "name": "@pimia/sdk",
+  "version": "0.1.0",
+  "description": "Cliente TypeScript de la API de Pimia para apps de partner: OAuth con PKCE, rotación de refresh persistida, reintentos de rate limit y tipos generados del OpenAPI.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "generate:types": "openapi-typescript ../spec/pimia-api-v1.json -o src/api.ts",
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "pimia",
+    "facturacion",
+    "verifactu",
+    "oauth",
+    "sdk"
+  ]
+}

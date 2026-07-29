@@ -1,0 +1,16 @@
+# Dependencias
+node_modules/
+vendor/
+
+# Artefactos de build
+typescript/dist/
+composer.lock
+
+# Ruido de macOS (los `._*` los ve PHPUnit como clases de test)
+.DS_Store
+._*
+
+# Editores
+.idea/
+.vscode/
+*.swp

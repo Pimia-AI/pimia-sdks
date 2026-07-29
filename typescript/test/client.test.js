@@ -1,0 +1,270 @@
+/**
+ * Tests del cliente con un `fetch` de mentira: sin red, sin servidor.
+ * El foco está en lo que puede tumbar una integración de verdad — la rotación
+ * del refresh y su concurrencia — más el contrato de errores del api-guard.
+ */
+
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+
+import {
+  MemoryTokenStore,
+  MissingScopeError,
+  NotAuthenticatedError,
+  PimiaClient,
+  RateLimitError,
+  UnauthorizedError,
+  ValidationError,
+} from '../dist/index.js'
+
+const BASE = 'https://acme.pimia.es'
+
+function clientWith(handler, tokens, options = {}) {
+  const calls = []
+  const store = new MemoryTokenStore(tokens)
+
+  const client = new PimiaClient({
+    baseUrl: BASE,
+    clientId: 'mcp_test',
+    clientSecret: 'pcs_test',
+    redirectUri: 'https://partner.example/cb',
+    tokens: store,
+    maxRetryDelayMs: 5,
+    fetch: async (url, init) => {
+      calls.push({ url: String(url), init })
+      return handler(String(url), init, calls.length)
+    },
+    ...options,
+  })
+
+  return { client, calls, store }
+}
+
+function json(body, status = 200, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json', ...headers },
+  })
+}
+
+test('manda el bearer y compone la URL con /api/v1 y query', async () => {
+  const { client, calls } = clientWith(
+    () => json({ data: [] }),
+    { accessToken: 'at-1' },
+  )
+
+  await client.get('/invoices', { page: 2, status: ['SENT', 'PAID'], vacio: undefined })
+
+  const [call] = calls
+  assert.equal(
+    call.url,
+    `${BASE}/api/v1/invoices?page=2&status%5B%5D=SENT&status%5B%5D=PAID`,
+  )
+  assert.equal(call.init.headers.authorization, 'Bearer at-1')
+})
+
+test('acepta el path con y sin prefijo /api/v1', async () => {
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+
+  await client.get('/api/v1/customers')
+  await client.get('customers')
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/customers`)
+  assert.equal(calls[1].url, `${BASE}/api/v1/customers`)
+})
+
+test('sin tokens en el store no llama a la API', async () => {
+  const { client, calls } = clientWith(() => json({}), null)
+
+  await assert.rejects(() => client.get('/invoices'), NotAuthenticatedError)
+  assert.equal(calls.length, 0)
+})
+
+test('refresca antes de llamar si el access token está caducado y persiste la rotación', async () => {
+  const { client, calls, store } = clientWith(
+    (url) => {
+      if (url.endsWith('/oauth/token')) {
+        return json({
+          access_token: 'at-2',
+          refresh_token: 'prt-2',
+          expires_in: 86400,
+          scope: 'invoices:read',
+        })
+      }
+      return json({ data: [] })
+    },
+    { accessToken: 'at-1', refreshToken: 'prt-1', expiresAt: Date.now() - 1000 },
+  )
+
+  await client.get('/invoices')
+
+  assert.equal(calls[0].url, `${BASE}/oauth/token`)
+  assert.match(calls[0].init.body, /grant_type=refresh_token&refresh_token=prt-1/)
+  assert.equal(calls[1].init.headers.authorization, 'Bearer at-2')
+
+  // Lo que evita el suicidio del grant: el refresh NUEVO queda persistido.
+  const saved = store.load()
+  assert.equal(saved.refreshToken, 'prt-2')
+  assert.equal(saved.accessToken, 'at-2')
+  assert.ok(saved.expiresAt > Date.now())
+})
+
+test('un 401 dispara UN refresco y reintenta la petición', async () => {
+  let apiCalls = 0
+  const { client, calls } = clientWith(
+    (url) => {
+      if (url.endsWith('/oauth/token')) {
+        return json({ access_token: 'at-2', refresh_token: 'prt-2', expires_in: 86400 })
+      }
+      apiCalls++
+      return apiCalls === 1
+        ? json({ message: 'Unauthenticated.' }, 401)
+        : json({ data: { id: 7 } })
+    },
+    { accessToken: 'at-1', refreshToken: 'prt-1' },
+  )
+
+  const result = await client.get('/invoices/7')
+
+  assert.deepEqual(result, { data: { id: 7 } })
+  assert.equal(apiCalls, 2)
+  assert.equal(calls.filter((c) => c.url.endsWith('/oauth/token')).length, 1)
+})
+
+test('si tras refrescar sigue en 401 (usuario revocó la app) el error sube', async () => {
+  const { client, calls } = clientWith(
+    (url) =>
+      url.endsWith('/oauth/token')
+        ? json({ access_token: 'at-2', refresh_token: 'prt-2', expires_in: 86400 })
+        : json({ message: 'Unauthenticated.' }, 401),
+    { accessToken: 'at-1', refreshToken: 'prt-1' },
+  )
+
+  await assert.rejects(() => client.get('/invoices'), UnauthorizedError)
+  // Un solo refresco: no entra en bucle.
+  assert.equal(calls.filter((c) => c.url.endsWith('/oauth/token')).length, 1)
+})
+
+test('N peticiones caducadas en paralelo canjean el refresh UNA vez (evita el reuse)', async () => {
+  let tokenCalls = 0
+  const { client, store } = clientWith(
+    (url) => {
+      if (url.endsWith('/oauth/token')) {
+        tokenCalls++
+        return json({ access_token: `at-${tokenCalls + 1}`, refresh_token: 'prt-2', expires_in: 86400 })
+      }
+      return json({ ok: true })
+    },
+    { accessToken: 'at-1', refreshToken: 'prt-1', expiresAt: Date.now() - 1000 },
+  )
+
+  await Promise.all([
+    client.get('/invoices'),
+    client.get('/customers'),
+    client.get('/estimates'),
+  ])
+
+  // Con un canje por petición, el servidor vería 2 reusos y revocaría el grant.
+  assert.equal(tokenCalls, 1)
+  assert.equal(store.load().refreshToken, 'prt-2')
+})
+
+test('sin refresh token y access caducado no inventa nada', async () => {
+  const { client } = clientWith(() => json({}), {
+    accessToken: 'at-1',
+    expiresAt: Date.now() - 1000,
+  })
+
+  await assert.rejects(() => client.get('/invoices'), UnauthorizedError)
+})
+
+test('un 403 del api-guard llega como MissingScopeError con el scope exacto', async () => {
+  const { client } = clientWith(
+    () => json({ message: 'Token lacks the invoices:write scope' }, 403),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(
+    () => client.post('/invoices', { total: 100 }),
+    (error) => {
+      assert.ok(error instanceof MissingScopeError)
+      assert.equal(error.scope, 'invoices:write')
+      assert.equal(error.status, 403)
+      return true
+    },
+  )
+})
+
+test('un 422 expone los errores por campo', async () => {
+  const { client } = clientWith(
+    () => json({ message: 'The given data was invalid.', errors: { customer_id: ['requerido'] } }, 422),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(
+    () => client.post('/invoices', {}),
+    (error) => {
+      assert.ok(error instanceof ValidationError)
+      assert.deepEqual(error.errors, { customer_id: ['requerido'] })
+      return true
+    },
+  )
+})
+
+test('reintenta un 429 respetando Retry-After y acaba devolviendo el dato', async () => {
+  let attempts = 0
+  const { client } = clientWith(
+    () => {
+      attempts++
+      return attempts === 1
+        ? json({ message: 'Too Many Attempts.' }, 429, { 'retry-after': '0' })
+        : json({ data: [] })
+    },
+    { accessToken: 'at-1' },
+  )
+
+  assert.deepEqual(await client.get('/invoices'), { data: [] })
+  assert.equal(attempts, 2)
+})
+
+test('agotados los reintentos, RateLimitError con retryAfter', async () => {
+  const { client } = clientWith(
+    () => json({ message: 'Too Many Attempts.' }, 429, { 'retry-after': '7' }),
+    { accessToken: 'at-1' },
+    { maxRateLimitRetries: 1 },
+  )
+
+  await assert.rejects(
+    () => client.get('/invoices'),
+    (error) => {
+      assert.ok(error instanceof RateLimitError)
+      assert.equal(error.retryAfter, 7)
+      return true
+    },
+  )
+})
+
+test('expone las cabeceras de rate limit de la última respuesta', async () => {
+  const { client } = clientWith(
+    () => json({ data: [] }, 200, { 'x-ratelimit-limit': '300', 'x-ratelimit-remaining': '297' }),
+    { accessToken: 'at-1' },
+  )
+
+  await client.get('/invoices')
+
+  assert.deepEqual(client.rateLimit, { limit: 300, remaining: 297 })
+})
+
+test('los helpers de dominio pegan en las rutas correctas', async () => {
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+
+  await client.invoices.list({ page: 1 })
+  await client.invoices.get(42)
+  await client.customers.create({ name: 'ACME' })
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/invoices?page=1`)
+  assert.equal(calls[1].url, `${BASE}/api/v1/invoices/42`)
+  assert.equal(calls[2].url, `${BASE}/api/v1/customers`)
+  assert.equal(calls[2].init.method, 'POST')
+  assert.equal(calls[2].init.headers['content-type'], 'application/json')
+})
