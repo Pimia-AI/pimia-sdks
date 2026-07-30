@@ -99,7 +99,10 @@ export default async function Panel() {
           <tbody>
             {invoices.rows.map((invoice, index) => (
               <tr key={String(invoice.id ?? index)}>
-                <td>{String(invoice.invoice_number ?? '—')}</td>
+                {/* El número lo pone Pimia (series y numeración correlativa son
+                    requisito legal): tu app lo LEE, nunca lo inventa. Puede
+                    venir vacío en facturas que aún no se han emitido. */}
+                <td>{String(invoice.invoice_number ?? 'sin numerar')}</td>
                 <td>{fecha(invoice.invoice_date)}</td>
                 <td>
                   {String(

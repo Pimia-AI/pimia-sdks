@@ -27,6 +27,34 @@ function toCents(raw: string): number | null {
   return Math.round(Number(normalized) * 100)
 }
 
+/**
+ * El número de documento lo decide PIMIA, no tú: la numeración es correlativa
+ * por empresa y con formato configurable (requisito legal). Pero al crear un
+ * presupuesto hay que MANDARLO, así que primero se pide:
+ *
+ *   GET /next-number?key=estimate  →  { nextNumber: "PRE-000130" }
+ *
+ * `next-number` vive en el dominio `meta`, que cualquier token puede leer: no
+ * hace falta un scope extra. Claves disponibles: invoice, credit_note,
+ * estimate, payment, delivery_note.
+ *
+ * Ojo con la carrera: entre pedir el número y crear el documento, otro cliente
+ * puede haber usado ese hueco — el número es único por empresa y la API
+ * responderá 422. Pídelo justo antes de crear y reintenta si choca.
+ */
+async function nextNumber(
+  pimia: Awaited<ReturnType<typeof requireClient>>['pimia'],
+  key: 'estimate' | 'invoice',
+): Promise<string> {
+  const response = (await pimia.get('/next-number', { key })) as { nextNumber?: string }
+
+  if (!response?.nextNumber) {
+    throw new Error('Pimia no devolvió el siguiente número de documento.')
+  }
+
+  return response.nextNumber
+}
+
 export async function presupuestar(formData: FormData): Promise<never> {
   const { pimia } = await requireClient()
 
@@ -43,6 +71,10 @@ export async function presupuestar(formData: FormData): Promise<never> {
 
   try {
     const created = (await pimia.estimates.create({
+      // Si tu tenant tiene VARIAS empresas, manda también la cabecera
+      // `company` (el SDK admite `headers`): sin ella la API usa la primera
+      // empresa del usuario, que puede no ser la que quieres.
+      estimate_number: await nextNumber(pimia, 'estimate'),
       customer_id: customerId,
       estimate_date: today,
       expiry_date: expiry,
@@ -59,6 +91,13 @@ export async function presupuestar(formData: FormData): Promise<never> {
           quantity: 1,
           price: cents,
           total: cents,
+          // ⚠️ La validación de la API NO exige estos tres campos, pero el
+          // servidor los lee al crear la línea: sin ellos responde 500 en vez
+          // de 422 (verificado contra dev el 2026-07-30). Mándalos siempre,
+          // aunque no apliques descuento.
+          discount: '0',
+          discount_type: 'fixed',
+          discount_val: 0,
         },
       ],
     })) as { data?: { estimate_number?: string } }
