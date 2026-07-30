@@ -6,6 +6,7 @@ namespace Pimia;
 
 use Pimia\Exception\ApiException;
 use Pimia\Exception\NotAuthenticatedException;
+use Pimia\Exception\OAuthException;
 use Pimia\Exception\RateLimitException;
 use Pimia\Exception\UnauthorizedException;
 use Pimia\Http\Transport;
@@ -174,7 +175,23 @@ final class PimiaClient
             );
         }
 
-        $rotated = $this->oauth->refresh($current->refreshToken);
+        try {
+            $rotated = $this->oauth->refresh($current->refreshToken);
+        } catch (OAuthException $e) {
+            // Un refresco fallido significa siempre lo mismo para quien llama:
+            // este grant ya no vale y hay que volver a pedir autorización
+            // (revocó la app, caducó el refresh, o se reusó uno rotado). Se
+            // traduce a UnauthorizedException para que un solo catch cubra el
+            // caso — detectado en el e2e real del SDK TS contra dev.
+            throw new UnauthorizedException(
+                401,
+                "No se pudo refrescar el token ({$e->error}): vuelve a pedir autorización al usuario.",
+                null,
+                null,
+                $e,
+            );
+        }
+
         $this->tokens->save($rotated);
 
         return $rotated;

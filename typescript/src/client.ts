@@ -16,6 +16,7 @@
 
 import {
   NotAuthenticatedError,
+  OAuthError,
   PimiaApiError,
   RateLimitError,
   UnauthorizedError,
@@ -227,6 +228,26 @@ export class PimiaClient {
         await this.store.save(rotated)
 
         return rotated
+      } catch (error) {
+        // Un refresco fallido significa siempre lo mismo para quien llama:
+        // este grant ya no vale y hay que volver a pedir autorización al
+        // usuario (revocó la app, caducó el refresh, o se reusó uno rotado).
+        // Se traduce a UnauthorizedError para que un solo `catch` cubra el
+        // caso: sin esto, el error del token endpoint (OAuthError
+        // invalid_grant) se colaba por debajo del contrato del cliente —
+        // detectado en el e2e real contra dev al revocar desde el panel.
+        if (error instanceof OAuthError) {
+          const unauthorized = new UnauthorizedError(
+            401,
+            `No se pudo refrescar el token (${error.error}): vuelve a pedir autorización al usuario.`,
+            null,
+          )
+          unauthorized.cause = error
+
+          throw unauthorized
+        }
+
+        throw error
       } finally {
         this.refreshing = null
       }

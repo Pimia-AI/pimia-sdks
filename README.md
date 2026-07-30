@@ -125,9 +125,11 @@ $invoices = $pimia->invoices->list(['page' => 1]);
 | Rate limit, con `retryAfter` | `RateLimitError` | `RateLimitException` |
 | Fallo del flujo OAuth | `OAuthError` | `OAuthException` |
 
-Los reintentos de 429 y el refresco tras un 401 los hace el cliente: si ves
-`UnauthorizedError` ya se intentó refrescar y falló → vuelve a pedir
-autorización al usuario.
+Los reintentos de 429 y el refresco tras un 401 los hace el cliente: **si ves
+`UnauthorizedError` ya se intentó refrescar y falló** → vuelve a pedir
+autorización al usuario. Es el caso normal cuando el usuario retira el acceso
+desde Ajustes → Apps conectadas; la causa original (p. ej. `invalid_grant` del
+token endpoint) queda en `error.cause` / `$e->getPrevious()` para diagnosticar.
 
 ## El contrato
 
@@ -161,3 +163,10 @@ completos y con tests; los helpers de dominio cubren facturas, clientes y
 presupuestos — para el resto, `client.get('/loquesea')` con los tipos del
 spec. Pendiente: publicar en npm y Packagist, ampliar helpers, DTOs de PHP
 generados del spec y webhooks cuando existan.
+
+**Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
+[`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,
+canje, `invoices:read`/`customers:read` en 200, `expenses` en 403 tipado,
+refresco con rotación persistida y revocación. Ese ejercicio destapó un fallo
+de contrato que ya está corregido: un refresco fallido escapaba como
+`OAuthError` en vez de `UnauthorizedError`.

@@ -19,8 +19,9 @@ class ApiException extends PimiaException
         string $message,
         public readonly array|string|null $body = null,
         public readonly ?string $requestId = null,
+        ?\Throwable $previous = null,
     ) {
-        parent::__construct($message, $status);
+        parent::__construct($message, $status, $previous);
     }
 
     /**

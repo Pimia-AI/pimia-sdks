@@ -169,6 +169,40 @@ test('N peticiones caducadas en paralelo canjean el refresh UNA vez (evita el re
   assert.equal(store.load().refreshToken, 'prt-2')
 })
 
+test('si el usuario revocó la app, el 401 llega como UnauthorizedError (no como OAuthError)', async () => {
+  // Escenario REAL del e2e contra dev: se revoca el grant desde el panel, el
+  // access token deja de valer y el refresh tampoco. Quien llama a la API tiene
+  // que recibir UnauthorizedError («re-autoriza al usuario»), no el error del
+  // token endpoint colándose por debajo del contrato.
+  const { client } = clientWith(
+    (url) =>
+      url.endsWith('/oauth/token')
+        ? json({ error: 'invalid_grant' }, 400)
+        : json({ message: 'Unauthenticated.' }, 401),
+    { accessToken: 'at-1', refreshToken: 'prt-revocado' },
+  )
+
+  await assert.rejects(
+    () => client.get('/invoices'),
+    (error) => {
+      assert.ok(error instanceof UnauthorizedError, `esperaba UnauthorizedError, no ${error.constructor.name}`)
+      assert.match(error.message, /vuelve a pedir autorización/)
+      // La causa original sigue disponible para diagnosticar.
+      assert.equal(error.cause?.error, 'invalid_grant')
+      return true
+    },
+  )
+})
+
+test('un refresco proactivo fallido también llega como UnauthorizedError', async () => {
+  const { client } = clientWith(
+    (url) => (url.endsWith('/oauth/token') ? json({ error: 'invalid_grant' }, 400) : json({})),
+    { accessToken: 'at-1', refreshToken: 'prt-revocado', expiresAt: Date.now() - 1000 },
+  )
+
+  await assert.rejects(() => client.get('/invoices'), UnauthorizedError)
+})
+
 test('sin refresh token y access caducado no inventa nada', async () => {
   const { client } = clientWith(() => json({}), {
     accessToken: 'at-1',

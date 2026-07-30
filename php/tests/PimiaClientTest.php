@@ -131,6 +131,42 @@ final class PimiaClientTest extends TestCase
         }
     }
 
+    public function test_si_el_usuario_revoco_la_app_el_error_es_unauthorized_no_oauth(): void
+    {
+        // Escenario REAL del e2e contra dev: revocado el grant, ni el access ni
+        // el refresh valen. Quien llama debe recibir UnauthorizedException
+        // («re-autoriza»), no el OAuthException del token endpoint.
+        [$client] = $this->client(
+            static fn (string $method, string $url) => str_contains($url, '/oauth/token')
+                ? FakeTransport::json(['error' => 'invalid_grant'], 400)
+                : FakeTransport::json(['message' => 'Unauthenticated.'], 401),
+            new TokenSet('at-1', 'prt-revocado'),
+        );
+
+        try {
+            $client->get('/invoices');
+            $this->fail('esperaba UnauthorizedException');
+        } catch (UnauthorizedException $e) {
+            $this->assertStringContainsString('vuelve a pedir autorización', $e->getMessage());
+            // La causa original queda en la cadena para diagnosticar.
+            $this->assertInstanceOf(\Pimia\Exception\OAuthException::class, $e->getPrevious());
+            $this->assertSame('invalid_grant', $e->getPrevious()->error);
+        }
+    }
+
+    public function test_un_refresco_proactivo_fallido_tambien_es_unauthorized(): void
+    {
+        [$client] = $this->client(
+            static fn (string $method, string $url) => str_contains($url, '/oauth/token')
+                ? FakeTransport::json(['error' => 'invalid_grant'], 400)
+                : FakeTransport::json([]),
+            new TokenSet('at-1', 'prt-revocado', time() - 10),
+        );
+
+        $this->expectException(UnauthorizedException::class);
+        $client->get('/invoices');
+    }
+
     public function test_sin_refresh_token_y_access_caducado_no_inventa_nada(): void
     {
         [$client] = $this->client(
