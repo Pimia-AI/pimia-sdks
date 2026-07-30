@@ -1,0 +1,42 @@
+{
+  "name": "@pimia/design-tokens",
+  "version": "0.1.0",
+  "description": "Sistema de diseño de Pimia como paquete OPCIONAL para apps de partner: tokens tipados, variables CSS y preset de Tailwind. El white-label es poder no usarlo.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tailwind": {
+      "types": "./dist/tailwind.d.ts",
+      "import": "./dist/tailwind.js"
+    },
+    "./pimia.css": "./dist/pimia.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/emit-css.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "pimia",
+    "design-tokens",
+    "design-system",
+    "tailwind"
+  ]
+}

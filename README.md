@@ -11,6 +11,7 @@ OAuth, la **rotación del refresh token** y los reintentos.
 |---------|-----------|------------|
 | `@pimia/sdk` | [`typescript/`](typescript) | Node ≥ 20 (o cualquier runtime con `fetch` y WebCrypto global) |
 | `pimia/pimia-php` | [`php/`](php) | PHP ≥ 8.2 + un cliente HTTP PSR-18 |
+| `@pimia/design-tokens` | [`design-tokens/`](design-tokens) | Opcional: tokens + CSS vars + preset Tailwind del sistema de diseño (el white-label es poder no usarlo) |
 
 **¿Empiezas de cero?** [`examples/starter-vertical`](examples/starter-vertical)
 es una app vertical completa (Next.js) con el OAuth server-side ya resuelto:

@@ -4,6 +4,7 @@ vendor/
 
 # Artefactos de build
 typescript/dist/
+design-tokens/dist/
 composer.lock
 
 # Ruido de macOS (los `._*` los ve PHPUnit como clases de test)
