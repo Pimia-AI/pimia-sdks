@@ -1,0 +1,37 @@
+/* Piel «partner»: Cuadrilla, una marca inventada de ejemplo.
+ *
+ * Esto es lo que un partner sustituye por SU marca: su color, su tipografía,
+ * sus radios. Ninguna variable de aquí viene de Pimia — el white-label es
+ * exactamente eso. Es también el fallback de :root para que la app pinte
+ * aunque data-theme venga vacío. */
+
+:root,
+[data-theme='partner'] {
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Tierra y obra: terracota sobre blancos cálidos. */
+  --ink: #292524;
+  --ink-muted: #57534e;
+  --ink-subtle: #a8a29e;
+  --surface: #fffdfa;
+  --surface-muted: #f7f3ec;
+  --line: #e5dfd4;
+  --line-subtle: #f0ebe2;
+
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-soft: #fbeee4;
+
+  --ok: #15803d;
+  --ok-soft: #eaf7ef;
+  --warn: #a16207;
+  --warn-soft: #fdf6e3;
+  --bad: #b91c1c;
+  --bad-soft: #fdefef;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-badge: 8px;
+}

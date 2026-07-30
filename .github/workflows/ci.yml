@@ -110,11 +110,15 @@ jobs:
         with:
           node-version: '22'
 
-      # El starter consume el SDK por `file:`, así que hay que compilarlo antes:
-      # su dist es lo que resuelve el import.
+      # El starter consume el SDK y los design tokens por `file:`, así que hay
+      # que compilarlos antes: su dist es lo que resuelve cada import.
       - name: Compilar el SDK
         run: npm ci && npm run build
         working-directory: typescript
+
+      - name: Compilar los design tokens
+        run: npm ci && npm run build
+        working-directory: design-tokens
 
       - name: Instalar el starter
         run: npm install --no-audit --no-fund
@@ -122,8 +126,13 @@ jobs:
 
       # `next build` typechequea el starter CONTRA el SDK: si una firma pública
       # del SDK cambia y rompe al consumidor, salta aquí y no en el partner.
-      - name: Compilar el starter
+      # Se compila con las DOS pieles: ambas tienen que estar siempre verdes.
+      - name: Compilar el starter (piel partner)
         run: npm run build
+        working-directory: examples/starter-vertical
+
+      - name: Compilar el starter (piel pimia)
+        run: NEXT_PUBLIC_THEME=pimia npm run build
         working-directory: examples/starter-vertical
 
   spec-sync:

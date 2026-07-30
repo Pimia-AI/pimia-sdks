@@ -14,9 +14,12 @@ OAuth, la **rotación del refresh token** y los reintentos.
 | `@pimia/design-tokens` | [`design-tokens/`](design-tokens) | Opcional: tokens + CSS vars + preset Tailwind del sistema de diseño (el white-label es poder no usarlo) |
 
 **¿Empiezas de cero?** [`examples/starter-vertical`](examples/starter-vertical)
-es una app vertical completa (Next.js) con el OAuth server-side ya resuelto:
-login, sesión, almacén de tokens con rotación, panel y un flujo de escritura.
-Clónala y cámbiale la marca.
+es la **app vertical de referencia** (Next.js): OAuth server-side resuelto
+(login, sesión, almacén de tokens con rotación), facturas y clientes con
+detalle, el ciclo completo de presupuestos como flujo vertical, y **dos pieles
+conmutables** — marca de partner inventada o el sistema de diseño de Pimia vía
+`@pimia/design-tokens` — que demuestran el white-label. Clónala y cámbiale la
+marca.
 
 CI verifica Node 20/22/24 y PHP 8.2/8.3/8.4 en cada push. Node 18 queda fuera:
 no expone `globalThis.crypto` (llegó en 19) y está EOL desde abril de 2025.

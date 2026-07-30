@@ -1,0 +1,36 @@
+/* Piel «pimia»: el sistema de diseño oficial, vía @pimia/design-tokens.
+ *
+ * No hay ni un valor a mano: cada variable semántica de la app se mapea a la
+ * variable correspondiente del paquete (dist/pimia.css, importado en el
+ * layout). Si el sistema de diseño cambia de color o de fuente, esta piel se
+ * actualiza sola al actualizar el paquete. Adoptar la piel Pimia = montar
+ * este mapeo; quitarla = borrarlo. */
+
+[data-theme='pimia'] {
+  --font-display: var(--pimia-font-display);
+  --font-body: var(--pimia-font-body);
+  --font-mono: var(--pimia-font-mono);
+
+  --ink: var(--pimia-color-ink);
+  --ink-muted: var(--pimia-color-muted-ink);
+  --ink-subtle: var(--pimia-color-subtle-ink);
+  --surface: var(--pimia-color-surface);
+  --surface-muted: var(--pimia-color-surface-muted);
+  --line: var(--pimia-color-border);
+  --line-subtle: var(--pimia-color-border-subtle);
+
+  --accent: var(--pimia-color-primary);
+  --accent-hover: var(--pimia-color-primary-hover);
+  --accent-soft: var(--pimia-color-primary-container);
+
+  --ok: var(--pimia-color-success);
+  --ok-soft: var(--pimia-color-success-container);
+  --warn: var(--pimia-color-warning);
+  --warn-soft: var(--pimia-color-warning-container);
+  --bad: var(--pimia-color-danger);
+  --bad-soft: var(--pimia-color-danger-container);
+
+  --radius-control: var(--pimia-radius-control);
+  --radius-card: var(--pimia-radius-card);
+  --radius-badge: var(--pimia-radius-badge);
+}
