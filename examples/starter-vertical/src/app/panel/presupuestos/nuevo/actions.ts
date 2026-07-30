@@ -14,8 +14,7 @@
 
 import { redirect } from 'next/navigation'
 
-import { MissingScopeError, ValidationError } from '@pimia/sdk'
-
+import { esRedirectDeNext, mensajeDeError } from '@/lib/errores'
 import { requireClient } from '@/lib/pimia'
 
 /** «4500,50» → 450050 céntimos. */
@@ -63,7 +62,7 @@ export async function presupuestar(formData: FormData): Promise<never> {
   const cents = toCents(String(formData.get('importe') ?? ''))
 
   if (!customerId || descripcion === '' || cents === null) {
-    redirect('/panel/presupuestar?error=' + encodeURIComponent('Revisa los campos.'))
+    redirect('/panel/presupuestos/nuevo?error=' + encodeURIComponent('Revisa los campos.'))
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -100,36 +99,17 @@ export async function presupuestar(formData: FormData): Promise<never> {
           discount_val: 0,
         },
       ],
-    })) as { data?: { estimate_number?: string } }
+    })) as { data?: { id?: number } }
 
-    redirect(
-      '/panel/presupuestar?ok=' +
-        encodeURIComponent(created?.data?.estimate_number ?? 'creado'),
-    )
+    // Al detalle del recién creado: ahí viven los siguientes pasos del ciclo
+    // (marcarlo como enviado, convertirlo en factura…).
+    const nuevoId = created?.data?.id
+
+    redirect(nuevoId ? `/panel/presupuestos/${nuevoId}?ok=creado` : '/panel/presupuestos')
   } catch (error) {
     // `redirect()` lanza por diseño en Next: hay que dejarlo pasar.
-    if (error instanceof Error && error.message === 'NEXT_REDIRECT') throw error
+    if (esRedirectDeNext(error)) throw error
 
-    if (error instanceof MissingScopeError) {
-      redirect(
-        '/panel/presupuestar?error=' +
-          encodeURIComponent(
-            `Tu app no tiene el permiso ${error.scope}. Añádelo a REQUESTED_SCOPES y vuelve a conectar.`,
-          ),
-      )
-    }
-
-    if (error instanceof ValidationError) {
-      const detalle = Object.entries(error.errors)
-        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-        .join(' · ')
-
-      redirect('/panel/presupuestar?error=' + encodeURIComponent(detalle || error.message))
-    }
-
-    redirect(
-      '/panel/presupuestar?error=' +
-        encodeURIComponent(error instanceof Error ? error.message : 'Error inesperado'),
-    )
+    redirect('/panel/presupuestos/nuevo?error=' + encodeURIComponent(mensajeDeError(error)))
   }
 }

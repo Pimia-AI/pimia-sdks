@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { REQUESTED_SCOPES } from '@/lib/config'
 import { readSession } from '@/lib/session'
+import { activeTheme } from '@/lib/theme'
 
 const ERRORES: Record<string, string> = {
   access_denied: 'No autorizaste el acceso. Sin permiso no podemos leer nada de tu Pimia.',
@@ -16,14 +17,12 @@ export default async function Home({
 }) {
   const { error } = await searchParams
   const session = await readSession()
+  const theme = activeTheme()
 
   return (
     <>
-      <h1>Reformas Vertical</h1>
-      <p className="muted">
-        Ejemplo de app vertical: tu marca y tu flujo, la facturación por la API
-        de Pimia.
-      </p>
+      <h1>{theme.brand}</h1>
+      <p className="muted">{theme.claim}</p>
 
       {error ? (
         <div className="notice error">{ERRORES[error] ?? `No se pudo conectar: ${error}`}</div>

@@ -3,6 +3,8 @@
  * de SERVIDOR: el client_secret y los tokens no salen de este proceso.
  */
 
+import { redirect } from 'next/navigation'
+
 import { OAuth, PimiaClient, UnauthorizedError } from '@pimia/sdk'
 
 import { config } from './config'
@@ -45,6 +47,19 @@ export async function requireClient(): Promise<{ session: Session; pimia: PimiaC
   if (!session) throw new NeedsAuthorization('sin sesión')
 
   return { session, pimia: clientFor(session) }
+}
+
+/**
+ * Igual que `requireClient`, pero para páginas: sin sesión, a la portada a
+ * repetir la autorización. Así cada página no repite el mismo try/catch.
+ */
+export async function clienteOPortada(): Promise<{ session: Session; pimia: PimiaClient }> {
+  try {
+    return await requireClient()
+  } catch (error) {
+    if (error instanceof NeedsAuthorization) redirect('/?error=flujo_incompleto')
+    throw error
+  }
 }
 
 /**

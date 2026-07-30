@@ -8,26 +8,18 @@
  */
 
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 
-import { callApi, NeedsAuthorization, requireClient } from '@/lib/pimia'
+import { callApi, clienteOPortada } from '@/lib/pimia'
 
 import { presupuestar } from './actions'
 
 export default async function Presupuestar({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; ok?: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
-  const { error, ok } = await searchParams
-
-  let pimia
-  try {
-    ;({ pimia } = await requireClient())
-  } catch (e) {
-    if (e instanceof NeedsAuthorization) redirect('/?error=flujo_incompleto')
-    throw e
-  }
+  const { error } = await searchParams
+  const { pimia } = await clienteOPortada()
 
   const response = (await callApi(() => pimia.customers.list({ limit: 100 }))) as {
     data?: Array<{ id: number; name: string }>
@@ -36,17 +28,16 @@ export default async function Presupuestar({
 
   return (
     <>
+      <p style={{ margin: '0 0 6px' }}>
+        <Link href="/panel/presupuestos">← Presupuestos</Link>
+      </p>
+
       <h1>Presupuestar una obra</h1>
       <p className="muted">
         Se crea un presupuesto en Pimia con una sola línea. El número, los
         impuestos y la validez los pone Pimia.
       </p>
 
-      {ok ? (
-        <div className="notice">
-          Presupuesto <strong>{ok}</strong> creado en Pimia. Ya lo tiene la gestoría.
-        </div>
-      ) : null}
       {error ? <div className="notice error">{error}</div> : null}
 
       {customers.length === 0 ? (
@@ -86,7 +77,7 @@ export default async function Presupuestar({
 
           <div className="row" style={{ marginTop: 18 }}>
             <button type="submit">Crear presupuesto</button>
-            <Link href="/panel">Volver</Link>
+            <Link href="/panel/presupuestos">Volver</Link>
           </div>
         </form>
       )}

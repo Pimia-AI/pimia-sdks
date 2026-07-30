@@ -1,14 +1,7 @@
-/* Estilos a propósito sosos y sin dependencias: el white-label es que TU
-   diseño sustituya esto por completo. No hay sistema de diseño que copiar. */
-
-:root {
-  --ink: #1c1c1f;
-  --muted: #6b7280;
-  --line: #e5e7eb;
-  --accent: #4338ca;
-  --bad: #b91c1c;
-  --warn: #92400e;
-}
+/* Estructura de la app en variables SEMÁNTICAS (--ink, --accent, --ok…).
+ * Aquí no hay marca: los valores los pone la piel activa (themes/partner.css
+ * o themes/pimia.css, seleccionada por data-theme en <html>). Si montas tu
+ * propia marca, lo normal es tocar SOLO la piel y dejar esto igual. */
 
 * {
   box-sizing: border-box;
@@ -16,40 +9,159 @@
 
 body {
   margin: 0;
-  font: 15px/1.55 system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--ink);
+  background: var(--surface);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
-header,
-footer {
-  padding: 14px 24px;
+/* ── Cabecera y pie ─────────────────────────────────────────────────────── */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 12px 28px;
   border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.marca {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.marca a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.powered {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+  margin-left: 8px;
+}
+
+header nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+header nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 5px 11px;
+  border-radius: var(--radius-control);
+}
+
+header nav a:hover {
+  color: var(--ink);
+  background: var(--surface-muted);
 }
 
 footer {
-  border-bottom: 0;
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 28px;
   border-top: 1px solid var(--line);
   font-size: 13px;
+  color: var(--ink-muted);
 }
 
 main {
-  padding: 24px;
-  max-width: 900px;
+  padding: 26px 28px 40px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
 }
 
+/* ── Tipografía ─────────────────────────────────────────────────────────── */
+
 h1 {
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0 0 4px;
 }
 
 h2 {
+  font-family: var(--font-display);
   font-size: 16px;
-  margin: 28px 0 8px;
+  font-weight: 600;
+  margin: 30px 0 10px;
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface-muted);
+  border: 1px solid var(--line-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Datos financieros: SIEMPRE en mono tabular y alineados a la derecha.
+ * Es la regla del sistema — y en cualquier ERP, la diferencia entre poder
+ * comparar importes de un vistazo o no. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Tarjetas de resumen ────────────────────────────────────────────────── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 18px 0 6px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  padding: 14px 18px;
+}
+
+.card .etiqueta {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.card .valor {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+
+/* ── Tablas ─────────────────────────────────────────────────────────────── */
 
 table {
   border-collapse: collapse;
@@ -60,26 +172,82 @@ table {
 th,
 td {
   text-align: left;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-subtle);
   font-size: 14px;
 }
 
-th {
-  color: var(--muted);
-  font-weight: 600;
+tbody tr:hover {
+  background: var(--surface-muted);
 }
 
-a {
-  color: var(--accent);
+th {
+  color: var(--ink-muted);
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom-color: var(--line);
 }
+
+th.num {
+  font-family: var(--font-body);
+}
+
+td a {
+  text-decoration: none;
+}
+
+td a:hover {
+  text-decoration: underline;
+}
+
+/* ── Estados ────────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-badge);
+  color: var(--ink-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.badge.info {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.badge.ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: transparent;
+}
+
+.badge.aviso {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: transparent;
+}
+
+.badge.mal {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border-color: transparent;
+}
+
+/* ── Botones y formularios ──────────────────────────────────────────────── */
 
 button,
 .button {
   font: inherit;
-  padding: 8px 14px;
+  font-weight: 500;
+  padding: 8px 15px;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: #fff;
   cursor: pointer;
@@ -87,31 +255,56 @@ button,
   display: inline-block;
 }
 
-button.secondary {
-  background: #fff;
+button:hover,
+.button:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+button.secondary,
+.button.secondary {
+  background: var(--surface);
   color: var(--ink);
   border-color: var(--line);
 }
 
+button.secondary:hover,
+.button.secondary:hover {
+  background: var(--surface-muted);
+}
+
 label {
   display: block;
-  margin: 12px 0 4px;
+  margin: 14px 0 4px;
   font-size: 14px;
+  font-weight: 500;
 }
 
 input,
 select {
   font: inherit;
-  padding: 7px 9px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
 }
+
+input:focus,
+select:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* ── Avisos ─────────────────────────────────────────────────────────────── */
 
 .notice {
   border: 1px solid var(--line);
   border-left: 3px solid var(--warn);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  background: var(--surface);
   padding: 10px 14px;
   margin: 16px 0;
   font-size: 14px;
@@ -121,9 +314,72 @@ select {
   border-left-color: var(--bad);
 }
 
+.notice.exito {
+  border-left-color: var(--ok);
+}
+
+/* ── Detalle (fichas y totales) ─────────────────────────────────────────── */
+
+.ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.ficha .bloque {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 12px 16px;
+}
+
+.ficha dt {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 8px;
+}
+
+.ficha dt:first-child {
+  margin-top: 0;
+}
+
+.ficha dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Totales de un documento: bloque estrecho pegado a la derecha. */
+.totales {
+  margin-left: auto;
+  margin-top: 10px;
+  width: min(330px, 100%);
+}
+
+.totales td {
+  border-bottom: 0;
+  padding: 3px 10px;
+}
+
+.totales tr.total td {
+  border-top: 1px solid var(--line);
+  font-weight: 600;
+  padding-top: 7px;
+}
+
+/* ── Utilidades ─────────────────────────────────────────────────────────── */
+
 .row {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.paginado {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--ink-muted);
 }
