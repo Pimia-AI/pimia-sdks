@@ -9,8 +9,11 @@ OAuth, la **rotación del refresh token** y los reintentos.
 
 | Paquete | Directorio | Requisitos |
 |---------|-----------|------------|
-| `@pimia/sdk` | [`typescript/`](typescript) | Node ≥ 18 (o cualquier runtime con `fetch` y WebCrypto) |
+| `@pimia/sdk` | [`typescript/`](typescript) | Node ≥ 20 (o cualquier runtime con `fetch` y WebCrypto global) |
 | `pimia/pimia-php` | [`php/`](php) | PHP ≥ 8.2 + un cliente HTTP PSR-18 |
+
+CI verifica Node 20/22/24 y PHP 8.2/8.3/8.4 en cada push. Node 18 queda fuera:
+no expone `globalThis.crypto` (llegó en 19) y está EOL desde abril de 2025.
 
 ## ⚠️ Lo único que tienes que leer antes de escribir código
 
