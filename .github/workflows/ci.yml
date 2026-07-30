@@ -75,6 +75,32 @@ jobs:
       - name: Tests
         run: vendor/bin/phpunit --colors=never
 
+  starter:
+    name: Starter kit (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # El starter consume el SDK por `file:`, así que hay que compilarlo antes:
+      # su dist es lo que resuelve el import.
+      - name: Compilar el SDK
+        run: npm ci && npm run build
+        working-directory: typescript
+
+      - name: Instalar el starter
+        run: npm install --no-audit --no-fund
+        working-directory: examples/starter-vertical
+
+      # `next build` typechequea el starter CONTRA el SDK: si una firma pública
+      # del SDK cambia y rompe al consumidor, salta aquí y no en el partner.
+      - name: Compilar el starter
+        run: npm run build
+        working-directory: examples/starter-vertical
+
   spec-sync:
     name: Tipos al día con el spec
     runs-on: ubuntu-latest

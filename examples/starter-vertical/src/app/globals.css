@@ -1,0 +1,129 @@
+/* Estilos a propósito sosos y sin dependencias: el white-label es que TU
+   diseño sustituya esto por completo. No hay sistema de diseño que copiar. */
+
+:root {
+  --ink: #1c1c1f;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #4338ca;
+  --bad: #b91c1c;
+  --warn: #92400e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 15px/1.55 system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+}
+
+header,
+footer {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+footer {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+main {
+  padding: 24px;
+  max-width: 900px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 28px 0 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 8px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+a {
+  color: var(--accent);
+}
+
+button,
+.button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button.secondary {
+  background: #fff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.notice {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn);
+  padding: 10px 14px;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.notice.error {
+  border-left-color: var(--bad);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}

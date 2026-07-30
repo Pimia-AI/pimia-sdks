@@ -84,8 +84,14 @@ export class OAuth {
     return `${this.baseUrl}/oauth/authorize?${query.toString()}`
   }
 
-  /** Canje del `code` del callback. El código dura 10 minutos y un solo uso. */
-  async exchangeCode(code: string, pkce: PkceChallenge): Promise<TokenSet> {
+  /**
+   * Canje del `code` del callback. El código dura 10 minutos y un solo uso.
+   *
+   * Acepta el challenge completo o solo `{ verifier }`: en un flujo real el
+   * verifier se recupera de la sesión del usuario y el challenge ya no hace
+   * falta (lo tiene el servidor, que lo comparará con el hash del verifier).
+   */
+  async exchangeCode(code: string, pkce: Pick<PkceChallenge, 'verifier'>): Promise<TokenSet> {
     return this.tokenRequest({
       grant_type: 'authorization_code',
       code,
