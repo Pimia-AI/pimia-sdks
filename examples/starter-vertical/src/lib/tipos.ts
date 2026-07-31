@@ -3,7 +3,9 @@
  * otros (el contrato completo está en spec/pimia-api-v1.json del monorepo);
  * tiparlos a demanda mantiene honesto lo que la app usa de verdad.
  *
- * Recordatorio permanente: todos los importes vienen en CÉNTIMOS enteros.
+ * Recordatorio permanente: todos los importes vienen en CÉNTIMOS — pero no
+ * siempre como `number`: los campos calculados (p. ej. `due_amount`) pueden
+ * llegar como string decimal ("121000.00"). `euros()` coacciona ambos.
  */
 
 export interface ClienteRef {
@@ -21,7 +23,7 @@ export interface FacturaFila {
   overdue: boolean | null
   is_credit_note: boolean | null
   total: number | null
-  due_amount: number | null
+  due_amount: number | string | null
   customer_id: number | null
   customer?: ClienteRef | null
 }
@@ -84,7 +86,7 @@ export interface ClienteFila {
   phone: string | null
   /** NIF/CIF. */
   tax_id: string | null
-  due_amount: number | null
+  due_amount: number | string | null
 }
 
 export interface ClienteDetalle extends ClienteFila {

@@ -10,7 +10,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { Dinero, Estado, FaltaScope } from '@/components/ui'
+import { Cobro, Dinero, Estado, FaltaScope } from '@/components/ui'
 import { detalle, listar } from '@/lib/datos'
 import { euros, fecha, texto } from '@/lib/formato'
 import { clienteOPortada } from '@/lib/pimia'
@@ -113,7 +113,7 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
                   <Estado valor={factura.status} />
                 </td>
                 <td>
-                  <Estado valor={factura.overdue ? 'OVERDUE' : factura.paid_status} />
+                  <Cobro factura={factura} />
                 </td>
                 <td className="num">
                   <Dinero cents={factura.total} />

@@ -7,8 +7,11 @@
  * este mapeo; quitarla = borrarlo. */
 
 [data-theme='pimia'] {
-  --font-display: var(--pimia-font-display);
-  --font-body: var(--pimia-font-body);
+  /* Únicas variables que no van 1:1 contra el paquete: las MISMAS familias
+     que manda el sistema (Jakarta y Inter, --pimia-font-*) pero servidas por
+     next/font (auto-hospedadas), que las registra bajo su propio nombre. */
+  --font-display: var(--font-jakarta), var(--pimia-font-display);
+  --font-body: var(--font-inter), var(--pimia-font-body);
   --font-mono: var(--pimia-font-mono);
 
   --ink: var(--pimia-color-ink);

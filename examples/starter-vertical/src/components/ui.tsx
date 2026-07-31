@@ -9,7 +9,7 @@ import type { MetaPagina } from '@/lib/datos'
 import { euros } from '@/lib/formato'
 
 /** Importe en mono tabular. Úsalo SIEMPRE dentro de una celda .num. */
-export function Dinero({ cents }: { cents: number | null | undefined }) {
+export function Dinero({ cents }: { cents: number | string | null | undefined }) {
   return <>{euros(cents)}</>
 }
 
@@ -35,6 +35,25 @@ export function Estado({ valor }: { valor: string | null | undefined }) {
   const estado = ESTADOS[valor] ?? { texto: valor, tono: 'neutro' as const }
 
   return <span className={`badge ${estado.tono === 'neutro' ? '' : estado.tono}`}>{estado.texto}</span>
+}
+
+/**
+ * Estado de cobro de una factura. El `overdue` de la API es el vencimiento a
+ * secas — también es true en facturas ya cobradas (verificado con datos
+ * reales de dev): «Vencida» solo se enseña si además queda importe pendiente.
+ */
+export function Cobro({
+  factura,
+}: {
+  factura: {
+    overdue?: boolean | null
+    paid_status?: string | null
+    due_amount?: number | string | null
+  }
+}) {
+  const vencida = factura.overdue === true && Number(factura.due_amount ?? 0) > 0
+
+  return <Estado valor={vencida ? 'OVERDUE' : factura.paid_status} />
 }
 
 /** Aviso estándar de scope que falta, con la instrucción de arreglo. */
