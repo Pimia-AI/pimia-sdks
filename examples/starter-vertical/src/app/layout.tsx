@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
+import { Bricolage_Grotesque, Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import Link from 'next/link'
 
 // El orden importa: primero las variables del paquete de Pimia, luego la
@@ -13,6 +14,29 @@ import './themes/pimia.css'
 import { readSession } from '@/lib/session'
 import { activeTheme } from '@/lib/theme'
 
+// Las fuentes de LAS DOS pieles, auto-hospedadas en el build con next/font:
+// sin petición runtime a Google (más fiable, y lo correcto en la UE — servir
+// Google Fonts en runtime ya ha costado sanciones RGPD). Cada piel elige la
+// suya vía las variables CSS de abajo (themes/*.css).
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-bricolage',
+  display: 'swap',
+})
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-jakarta',
+  display: 'swap',
+})
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
 const theme = activeTheme()
 
 export const metadata: Metadata = {
@@ -24,12 +48,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const session = await readSession()
 
   return (
-    <html lang="es" data-theme={theme.id}>
+    <html
+      lang="es"
+      data-theme={theme.id}
+      className={`${bricolage.variable} ${jakarta.variable} ${inter.variable}`}
+    >
       <body>
-        {/* Las fuentes de la piel activa. Un <link> en el body es válido y
-            evita tocar <head>; en tu app usa next/font si lo prefieres. */}
-        <link rel="stylesheet" href={theme.fontsHref} />
-
         <header>
           <div className="marca">
             <Link href="/">{theme.brand}</Link>

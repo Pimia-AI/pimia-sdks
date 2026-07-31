@@ -96,8 +96,11 @@ La app está partida en dos capas de CSS a propósito:
 
 Para poner TU marca: edita `src/app/themes/partner.css` (color, tipografía,
 radios — es un fichero de 30 líneas) y tu nombre y claim en
-`src/lib/theme.ts`. Nada más. Si además quieres otra estructura, `globals.css`
-es tuyo: la API no impone ninguna UI.
+`src/lib/theme.ts`. Las familias tipográficas se declaran con `next/font` en
+`src/app/layout.tsx` (auto-hospedadas en el build: sin petición runtime a
+Google, que en la UE además es terreno RGPD) y las pieles las referencian por
+variable CSS. Nada más. Si además quieres otra estructura, `globals.css` es
+tuyo: la API no impone ninguna UI.
 
 ### Adoptar (o quitar) la piel Pimia
 

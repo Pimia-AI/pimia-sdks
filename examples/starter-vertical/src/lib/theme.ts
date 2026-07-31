@@ -23,24 +23,21 @@ export interface Theme {
   brand: string
   /** Una línea bajo la marca en la portada. */
   claim: string
-  /** Hoja de estilos de las fuentes de ESTA piel (Google Fonts). */
-  fontsHref: string
 }
 
+// Las familias tipográficas de cada piel se declaran con next/font en
+// src/app/layout.tsx (auto-hospedadas) y cada piel las referencia por su
+// variable CSS en src/app/themes/*.css.
 const THEMES: Record<ThemeId, Theme> = {
   partner: {
     id: 'partner',
     brand: 'Cuadrilla',
     claim: 'Presupuestos y facturación para empresas de reformas, sin dolores.',
-    fontsHref:
-      'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&display=swap',
   },
   pimia: {
     id: 'pimia',
     brand: 'Dawn',
     claim: 'La app vertical de referencia de Pimia.',
-    fontsHref:
-      'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap',
   },
 }
 

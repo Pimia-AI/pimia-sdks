@@ -7,7 +7,8 @@
 
 :root,
 [data-theme='partner'] {
-  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  /* --font-bricolage la define next/font en el layout (auto-hospedada). */
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
   --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
