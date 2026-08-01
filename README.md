@@ -24,6 +24,63 @@ marca.
 CI verifica Node 20/22/24 y PHP 8.2/8.3/8.4 en cada push. Node 18 queda fuera:
 no expone `globalThis.crypto` (llegó en 19) y está EOL desde abril de 2025.
 
+## Instalación
+
+Cuando los paquetes estén publicados (**pendiente de publicación** — el estado
+está en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)):
+
+```bash
+npm install @pimia/sdk            # pendiente de publicación en npm
+composer require pimia/pimia-php  # pendiente de publicación en Packagist
+```
+
+### Camino vigente: desde este repo privado (con invitación)
+
+Los dos paquetes viven en subdirectorios de un monorepo, y ni npm ni Composer
+saben instalar un subdirectorio desde una URL git — así que la ruta es clonar
+y consumir por ruta local.
+
+**TypeScript** — `npm install git+ssh://…` **no funciona** aquí (npm
+instalaría la raíz del monorepo, no `typescript/`). Clona, compila e instala
+por ruta o tarball:
+
+```bash
+git clone git@github.com:Pimia-AI/pimia-sdks.git
+cd pimia-sdks/typescript && npm ci && npm run build
+
+# En tu app — opción A: dependencia por ruta (deja "file:" en tu package.json)
+npm install /ruta/a/pimia-sdks/typescript
+
+# Opción B: tarball empaquetado (idéntico a lo que subiría a npm)
+cd /ruta/a/pimia-sdks/typescript && npm pack
+npm install /ruta/a/pimia-sdks/typescript/pimia-sdk-0.1.0.tgz
+```
+
+(Con pnpm sí hay instalación git directa de subdirectorios:
+`pnpm add "github:Pimia-AI/pimia-sdks#path:/typescript"`.)
+
+**PHP** — un repositorio `vcs` apuntando a este monorepo **no funciona**:
+Composer exige el `composer.json` en la raíz del repo y el paquete vive en
+`php/`. Usa un repositorio `path` sobre el clon:
+
+```jsonc
+// composer.json de tu app
+{
+  "repositories": [
+    { "type": "path", "url": "../pimia-sdks/php" }
+  ]
+}
+```
+
+```bash
+git clone git@github.com:Pimia-AI/pimia-sdks.git
+composer require "pimia/pimia-php:@dev"
+```
+
+(El repositorio `vcs` clásico valdrá cuando exista el repo espejo
+`Pimia-AI/pimia-php` del split de `php/` — es el mismo prerequisito del alta
+en Packagist; ver `RELEASE_CHECKLIST.md`.)
+
 ## ⚠️ Lo único que tienes que leer antes de escribir código
 
 **El refresh token de Pimia rota.** Cada refresco devuelve uno nuevo y mata el
@@ -170,8 +227,12 @@ cd php && composer install && vendor/bin/phpunit
 **v0.1.0, sin publicar.** El núcleo OAuth, el cliente y los tipos están
 completos y con tests; los helpers de dominio cubren facturas, clientes y
 presupuestos — para el resto, `client.get('/loquesea')` con los tipos del
-spec. Pendiente: publicar en npm y Packagist, ampliar helpers, DTOs de PHP
-generados del spec y webhooks cuando existan.
+spec. La publicación está **a un tag de distancia**: el workflow de release
+(`.github/workflows/release.yml`) publica `@pimia/sdk` en npm con cada tag
+`v*`, y los pasos humanos que faltan (token, alta en Packagist, visibilidad
+del repo) están en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md). Pendiente
+de código: ampliar helpers, DTOs de PHP generados del spec y webhooks cuando
+existan.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,
