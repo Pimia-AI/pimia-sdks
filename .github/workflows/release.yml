@@ -1,0 +1,120 @@
+# Release: se dispara SOLO con un tag `v*` (nunca en push de ramas ni PRs).
+#
+# Publica @pimia/sdk en npm tras pasar build+tests de los dos SDKs. Sin el
+# secret NPM_TOKEN el job de publicación falla en el propio `npm publish`:
+# no hay camino por el que este workflow publique sin tag Y sin secret.
+#
+# Packagist NO se publica desde CI: la publicación de pimia/pimia-php es dar
+# de alta el repo en packagist.org (con webhook/GitHub App que actualiza en
+# cada push de tag). Ojo: Packagist y los repos `vcs` de Composer exigen el
+# composer.json en la RAÍZ del repo, así que hace falta el split de php/ a un
+# repo propio antes del alta. El paso a paso está en RELEASE_CHECKLIST.md.
+#
+# Sin --provenance a propósito: la provenance de npm exige repo público y
+# este repo es privado (el publish fallaría). Cuando el repo se haga público,
+# añadir `--provenance` al `npm publish` de abajo.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    name: TypeScript (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Misma matriz que ci.yml: Node 18 fuera (sin globalThis.crypto, EOL).
+        node: ['20', '22', '24']
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      - run: npm ci
+
+      - name: Compilar (tsc estricto)
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    defaults:
+      run:
+        working-directory: php
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: json
+          coverage: none
+          tools: composer:v2
+
+      - run: composer install --no-interaction --no-progress
+
+      - name: composer validate
+        run: composer validate --strict
+
+      - name: Tests
+        run: vendor/bin/phpunit --colors=never
+
+  publish-npm:
+    name: Publicar @pimia/sdk en npm
+    runs-on: ubuntu-latest
+    # Solo desde el repo canónico: un fork con un tag v* no debe ni intentarlo.
+    if: github.repository == 'Pimia-AI/pimia-sdks'
+    needs: [typescript, php]
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+          # setup-node escribe el .npmrc que lee NODE_AUTH_TOKEN en el publish.
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      # El tag manda: si v0.2.0 apunta a un commit cuyo package.json dice
+      # 0.1.0, mejor fallar aquí que publicar una versión que no es.
+      - name: El tag y package.json deben coincidir
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::El tag v$TAG_VERSION no coincide con package.json ($PKG_VERSION)."
+            exit 1
+          fi
+
+      # prepublishOnly compila (npm run build); el paquete sube desde dist/.
+      - name: Publicar
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
