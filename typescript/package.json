@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "description": "Cliente TypeScript de la API de Pimia para apps de partner: OAuth con PKCE, rotación de refresh persistida, reintentos de rate limit y tipos generados del OpenAPI.",
   "license": "MIT",
+  "author": "Pimia (https://pimia.es)",
+  "homepage": "https://github.com/Pimia-AI/pimia-sdks/tree/main/typescript#readme",
+  "bugs": {
+    "url": "https://github.com/Pimia-AI/pimia-sdks/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pimia-AI/pimia-sdks.git",
+    "directory": "typescript"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

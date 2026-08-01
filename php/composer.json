@@ -4,6 +4,17 @@
     "type": "library",
     "license": "MIT",
     "keywords": ["pimia", "facturacion", "verifactu", "oauth", "sdk"],
+    "homepage": "https://github.com/Pimia-AI/pimia-sdks/tree/main/php",
+    "authors": [
+        {
+            "name": "Pimia",
+            "homepage": "https://pimia.es"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/Pimia-AI/pimia-sdks/issues",
+        "source": "https://github.com/Pimia-AI/pimia-sdks"
+    },
     "require": {
         "php": "^8.2",
         "ext-json": "*",
