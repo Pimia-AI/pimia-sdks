@@ -26,15 +26,21 @@ no expone `globalThis.crypto` (llegó en 19) y está EOL desde abril de 2025.
 
 ## Instalación
 
-Cuando los paquetes estén publicados (**pendiente de publicación** — el estado
-está en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)):
+Cuando los paquetes estén publicados (**pendiente del primer publish** — el
+estado está en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)):
 
 ```bash
-npm install @pimia/sdk            # pendiente de publicación en npm
-composer require pimia/pimia-php  # pendiente de publicación en Packagist
+npm install @pimia/sdk            # pendiente del primer publish
+composer require pimia/pimia-php  # pendiente del alta en Packagist
 ```
 
-### Camino vigente: desde este repo privado (con invitación)
+`pimia/pimia-php` se sirve desde
+[`Pimia-AI/pimia-php`](https://github.com/Pimia-AI/pimia-php), un **espejo de
+solo lectura** de `php/` que el workflow de release regenera en cada tag:
+Composer exige el `composer.json` en la raíz del repositorio y aquí el paquete
+vive en un subdirectorio. El código y las incidencias, en este monorepo.
+
+### Camino vigente: desde este repo (público, sin invitación)
 
 Los dos paquetes viven en subdirectorios de un monorepo, y ni npm ni Composer
 saben instalar un subdirectorio desde una URL git — así que la ruta es clonar

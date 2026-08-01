@@ -4,6 +4,12 @@ Cliente PHP oficial de la API de Pimia para **apps de partner**: OAuth con
 PKCE, **rotación del refresh token** persistida, reintentos de rate limit y
 excepciones tipadas. Licencia MIT.
 
+> El código vive en el monorepo [`Pimia-AI/pimia-sdks`](https://github.com/Pimia-AI/pimia-sdks),
+> directorio `php/`. [`Pimia-AI/pimia-php`](https://github.com/Pimia-AI/pimia-php)
+> es un **espejo de solo lectura** que se regenera en cada release: existe
+> porque Composer exige el `composer.json` en la raíz del repositorio. Las
+> incidencias y los PRs, al monorepo.
+
 Requisitos: PHP ≥ 8.2 + un cliente HTTP PSR-18 (cualquiera vale; Guzzle es el
 sugerido).
 
@@ -13,10 +19,23 @@ sugerido).
 composer require pimia/pimia-php
 ```
 
-> **Pendiente de publicación en Packagist.** Mientras tanto, instala desde el
-> monorepo privado (necesitas invitación) con un repositorio `path` — un
-> repositorio `vcs` apuntando al monorepo **no funciona**, porque Composer
-> exige el `composer.json` en la raíz del repo y este paquete vive en `php/`:
+> **Pendiente del alta en Packagist.** El código ya es **público** y no hace
+> falta invitación. Dos caminos mientras tanto:
+>
+> **a)** repositorio `vcs` apuntando al **espejo de solo lectura**
+> `Pimia-AI/pimia-php`, que sí lleva el `composer.json` en la raíz:
+>
+> ```jsonc
+> {
+>   "repositories": [
+>     { "type": "vcs", "url": "https://github.com/Pimia-AI/pimia-php" }
+>   ]
+> }
+> ```
+>
+> **b)** repositorio `path` sobre un clon del monorepo. Un repositorio `vcs`
+> apuntando al **monorepo** no funciona: Composer exige el `composer.json` en
+> la raíz del repo y aquí el paquete vive en `php/`.
 >
 > ```jsonc
 > // composer.json de tu app
