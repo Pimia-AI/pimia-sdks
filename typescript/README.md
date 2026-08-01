@@ -12,11 +12,12 @@ Requisitos: Node ≥ 20 (o cualquier runtime con `fetch` y WebCrypto global).
 npm install @pimia/sdk
 ```
 
-> **Pendiente de publicación en npm.** Mientras el paquete no esté publicado,
-> instala desde el repositorio privado (necesitas invitación): clona
+> **Pendiente del primer publish en npm.** El repositorio ya es **público**,
+> así que mientras tanto no hace falta invitación: clona
 > `Pimia-AI/pimia-sdks`, compila este directorio (`npm ci && npm run build`) e
 > instálalo por ruta (`npm install /ruta/a/pimia-sdks/typescript`) o como
-> tarball (`npm pack`). El detalle está en el
+> tarball (`npm pack`). Ojo, `npm install git+https://…` **no** vale: npm
+> instalaría la raíz del monorepo, no `typescript/`. El detalle está en el
 > [README del monorepo](https://github.com/Pimia-AI/pimia-sdks#instalación).
 
 ## Uso en 20 líneas

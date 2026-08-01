@@ -1,18 +1,22 @@
 # Release: se dispara SOLO con un tag `v*` (nunca en push de ramas ni PRs).
 #
-# Publica @pimia/sdk en npm tras pasar build+tests de los dos SDKs. Sin el
-# secret NPM_TOKEN el job de publicación falla en el propio `npm publish`:
-# no hay camino por el que este workflow publique sin tag Y sin secret.
+# Con un tag y tras pasar build+tests de los dos SDKs:
+#   1. publica @pimia/sdk en npm;
+#   2. publica @pimia/design-tokens en npm (el starter lo importa: dejarlo
+#      fuera obliga a clonar el monorepo, que es la fricción que la
+#      publicación viene a quitar);
+#   3. rehace el split de php/ y lo empuja con su tag al espejo
+#      Pimia-AI/pimia-php, que es de donde Packagist sirve pimia/pimia-php.
 #
-# Packagist NO se publica desde CI: la publicación de pimia/pimia-php es dar
-# de alta el repo en packagist.org (con webhook/GitHub App que actualiza en
-# cada push de tag). Ojo: Packagist y los repos `vcs` de Composer exigen el
-# composer.json en la RAÍZ del repo, así que hace falta el split de php/ a un
-# repo propio antes del alta. El paso a paso está en RELEASE_CHECKLIST.md.
+# Secrets que hacen falta (sin ellos el job correspondiente falla, a
+# propósito, en vez de publicar a medias):
+#   NPM_TOKEN         — granular, read+write limitado al scope @pimia.
+#   SPLIT_PUSH_TOKEN  — PAT con escritura sobre Pimia-AI/pimia-php; el
+#                       GITHUB_TOKEN por defecto solo alcanza a ESTE repo.
 #
-# Sin --provenance a propósito: la provenance de npm exige repo público y
-# este repo es privado (el publish fallaría). Cuando el repo se haga público,
-# añadir `--provenance` al `npm publish` de abajo.
+# El alta en packagist.org es manual y de una sola vez (apuntando al espejo,
+# no a este repo: Composer exige el composer.json en la raíz). A partir de
+# ahí, la GitHub App de Packagist recoge cada tag que empuje el job de split.
 
 name: Release
 
@@ -86,6 +90,10 @@ jobs:
     # Solo desde el repo canónico: un fork con un tag v* no debe ni intentarlo.
     if: github.repository == 'Pimia-AI/pimia-sdks'
     needs: [typescript, php]
+    permissions:
+      contents: read
+      # Lo exige `npm publish --provenance`.
+      id-token: write
     defaults:
       run:
         working-directory: typescript
@@ -114,7 +122,80 @@ jobs:
           fi
 
       # prepublishOnly compila (npm run build); el paquete sube desde dist/.
+      # --provenance firma la procedencia del tarball con el OIDC de Actions:
+      # exige repo público (lo es desde 2026-08-01) y `id-token: write`.
       - name: Publicar
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-design-tokens:
+    name: Publicar @pimia/design-tokens en npm
+    runs-on: ubuntu-latest
+    if: github.repository == 'Pimia-AI/pimia-sdks'
+    needs: [typescript, php]
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: design-tokens
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm install --no-package-lock
+
+      - name: El tag y package.json deben coincidir
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::El tag v$TAG_VERSION no coincide con package.json ($PKG_VERSION)."
+            exit 1
+          fi
+
+      - name: Publicar
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Packagist sirve el paquete desde `Pimia-AI/pimia-php`, un espejo de SOLO
+  # LECTURA, porque Composer exige el composer.json en la RAÍZ del repo y aquí
+  # vive en php/. Este job rehace el split en cada tag y lo empuja con su tag,
+  # que es lo que Packagist lee como versión.
+  #
+  # Necesita un PAT con permiso de escritura sobre pimia-php en el secret
+  # SPLIT_PUSH_TOKEN: el GITHUB_TOKEN por defecto solo alcanza a ESTE repo.
+  # Sin el secret, el job falla en el push — a propósito, para que se vea.
+  split-php:
+    name: Sincronizar el espejo Pimia-AI/pimia-php
+    runs-on: ubuntu-latest
+    if: github.repository == 'Pimia-AI/pimia-sdks'
+    needs: [typescript, php]
+    steps:
+      # El split necesita el histórico entero: con un clon superficial sale
+      # un árbol sin ancestros y el push al espejo se rechaza.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Split de php/ y push al espejo con su tag
+        env:
+          TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Falta el secret SPLIT_PUSH_TOKEN (PAT con escritura sobre Pimia-AI/pimia-php)."
+            exit 1
+          fi
+          git config user.name  "pimia-release-bot"
+          git config user.email "release@pimia.es"
+          git subtree split --prefix=php -b split/php
+          REMOTE="https://x-access-token:${TOKEN}@github.com/Pimia-AI/pimia-php.git"
+          git push --force "$REMOTE" split/php:refs/heads/main
+          git push --force "$REMOTE" "split/php:refs/tags/${TAG}"

@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "Sistema de diseño de Pimia como paquete OPCIONAL para apps de partner: tokens tipados, variables CSS y preset de Tailwind. El white-label es poder no usarlo.",
   "license": "MIT",
+  "author": "Pimia (https://pimia.es)",
+  "homepage": "https://github.com/Pimia-AI/pimia-sdks/tree/main/design-tokens#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pimia-AI/pimia-sdks.git",
+    "directory": "design-tokens"
+  },
+  "bugs": {
+    "url": "https://github.com/Pimia-AI/pimia-sdks/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

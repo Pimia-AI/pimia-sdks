@@ -1,46 +1,52 @@
 # Checklist de release — v0.1.0
 
-Lo que queda para publicar `@pimia/sdk` (npm) y `pimia/pimia-php` (Packagist).
-Todo lo automatizable ya está hecho; cada paso de abajo es un click humano 👤
-y está en orden. Los marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
+Estado a 2026-08-01. Lo mecánico está hecho; lo que queda **exige la cuenta
+del fundador** (npm y Packagist), así que no hay forma de automatizarlo desde
+aquí. Los pasos marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
 
-## Ya hecho (en el repo)
+## Hecho
 
-- [x] Metadata de publicación completa en `typescript/package.json`
-      (repository/homepage/bugs/author/publishConfig) y `php/composer.json`
-      (authors/homepage/support).
+- [x] Metadata de publicación completa en `typescript/package.json`,
+      `design-tokens/package.json` y `php/composer.json`.
 - [x] `npm publish --dry-run` verificado: el tarball lleva `dist/`, README y
       LICENSE — ni src ni tests.
 - [x] `CHANGELOG.md` con la entrada 0.1.0.
-- [x] Workflow `.github/workflows/release.yml`: con un tag `v*` corre
-      build+tests (TS y PHP) y publica `@pimia/sdk` en npm. Sin tag o sin el
-      secret `NPM_TOKEN`, no puede publicar.
-- [x] Instalación documentada en los README: camino futuro (npm/Packagist,
-      marcado «pendiente de publicación») y camino vigente por repo privado.
+- [x] **Repositorio público** (2026-08-01, orden del fundador). Barrido previo
+      del árbol y de los 15 commits del histórico: **cero credenciales** (sin
+      tokens, claves privadas, `.env`, IPs internas ni rutas locales). El
+      único hallazgo —el dominio del entorno de integración `taskai.work` en
+      el bloque `servers` del spec— quedó **asumido explícitamente**: ya era
+      público por el propio portal (developers.pimia.es sirve ese OpenAPI y el
+      quickstart manda al desarrollador a ese host como sandbox, a propósito).
+- [x] **Espejo `Pimia-AI/pimia-php` creado y poblado** con el subtree split de
+      `php/` (público, `composer.json` en la raíz — lo que Packagist exige).
+- [x] Workflow `release.yml`: con un tag `v*` corre build+tests (TS y PHP) y
+      luego publica `@pimia/sdk`, publica `@pimia/design-tokens` y regenera el
+      espejo PHP con su tag. Con `--provenance` (ya se puede: repo público).
+- [x] READMEs sin la premisa de repo privado; el camino de instalación
+      vigente documentado en los tres.
 
-## Pasos 👤 en orden
+## Pasos 👤 que quedan, en orden
 
-### 0. Decidir la visibilidad del repo
+### 1. npm — organización y token
 
-- [ ] Tras el dictamen AGPL (el import auditado: 52,8 % de líneas), decidir si
-      el repo se hace público. **⚠️ IRREVERSIBLE en la práctica**: aunque
-      GitHub permite volver a privado, todo el histórico queda expuesto y
-      clonable desde el minuto uno; forks y copias no se pueden retirar.
-- Publicar en npm **no** exige repo público (el tarball es autocontenido).
-  Packagist tampoco lo exige, pero un paquete de Packagist sobre repo privado
-  no lo puede instalar nadie sin acceso al repo — en la práctica, Packagist
-  espera repo público.
+- [ ] Crear la organización **`pimia`** en npmjs.com (gratis para paquetes
+      públicos). El scope `@pimia/*` tiene que existir y ser nuestro **antes**
+      del primer publish.
+- [ ] Crear un **granular access token** con permiso *Read and write*
+      limitado al scope `@pimia`, con expiración razonable.
+- [ ] Añadirlo como secret del repo: `Pimia-AI/pimia-sdks` → Settings →
+      Secrets and variables → Actions → **`NPM_TOKEN`**.
 
-### 1. npm — scope y token
+### 2. Token para el espejo PHP
 
-- [ ] Verificar/crear la organización `pimia` en npmjs.com (el scope
-      `@pimia/*` tiene que existir y ser nuestro antes del primer publish).
-- [ ] Crear un **granular access token** en npmjs.com con permiso
-      *Read and write* limitado al scope `@pimia` (y expiración razonable).
-- [ ] Añadirlo como secret del repo: GitHub → `Pimia-AI/pimia-sdks` →
-      Settings → Secrets and variables → Actions → `NPM_TOKEN`.
+- [ ] Crear un PAT (fine-grained) con permiso de **contenido: escritura**
+      sobre `Pimia-AI/pimia-php` y añadirlo como secret **`SPLIT_PUSH_TOKEN`**
+      en `Pimia-AI/pimia-sdks`. Sin él, el job de split falla a propósito.
+      *(Alternativa si no quieres el PAT: hacer el split a mano en cada
+      release — los dos comandos están al final de este fichero.)*
 
-### 2. Publicar @pimia/sdk (tag)
+### 3. Publicar (el tag lo dispara todo)
 
 - [ ] Desde `main` con CI verde:
 
@@ -48,47 +54,36 @@ y está en orden. Los marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
   git tag v0.1.0 && git push origin v0.1.0
   ```
 
-  El workflow `release.yml` hace el resto (tests → `npm publish`).
-  **⚠️ IRREVERSIBLE**: publicar en npm es permanente. `npm unpublish` solo
-  está permitido 72 h y con condiciones; el nombre+versión `0.1.0` queda
-  quemado para siempre aunque se despublique.
+  **⚠️ IRREVERSIBLE**: publicar en npm es permanente. `npm unpublish` solo se
+  permite 72 h y con condiciones; el par nombre+versión `0.1.0` queda quemado
+  para siempre aunque se despublique.
 
-### 3. Packagist — pimia/pimia-php
+### 4. Packagist — alta única
 
-Packagist y los repos `vcs` de Composer exigen el `composer.json` en la
-**raíz** del repo; el paquete vive en `php/`, así que hace falta un repo
-espejo de solo lectura (split), igual que hacen Laravel o Symfony:
+- [ ] Dar de alta en <https://packagist.org/packages/submit> con la URL del
+      **espejo**: `https://github.com/Pimia-AI/pimia-php`.
+      **⚠️ IRREVERSIBLE en la práctica**: el nombre `pimia/pimia-php` queda
+      registrado, y borrar un paquete que alguien ya instala lo rompe.
+- [ ] Verificar que queda activo el auto-update (GitHub App de Packagist o
+      webhook). Si no, cada tag habrá que sincronizarlo a mano.
 
-- [ ] Crear el repo `Pimia-AI/pimia-php` en GitHub (público si se publica).
-- [ ] Hacer el split y empujarlo, incluyendo el tag:
+### 5. Verificación de instalación limpia
 
-  ```bash
-  git subtree split --prefix=php -b split/php
-  git push git@github.com:Pimia-AI/pimia-php.git split/php:main
-  git push git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/v0.1.0
-  ```
-
-  (Para releases siguientes: repetir el split en cada tag, o automatizarlo
-  con `splitsh-lite` en un workflow cuando haya cadencia.)
-- [ ] Alta en <https://packagist.org/packages/submit> con la URL del repo
-      espejo. **⚠️ IRREVERSIBLE en la práctica**: el nombre
-      `pimia/pimia-php` queda registrado; borrar un paquete usado rompe a
-      quien lo instale.
-- [ ] Verificar que el auto-update queda activo (GitHub App de Packagist o
-      webhook); si no, cada tag habrá que sincronizarlo a mano.
-
-### 4. Verificación de instalación limpia
-
-- [ ] En un proyecto vacío: `npm install @pimia/sdk` y compilar el snippet
-      del README.
+- [ ] En un proyecto vacío: `npm install @pimia/sdk` y compilar el snippet del
+      README.
 - [ ] En un proyecto vacío: `composer require pimia/pimia-php` y correr el
       snippet del README.
-- [ ] Quitar los avisos «pendiente de publicación» de los README.
+- [ ] Quitar de los tres READMEs los avisos «pendiente del primer publish» /
+      «pendiente del alta en Packagist», y anunciarlo en el changelog del
+      developer de factSaas (`docs/changelog-desarrollador.md`) + republicar
+      developers.pimia.es.
 
-### Decisiones aplazadas (no bloquean la v0.1.0)
+---
 
-- [ ] ¿Se publica también `@pimia/design-tokens`? Hoy `release.yml` publica
-      solo `@pimia/sdk`; si se decide que sí, darle la misma metadata de
-      publicación y añadirlo al workflow.
-- [ ] Cuando el repo sea público: añadir `--provenance` al `npm publish` de
-      `release.yml` (con repo privado falla, por eso no está).
+## Split manual del espejo PHP (solo si no se usa `SPLIT_PUSH_TOKEN`)
+
+```bash
+git subtree split --prefix=php -b split/php
+git push --force git@github.com:Pimia-AI/pimia-php.git split/php:main
+git push --force git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/v0.1.0
+```
