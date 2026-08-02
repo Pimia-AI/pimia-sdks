@@ -7,15 +7,11 @@ instalación limpia de los tres en proyectos vacíos.
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
 
-## Lo que queda pendiente de la v0.1.0
-
-- [ ] **Auto-update de Packagist**: el paquete avisa «This package is not
-      auto-updated». Instalar la [GitHub App de Packagist](https://github.com/apps/packagist)
-      sobre `Pimia-AI/pimia-php`. Sin ella, cada tag hay que sincronizarlo a
-      mano desde el botón *Update* de packagist.org.
-- [ ] Mergear el fix del job de split ([#6](https://github.com/Pimia-AI/pimia-sdks/pull/6)):
-      la v0.1.0 se sincronizó **a mano** porque el job falló, y sin el fix el
-      próximo release fallará igual.
+**Sin deuda abierta.** El ciclo está cerrado de punta a punta: un tag publica
+en npm, regenera el espejo y Packagist lo recoge solo (hook activo sobre
+`Pimia-AI/pimia-php`, evento `push`). El fix del job de split está mergeado
+([#6](https://github.com/Pimia-AI/pimia-sdks/pull/6)) — hizo falta porque la
+v0.1.0 del espejo se sincronizó **a mano**.
 
 ## Runbook del próximo release
 
@@ -65,3 +61,16 @@ git subtree split --prefix=php -b split/php
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:main
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/v0.1.0
 ```
+
+## Conectar Packagist con GitHub (si algún día hay que rehacerlo)
+
+Conceder acceso a la organización desde GitHub **no basta**: la cuenta de
+Packagist tiene que estar conectada a GitHub por su lado (perfil →
+`Settings`), o `https://packagist.org/trigger-github-sync/` responde
+«You must connect your user account to github to sync packages» sin más
+pistas. Con las dos mitades hechas, la sincronización crea el hook sola.
+
+Alternativa sin OAuth: webhook manual en el espejo con payload
+`https://packagist.org/api/github?username=USUARIO`, `application/json`,
+solo evento *push*, y de secreto el **Safe API Token** (no el Main: el safe
+solo alcanza APIs seguras como actualizar un paquete).

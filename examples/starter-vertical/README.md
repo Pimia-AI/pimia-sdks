@@ -72,13 +72,17 @@ openssl rand -base64 32      # para SESSION_SECRET
 ### 3. Arranca
 
 ```bash
-# desde la raíz del monorepo: el SDK y los tokens se enlazan por file:
-# y hay que compilarlos antes
-npm --prefix ../../typescript run build
-npm --prefix ../../design-tokens run build
-
 npm install
 npm run dev
+```
+
+`@pimia/sdk` y `@pimia/design-tokens` se bajan de npm como cualquier otra
+dependencia, así que **puedes copiar este directorio donde quieras** — fuera
+del monorepo, a tu repo — y seguirá funcionando. Si lo que quieres es tocar
+el SDK y ver el efecto aquí, enlaza tu copia de trabajo:
+
+```bash
+npm install ../../typescript ../../design-tokens --no-save
 ```
 
 Abre `http://localhost:3000`, pulsa **Conectar con Pimia**, autoriza en la
