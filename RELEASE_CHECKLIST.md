@@ -34,7 +34,14 @@ aquí. Los pasos marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
       públicos). El scope `@pimia/*` tiene que existir y ser nuestro **antes**
       del primer publish.
 - [ ] Crear un **granular access token** con permiso *Read and write*
-      limitado al scope `@pimia`, con expiración razonable.
+      limitado al scope `@pimia`, con expiración razonable, y **marcando
+      «Bypass two-factor authentication (2FA)»**. Sin esa casilla el publish
+      del workflow muere con `403 … granular access token with bypass 2fa
+      enabled is required` — pasó en el primer intento de v0.1.0. Un runner
+      no puede teclear un código de un solo uso; lo que acota el riesgo es
+      que el token está limitado al scope y caduca.
+      *(El scope `@pimia` solo aparece en el desplegable si la organización
+      ya existe: paso anterior, no simultáneo.)*
 - [ ] Añadirlo como secret del repo: `Pimia-AI/pimia-sdks` → Settings →
       Secrets and variables → Actions → **`NPM_TOKEN`**.
 
@@ -53,6 +60,18 @@ aquí. Los pasos marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
   ```bash
   git tag v0.1.0 && git push origin v0.1.0
   ```
+
+  Si el tag ya existe de un intento fallido y **no llegó a publicarse nada**
+  (compruébalo: `curl -o /dev/null -w '%{http_code}' https://registry.npmjs.org/@pimia%2Fsdk`
+  debe dar 404), se mueve al commit corregido:
+
+  ```bash
+  git tag -d v0.1.0 && git push origin :refs/tags/v0.1.0
+  git tag v0.1.0 && git push origin v0.1.0
+  ```
+
+  En cuanto **algo** se haya publicado en npm, el tag ya NO se mueve: se sube
+  de versión.
 
   **⚠️ IRREVERSIBLE**: publicar en npm es permanente. `npm unpublish` solo se
   permite 72 h y con condiciones; el par nombre+versión `0.1.0` queda quemado

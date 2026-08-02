@@ -178,11 +178,18 @@ jobs:
     if: github.repository == 'Pimia-AI/pimia-sdks'
     needs: [typescript, php]
     steps:
-      # El split necesita el histórico entero: con un clon superficial sale
-      # un árbol sin ancestros y el push al espejo se rechaza.
+      # fetch-depth: 0 → el split necesita el histórico entero; con un clon
+      # superficial sale un árbol sin ancestros y el push al espejo se rechaza.
+      #
+      # persist-credentials: false → sin esto el push sale como
+      # github-actions[bot] y muere con 403 aunque el PAT sea correcto:
+      # checkout deja el GITHUB_TOKEN en la config de git como cabecera
+      # `http.https://github.com/.extraheader`, y esa cabecera PISA el token
+      # embebido en la URL del remoto. Verificado en el release v0.1.0.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Split de php/ y push al espejo con su tag
         env:
