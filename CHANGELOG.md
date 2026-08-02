@@ -10,9 +10,9 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
-## [0.1.0] — pendiente de tag
+## [0.1.0] — 2026-08-01
 
-Primera versión publicable de los dos SDKs. Validados e2e contra un tenant
+Primera versión **publicada**: `@pimia/sdk` y `@pimia/design-tokens` en npm (con provenance SLSA firmada por el workflow de release) y `pimia/pimia-php` en Packagist. Validados e2e contra un tenant
 real (dev de Pimia, 2026-07-29) con `examples/e2e-dev`.
 
 ### `@pimia/sdk` (TypeScript)

@@ -19,37 +19,12 @@ sugerido).
 composer require pimia/pimia-php
 ```
 
-> **Pendiente del alta en Packagist.** El código ya es **público** y no hace
-> falta invitación. Dos caminos mientras tanto:
->
-> **a)** repositorio `vcs` apuntando al **espejo de solo lectura**
-> `Pimia-AI/pimia-php`, que sí lleva el `composer.json` en la raíz:
->
-> ```jsonc
-> {
->   "repositories": [
->     { "type": "vcs", "url": "https://github.com/Pimia-AI/pimia-php" }
->   ]
-> }
-> ```
->
-> **b)** repositorio `path` sobre un clon del monorepo. Un repositorio `vcs`
-> apuntando al **monorepo** no funciona: Composer exige el `composer.json` en
-> la raíz del repo y aquí el paquete vive en `php/`.
->
-> ```jsonc
-> // composer.json de tu app
-> {
->   "repositories": [
->     { "type": "path", "url": "../pimia-sdks/php" }
->   ]
-> }
-> ```
->
-> ```bash
-> git clone git@github.com:Pimia-AI/pimia-sdks.git
-> composer require "pimia/pimia-php:@dev"
-> ```
+Publicado en Packagist desde v0.1.0. Requiere PHP ≥ 8.2 y un cliente HTTP
+PSR-18 (Guzzle es el sugerido):
+
+```bash
+composer require guzzlehttp/guzzle
+```
 
 ## Uso en 20 líneas
 
