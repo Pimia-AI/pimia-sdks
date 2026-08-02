@@ -1,108 +1,76 @@
-# Checklist de release — v0.1.0
+# Checklist de release — v0.1.0 ✅ PUBLICADA
 
-Estado a 2026-08-01. Lo mecánico está hecho; lo que queda **exige la cuenta
-del fundador** (npm y Packagist), así que no hay forma de automatizarlo desde
-aquí. Los pasos marcados **⚠️ IRREVERSIBLE** no tienen vuelta atrás.
+**v0.1.0 publicada el 2026-08-01**: `@pimia/sdk` y `@pimia/design-tokens` en
+npm (con provenance SLSA) y `pimia/pimia-php` en Packagist. Verificada con
+instalación limpia de los tres en proyectos vacíos.
 
-## Hecho
+Este fichero queda como **runbook del próximo release** y como registro de lo
+que salió mal la primera vez.
 
-- [x] Metadata de publicación completa en `typescript/package.json`,
-      `design-tokens/package.json` y `php/composer.json`.
-- [x] `npm publish --dry-run` verificado: el tarball lleva `dist/`, README y
-      LICENSE — ni src ni tests.
-- [x] `CHANGELOG.md` con la entrada 0.1.0.
-- [x] **Repositorio público** (2026-08-01, orden del fundador). Barrido previo
-      del árbol y de los 15 commits del histórico: **cero credenciales** (sin
-      tokens, claves privadas, `.env`, IPs internas ni rutas locales). El
-      único hallazgo —el dominio del entorno de integración `taskai.work` en
-      el bloque `servers` del spec— quedó **asumido explícitamente**: ya era
-      público por el propio portal (developers.pimia.es sirve ese OpenAPI y el
-      quickstart manda al desarrollador a ese host como sandbox, a propósito).
-- [x] **Espejo `Pimia-AI/pimia-php` creado y poblado** con el subtree split de
-      `php/` (público, `composer.json` en la raíz — lo que Packagist exige).
-- [x] Workflow `release.yml`: con un tag `v*` corre build+tests (TS y PHP) y
-      luego publica `@pimia/sdk`, publica `@pimia/design-tokens` y regenera el
-      espejo PHP con su tag. Con `--provenance` (ya se puede: repo público).
-- [x] READMEs sin la premisa de repo privado; el camino de instalación
-      vigente documentado en los tres.
+**Sin deuda abierta.** El ciclo está cerrado de punta a punta: un tag publica
+en npm, regenera el espejo y Packagist lo recoge solo (hook activo sobre
+`Pimia-AI/pimia-php`, evento `push`). El fix del job de split está mergeado
+([#6](https://github.com/Pimia-AI/pimia-sdks/pull/6)) — hizo falta porque la
+v0.1.0 del espejo se sincronizó **a mano**.
 
-## Pasos 👤 que quedan, en orden
+## Runbook del próximo release
 
-### 1. npm — organización y token
+1. Subir la versión en los tres manifiestos —`typescript/package.json`,
+   `design-tokens/package.json` y el `CHANGELOG.md`—; el workflow **aborta**
+   si el tag y el `package.json` no coinciden.
+2. Con `main` verde: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. El workflow publica los dos paquetes de npm y regenera el espejo PHP con
+   su tag. Packagist lo recoge solo, si la GitHub App está puesta.
 
-- [ ] Crear la organización **`pimia`** en npmjs.com (gratis para paquetes
-      públicos). El scope `@pimia/*` tiene que existir y ser nuestro **antes**
-      del primer publish.
-- [ ] Crear un **granular access token** con permiso *Read and write*
-      limitado al scope `@pimia`, con expiración razonable, y **marcando
-      «Bypass two-factor authentication (2FA)»**. Sin esa casilla el publish
-      del workflow muere con `403 … granular access token with bypass 2fa
-      enabled is required` — pasó en el primer intento de v0.1.0. Un runner
-      no puede teclear un código de un solo uso; lo que acota el riesgo es
-      que el token está limitado al scope y caduca.
-      *(El scope `@pimia` solo aparece en el desplegable si la organización
-      ya existe: paso anterior, no simultáneo.)*
-- [ ] Añadirlo como secret del repo: `Pimia-AI/pimia-sdks` → Settings →
-      Secrets and variables → Actions → **`NPM_TOKEN`**.
+**⚠️ Un tag solo se puede mover mientras no se haya publicado NADA.** En
+cuanto npm acepte el primer paquete, un fallo posterior se arregla subiendo
+de versión — nunca reescribiendo el tag. Comprobación:
+`curl -o /dev/null -w '%{http_code}' https://registry.npmjs.org/@pimia%2Fsdk`.
 
-### 2. Token para el espejo PHP
+## Los tres tropiezos de la v0.1.0, para no repetirlos
 
-- [ ] Crear un PAT (fine-grained) con permiso de **contenido: escritura**
-      sobre `Pimia-AI/pimia-php` y añadirlo como secret **`SPLIT_PUSH_TOKEN`**
-      en `Pimia-AI/pimia-sdks`. Sin él, el job de split falla a propósito.
-      *(Alternativa si no quieres el PAT: hacer el split a mano en cada
-      release — los dos comandos están al final de este fichero.)*
+1. **El scope `@pimia` no aparece** en el desplegable del token de npm hasta
+   que la **organización existe**. Crearla es el paso previo, no simultáneo.
+2. **El token de npm necesita «Bypass two-factor authentication (2FA)»**
+   marcado. Sin esa casilla el publish muere con
+   `403 … granular access token with bypass 2fa enabled is required`: un
+   runner no puede teclear un código de un solo uso. Lo que acota el riesgo
+   es que el token esté limitado al scope y caduque.
+3. **El job del espejo necesita `persist-credentials: false`** en el
+   checkout. Sin eso el push sale como `github-actions[bot]` y da 403 aunque
+   el PAT sea correcto: checkout deja el `GITHUB_TOKEN` como cabecera
+   `http.extraheader` y esa cabecera pisa el token de la URL del remoto.
+   El mensaje de error señala al bot y no al secret, así que invita a
+   sospechar del PAT, que era válido.
 
-### 3. Publicar (el tag lo dispara todo)
+## Secrets del repo
 
-- [ ] Desde `main` con CI verde:
+| Secret | Qué es | Dónde se crea |
+|---|---|---|
+| `NPM_TOKEN` | Granular token de npm, *read and write* sobre el scope `@pimia`, con bypass 2FA | npmjs.com → Access Tokens |
+| `SPLIT_PUSH_TOKEN` | PAT fine-grained con *Contents: read and write* sobre `Pimia-AI/pimia-php` — el `GITHUB_TOKEN` por defecto solo alcanza a ESTE repo | github.com/settings/personal-access-tokens |
 
-  ```bash
-  git tag v0.1.0 && git push origin v0.1.0
-  ```
+Los dos caducan. El día que lo hagan, el release falla con un 401 o un 403 que
+no dice «tu token expiró» — mirar aquí primero.
 
-  Si el tag ya existe de un intento fallido y **no llegó a publicarse nada**
-  (compruébalo: `curl -o /dev/null -w '%{http_code}' https://registry.npmjs.org/@pimia%2Fsdk`
-  debe dar 404), se mueve al commit corregido:
-
-  ```bash
-  git tag -d v0.1.0 && git push origin :refs/tags/v0.1.0
-  git tag v0.1.0 && git push origin v0.1.0
-  ```
-
-  En cuanto **algo** se haya publicado en npm, el tag ya NO se mueve: se sube
-  de versión.
-
-  **⚠️ IRREVERSIBLE**: publicar en npm es permanente. `npm unpublish` solo se
-  permite 72 h y con condiciones; el par nombre+versión `0.1.0` queda quemado
-  para siempre aunque se despublique.
-
-### 4. Packagist — alta única
-
-- [ ] Dar de alta en <https://packagist.org/packages/submit> con la URL del
-      **espejo**: `https://github.com/Pimia-AI/pimia-php`.
-      **⚠️ IRREVERSIBLE en la práctica**: el nombre `pimia/pimia-php` queda
-      registrado, y borrar un paquete que alguien ya instala lo rompe.
-- [ ] Verificar que queda activo el auto-update (GitHub App de Packagist o
-      webhook). Si no, cada tag habrá que sincronizarlo a mano.
-
-### 5. Verificación de instalación limpia
-
-- [ ] En un proyecto vacío: `npm install @pimia/sdk` y compilar el snippet del
-      README.
-- [ ] En un proyecto vacío: `composer require pimia/pimia-php` y correr el
-      snippet del README.
-- [ ] Quitar de los tres READMEs los avisos «pendiente del primer publish» /
-      «pendiente del alta en Packagist», y anunciarlo en el changelog del
-      developer de factSaas (`docs/changelog-desarrollador.md`) + republicar
-      developers.pimia.es.
-
----
-
-## Split manual del espejo PHP (solo si no se usa `SPLIT_PUSH_TOKEN`)
+## Split manual del espejo PHP (si el job falla o no hay `SPLIT_PUSH_TOKEN`)
 
 ```bash
+git branch -D split/php 2>/dev/null
 git subtree split --prefix=php -b split/php
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:main
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/v0.1.0
 ```
+
+## Conectar Packagist con GitHub (si algún día hay que rehacerlo)
+
+Conceder acceso a la organización desde GitHub **no basta**: la cuenta de
+Packagist tiene que estar conectada a GitHub por su lado (perfil →
+`Settings`), o `https://packagist.org/trigger-github-sync/` responde
+«You must connect your user account to github to sync packages» sin más
+pistas. Con las dos mitades hechas, la sincronización crea el hook sola.
+
+Alternativa sin OAuth: webhook manual en el espejo con payload
+`https://packagist.org/api/github?username=USUARIO`, `application/json`,
+solo evento *push*, y de secreto el **Safe API Token** (no el Main: el safe
+solo alcanza APIs seguras como actualizar un paquete).

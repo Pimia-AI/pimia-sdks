@@ -26,12 +26,23 @@ no expone `globalThis.crypto` (llegó en 19) y está EOL desde abril de 2025.
 
 ## Instalación
 
-Cuando los paquetes estén publicados (**pendiente del primer publish** — el
-estado está en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)):
+```bash
+npm install @pimia/sdk
+```
 
 ```bash
-npm install @pimia/sdk            # pendiente del primer publish
-composer require pimia/pimia-php  # pendiente del alta en Packagist
+composer require pimia/pimia-php
+```
+
+Los dos publicados en **v0.1.0** (2026-08-01). El paquete de npm lleva
+[provenance SLSA](https://docs.npmjs.com/generating-provenance-statements)
+firmada por el workflow de release: el tarball es verificablemente este repo.
+
+El sistema de diseño es **opcional** y va aparte —el white-label es poder no
+usarlo—, así que solo si lo quieres:
+
+```bash
+npm install @pimia/design-tokens
 ```
 
 `pimia/pimia-php` se sirve desde
@@ -40,34 +51,22 @@ solo lectura** de `php/` que el workflow de release regenera en cada tag:
 Composer exige el `composer.json` en la raíz del repositorio y aquí el paquete
 vive en un subdirectorio. El código y las incidencias, en este monorepo.
 
-### Camino vigente: desde este repo (público, sin invitación)
+### Desde el clon (solo para desarrollar sobre los SDKs)
 
-Los dos paquetes viven en subdirectorios de un monorepo, y ni npm ni Composer
-saben instalar un subdirectorio desde una URL git — así que la ruta es clonar
-y consumir por ruta local.
-
-**TypeScript** — `npm install git+ssh://…` **no funciona** aquí (npm
-instalaría la raíz del monorepo, no `typescript/`). Clona, compila e instala
-por ruta o tarball:
+Ya no hace falta para consumirlos, pero si trabajas sobre el propio SDK: ni
+npm ni Composer instalan un subdirectorio desde una URL git, así que la ruta
+es clonar y consumir por ruta local.
 
 ```bash
 git clone git@github.com:Pimia-AI/pimia-sdks.git
 cd pimia-sdks/typescript && npm ci && npm run build
-
-# En tu app — opción A: dependencia por ruta (deja "file:" en tu package.json)
-npm install /ruta/a/pimia-sdks/typescript
-
-# Opción B: tarball empaquetado (idéntico a lo que subiría a npm)
-cd /ruta/a/pimia-sdks/typescript && npm pack
-npm install /ruta/a/pimia-sdks/typescript/pimia-sdk-0.1.0.tgz
+npm install /ruta/a/pimia-sdks/typescript   # o `npm pack` y el .tgz
 ```
 
 (Con pnpm sí hay instalación git directa de subdirectorios:
 `pnpm add "github:Pimia-AI/pimia-sdks#path:/typescript"`.)
 
-**PHP** — un repositorio `vcs` apuntando a este monorepo **no funciona**:
-Composer exige el `composer.json` en la raíz del repo y el paquete vive en
-`php/`. Usa un repositorio `path` sobre el clon:
+En PHP, un repositorio `path` sobre el clon:
 
 ```jsonc
 // composer.json de tu app
@@ -77,15 +76,6 @@ Composer exige el `composer.json` en la raíz del repo y el paquete vive en
   ]
 }
 ```
-
-```bash
-git clone git@github.com:Pimia-AI/pimia-sdks.git
-composer require "pimia/pimia-php:@dev"
-```
-
-(El repositorio `vcs` clásico valdrá cuando exista el repo espejo
-`Pimia-AI/pimia-php` del split de `php/` — es el mismo prerequisito del alta
-en Packagist; ver `RELEASE_CHECKLIST.md`.)
 
 ## ⚠️ Lo único que tienes que leer antes de escribir código
 
@@ -230,15 +220,13 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**v0.1.0, sin publicar.** El núcleo OAuth, el cliente y los tipos están
-completos y con tests; los helpers de dominio cubren facturas, clientes y
-presupuestos — para el resto, `client.get('/loquesea')` con los tipos del
-spec. La publicación está **a un tag de distancia**: el workflow de release
-(`.github/workflows/release.yml`) publica `@pimia/sdk` en npm con cada tag
-`v*`, y los pasos humanos que faltan (token, alta en Packagist, visibilidad
-del repo) están en [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md). Pendiente
-de código: ampliar helpers, DTOs de PHP generados del spec y webhooks cuando
-existan.
+**v0.1.0, publicada el 2026-08-01** en npm (`@pimia/sdk`,
+`@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). El núcleo OAuth, el
+cliente y los tipos están completos y con tests; los helpers de dominio
+cubren facturas, clientes y presupuestos — para el resto,
+`client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
+workflow de release, que publica los tres artefactos. Pendiente de código:
+ampliar helpers, DTOs de PHP generados del spec y webhooks cuando existan.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,
