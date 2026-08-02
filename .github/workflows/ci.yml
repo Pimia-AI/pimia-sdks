@@ -110,8 +110,6 @@ jobs:
         with:
           node-version: '22'
 
-      # El starter consume el SDK y los design tokens por `file:`, así que hay
-      # que compilarlos antes: su dist es lo que resuelve cada import.
       - name: Compilar el SDK
         run: npm ci && npm run build
         working-directory: typescript
@@ -120,8 +118,20 @@ jobs:
         run: npm ci && npm run build
         working-directory: design-tokens
 
-      - name: Instalar el starter
+      # Primero como lo hace un partner: resolviendo @pimia/* DESDE NPM. Esto
+      # verifica que lo publicado se instala de verdad y que las versiones que
+      # declara el starter existen.
+      - name: Instalar el starter (paquetes publicados)
         run: npm install --no-audit --no-fund
+        working-directory: examples/starter-vertical
+
+      # Y encima, el árbol de trabajo. Sin este paso el `next build` de abajo
+      # typechequearía contra la versión YA PUBLICADA y un cambio de firma que
+      # rompe al consumidor no saltaría hasta después de publicarlo — que es
+      # justo lo que este job existe para evitar. --no-save/--no-package-lock
+      # para que el manifiesto del starter siga diciendo lo que ve el partner.
+      - name: Sobreescribir con el SDK de este commit
+        run: npm install ../../typescript ../../design-tokens --no-save --no-package-lock --no-audit --no-fund
         working-directory: examples/starter-vertical
 
       # `next build` typechequea el starter CONTRA el SDK: si una firma pública
