@@ -1,8 +1,13 @@
-# Checklist de release — v0.1.0 ✅ PUBLICADA
+# Checklist de release
 
 **v0.1.0 publicada el 2026-08-01**: `@pimia/sdk` y `@pimia/design-tokens` en
 npm (con provenance SLSA) y `pimia/pimia-php` en Packagist. Verificada con
 instalación limpia de los tres en proyectos vacíos.
+
+**v0.2.0 — 2026-08-09**: contrato con el scope de cada operación, idempotencia
+de primera clase (`idempotencyKey` + `requestWithMeta`) y siete operaciones que
+el spec no reflejaba. Todo aditivo. `@pimia/design-tokens` va a 0.2.0 **sin
+cambios**: el versionado es en bloque y el tag arrastra a los tres paquetes.
 
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.

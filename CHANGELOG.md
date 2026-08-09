@@ -10,6 +10,15 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
+## [0.2.0] — 2026-08-09
+
+Todo lo de esta versión es **aditivo**: nada de lo que funcionaba en 0.1.0
+cambia de comportamiento ni de firma.
+
+`@pimia/design-tokens` se publica en 0.2.0 **sin cambio alguno** respecto a
+0.1.0: los paquetes de este monorepo versionan en bloque, así que el tag los
+arrastra a todos.
+
 ### Añadido
 
 - **Idempotencia de primera clase en los dos SDKs.** `Idempotency-Key` deja de
