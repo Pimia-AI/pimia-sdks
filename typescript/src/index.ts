@@ -54,6 +54,13 @@ export const SCOPES = {
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',
+  /**
+   * Proponer cambios que el dueño del tenant aprueba antes de aplicarse.
+   * `approvalsSubmit` es un alias del mismo permiso, aceptado por el
+   * Authorization Server.
+   */
+  approvalsWrite: 'approvals:write',
+  approvalsSubmit: 'approvals:submit',
 } as const
 
 export type Scope = (typeof SCOPES)[keyof typeof SCOPES]

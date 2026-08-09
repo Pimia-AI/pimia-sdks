@@ -10,6 +10,40 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
+### Añadido
+
+- **El contrato dice ahora qué scope exige cada endpoint.**
+  `spec/pimia-api-v1.json` incorpora un esquema de seguridad `oauth2` con el
+  catálogo de scopes de partner (21, cada uno con su descripción) y **214
+  operaciones declaran el suyo**. Antes el mapa solo existía en la prosa de la
+  guía del integrador, así que había que leerse una tabla en markdown para
+  saber si un token llegaba a un endpoint. Los catálogos `meta` siguen sin
+  exigir scope, que es la verdad: se leen con cualquier token.
+
+  El esquema `http` (bearer) se mantiene como seguridad global, así que nada
+  cambia para quien ya lo leyera. Se añade `oauth2` porque en OpenAPI un
+  requisito sobre un esquema `http` obliga a lista de scopes vacía —los scopes
+  no cabían—, y porque un visor como Redoc pinta el permiso requerido en cada
+  endpoint sin trabajo extra.
+
+- `SCOPES` gana `approvalsWrite` (`approvals:write`) y su alias
+  `approvalsSubmit` (`approvals:submit`), que faltaban: el catálogo del
+  Authorization Server ya los emitía y la constante del SDK se había quedado
+  en 19 de 21.
+
+- **Siete operaciones nuevas** que el core ya servía y este spec no reflejaba,
+  porque no se sincronizaba desde la v0.1.0: el CRUD de `custom-fields` —con
+  el que se descubren por API los ids de las definiciones de campo
+  personalizado, en vez de pedírselos al dueño del tenant a mano— y
+  `POST /approvals` + `GET /approvals/{id}`.
+
+  **Ninguna operación desaparece**: el refresco es aditivo y no rompe a ningún
+  consumidor.
+
+### Cambiado
+
+- Tipos de TypeScript (`@pimia/sdk/api`) regenerados del spec nuevo.
+
 ## [0.1.0] — 2026-08-01
 
 Primera versión **publicada**: `@pimia/sdk` y `@pimia/design-tokens` en npm (con provenance SLSA firmada por el workflow de release) y `pimia/pimia-php` en Packagist. Validados e2e contra un tenant
