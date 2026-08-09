@@ -63,6 +63,35 @@ cliente exige un `TokenStore` en lugar de un string: persiste el conjunto de
 tokens tras cada refresco y no refresques dos veces en paralelo con el mismo
 token. Las dos cosas las cubre el SDK si lo usas como está pensado.
 
+## Reintentar un `POST` sin duplicar
+
+Manda una `Idempotency-Key` única por operación y Pimia ejecuta la escritura
+una sola vez, por muchos reintentos que haya:
+
+```ts
+const clave = crypto.randomUUID()
+await client.estimates.create(presupuesto, { idempotencyKey: clave })
+```
+
+Reúsala **solo** en los reintentos de esa misma operación: la misma clave con
+otro cuerpo responde `422`.
+
+Tras un reintento el cuerpo que recibes es idéntico al de la primera llamada
+—ese es justo el contrato—, así que el cuerpo solo no dice si Pimia escribió o
+se limitó a repetirse. Para saberlo, `requestWithMeta`:
+
+```ts
+const { data, meta } = await client.requestWithMeta('/estimates', {
+  method: 'POST',
+  body: presupuesto,
+  idempotencyKey: clave,
+})
+
+if (meta.idempotentReplay) {
+  // ya existía: no se ha creado nada nuevo
+}
+```
+
 ## Más
 
 Documentación completa, modelo mental (un tenant = una base URL = un token),

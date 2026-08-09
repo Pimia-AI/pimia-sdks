@@ -293,6 +293,89 @@ final class PimiaClientTest extends TestCase
         $this->assertNull($client->delete('/invoices/1'));
     }
 
+
+    // ── Idempotencia ──────────────────────────────────────────────────────
+    //
+    // El contrato dice que un reintento devuelve la MISMA respuesta que la
+    // primera llamada. Por eso el cuerpo solo no basta para saber si Pimia
+    // escribio o se limito a repetirse, y de ahi requestWithMeta().
+
+    public function test_la_clave_de_idempotencia_viaja_como_cabecera(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => ['id' => 60]], 201),
+            new TokenSet('at-1'),
+        );
+
+        $client->estimates->create(['total' => 45050], 'deal-abc');
+
+        $this->assertSame('deal-abc', $transport->calls[0]['headers']['idempotency-key']);
+    }
+
+    public function test_sin_clave_no_se_manda_la_cabecera(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => []], 201),
+            new TokenSet('at-1'),
+        );
+
+        $client->estimates->create(['total' => 1]);
+
+        $this->assertArrayNotHasKey('idempotency-key', $transport->calls[0]['headers']);
+    }
+
+    public function test_request_with_meta_distingue_la_escritura_real_del_eco(): void
+    {
+        $respuesta = ['data' => ['id' => 60, 'estimate_number' => 'PRE-000029']];
+
+        [$client] = $this->client(
+            static fn (string $m, string $u, int $n) => $n === 1
+                ? FakeTransport::json($respuesta, 201)
+                : FakeTransport::json($respuesta, 201, ['idempotency-replayed' => 'true']),
+            new TokenSet('at-1'),
+        );
+
+        $primera = $client->requestWithMeta('POST', '/estimates', body: ['total' => 45050], idempotencyKey: 'deal-abc');
+        $reintento = $client->requestWithMeta('POST', '/estimates', body: ['total' => 45050], idempotencyKey: 'deal-abc');
+
+        // El cuerpo es identico: ESE es el contrato, y por eso no sirve para
+        // distinguirlas.
+        $this->assertSame($primera->data, $reintento->data);
+
+        $this->assertFalse($primera->meta->idempotentReplay);
+        $this->assertTrue($reintento->meta->idempotentReplay);
+        $this->assertSame(201, $reintento->meta->status);
+    }
+
+    public function test_request_with_meta_trae_estado_request_id_y_rate_limit(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json(['data' => []], 200, [
+                'x-request-id' => 'req-42',
+                'x-ratelimit-limit' => '300',
+                'x-ratelimit-remaining' => '299',
+            ]),
+            new TokenSet('at-1'),
+        );
+
+        $meta = $client->requestWithMeta('GET', '/customers')->meta;
+
+        $this->assertSame(200, $meta->status);
+        $this->assertSame('req-42', $meta->requestId);
+        $this->assertSame(['limit' => 300, 'remaining' => 299], $meta->rateLimit);
+        $this->assertFalse($meta->idempotentReplay);
+    }
+
+    public function test_request_sigue_devolviendo_solo_el_cuerpo(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json(['data' => ['id' => 7]]),
+            new TokenSet('at-1'),
+        );
+
+        $this->assertSame(['data' => ['id' => 7]], $client->get('/customers/7'));
+    }
+
     /**
      * @param  array<string, mixed>  $config
      * @return array{PimiaClient, FakeTransport}

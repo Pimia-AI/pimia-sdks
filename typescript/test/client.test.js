@@ -302,3 +302,82 @@ test('los helpers de dominio pegan en las rutas correctas', async () => {
   assert.equal(calls[2].init.method, 'POST')
   assert.equal(calls[2].init.headers['content-type'], 'application/json')
 })
+
+// ── Idempotencia ───────────────────────────────────────────────────────────
+//
+// El contrato dice que un reintento devuelve la MISMA respuesta que la
+// primera llamada. Por eso el cuerpo solo no basta para saber si Pimia
+// escribió o se limitó a repetirse, y de ahí `requestWithMeta`.
+
+test('la clave de idempotencia viaja como cabecera', async () => {
+  const { client, calls } = clientWith(() => json({ data: { id: 60 } }), {
+    accessToken: 'at-1',
+  })
+
+  await client.estimates.create({ total: 45050 }, { idempotencyKey: 'deal-abc' })
+
+  assert.equal(calls[0].init.headers['idempotency-key'], 'deal-abc')
+})
+
+test('sin clave no se manda la cabecera', async () => {
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  await client.estimates.create({ total: 1 })
+
+  assert.equal(calls[0].init.headers['idempotency-key'], undefined)
+})
+
+test('requestWithMeta distingue la escritura real del eco', async () => {
+  const respuesta = { data: { id: 60, estimate_number: 'PRE-000029' } }
+  const { client } = clientWith(
+    (_url, _init, n) =>
+      n === 1
+        ? json(respuesta, 201)
+        : json(respuesta, 201, { 'idempotency-replayed': 'true' }),
+    { accessToken: 'at-1' },
+  )
+
+  const primera = await client.requestWithMeta('/estimates', {
+    method: 'POST',
+    body: { total: 45050 },
+    idempotencyKey: 'deal-abc',
+  })
+  const reintento = await client.requestWithMeta('/estimates', {
+    method: 'POST',
+    body: { total: 45050 },
+    idempotencyKey: 'deal-abc',
+  })
+
+  // El cuerpo es idéntico: ESE es el contrato, y por eso no sirve para
+  // distinguirlas.
+  assert.deepEqual(primera.data, reintento.data)
+
+  assert.equal(primera.meta.idempotentReplay, false)
+  assert.equal(reintento.meta.idempotentReplay, true)
+  assert.equal(reintento.meta.status, 201)
+})
+
+test('requestWithMeta trae también estado, request-id y rate limit', async () => {
+  const { client } = clientWith(
+    () =>
+      json({ data: [] }, 200, {
+        'x-request-id': 'req-42',
+        'x-ratelimit-limit': '300',
+        'x-ratelimit-remaining': '299',
+      }),
+    { accessToken: 'at-1' },
+  )
+
+  const { meta } = await client.requestWithMeta('/customers')
+
+  assert.equal(meta.status, 200)
+  assert.equal(meta.requestId, 'req-42')
+  assert.deepEqual(meta.rateLimit, { limit: 300, remaining: 299 })
+  assert.equal(meta.idempotentReplay, false)
+})
+
+test('request() sigue devolviendo solo el cuerpo', async () => {
+  const { client } = clientWith(() => json({ data: { id: 7 } }), { accessToken: 'at-1' })
+
+  assert.deepEqual(await client.request('/customers/7'), { data: { id: 7 } })
+})
