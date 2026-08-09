@@ -11,7 +11,18 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get accounting summary by quarter for a fiscal year */
+        /**
+         * Accounting summary. Two modes:
+         * @description - `year` (solo): array de 4 trimestres con revenue/expenses/vat/irpf/result.
+         *       Lo consume AccountingSummaryReport.vue — su shape es contrato estable.
+         *     - `from_date`+`to_date` (o `quarter`+`year`): objeto agregado del rango con
+         *       total_sales, total_received, total_expenses, net_profit, vat_collected,
+         *       vat_paid, vat_balance, irpf, counts y tax_breakdown. Con
+         *       `group_by=customer` añade by_customer; con `group_by=category`, by_category.
+         *       Lo consumen las tools MCP de informes (invoice-shelf-mcp).
+         *
+         *     Importes en céntimos, como el resto de la API.
+         */
         get: operations["accountingSummary.index"];
         put?: never;
         post?: never;
@@ -65,6 +76,47 @@ export interface paths {
         put: operations["appointment.update"];
         post?: never;
         delete: operations["appointment.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/v1/approvals — el partner crea una propuesta (nace 'proposed'
+         *     en modo preview, pendiente de la decisión del owner)
+         */
+        post: operations["approvals.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/approvals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/approvals/{id} — estado de una propuesta DEL client del
+         *     token. Escopeado por origin_client_id + tenant: cualquier otra cosa es
+         *     404 (no se filtra ni la existencia)
+         */
+        get: operations["approvals.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -432,6 +484,43 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display a listing of the resource */
+        get: operations["custom-fields.index"];
+        put?: never;
+        /** Store a newly created resource in storage */
+        post: operations["custom-fields.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/custom-fields/{customField}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display the specified resource */
+        get: operations["custom-fields.show"];
+        /** Update the specified resource in storage */
+        put: operations["custom-fields.update"];
+        post?: never;
+        /** Remove the specified resource from storage */
+        delete: operations["custom-fields.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -843,7 +932,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a reset link to the given user */
+        /**
+         * Igual que el `sendResetLinkEmail()` del trait, pero con la validación en
+         *     un FormRequest en vez de en su `validateEmail()` privado: ahí dentro el
+         *     generador del OpenAPI no la ve y este endpoint se publicaba sin cuerpo.
+         *     Mismas reglas (`required|email`)
+         * @description La RESPUESTA, en cambio, ya no es la del trait: es SIEMPRE la misma,
+         *     exista el correo o no. Ver `respuestaNeutra()`.
+         */
         post: operations["forgotPassword.sendResetLinkEmail"];
         delete?: never;
         options?: never;
@@ -2243,7 +2339,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description Recibía un `Request` pelado y **no validaba nada**, al revés que las
+         *     vistas previas de presupuesto y factura. La consecuencia no era un error
+         *     sino algo peor: sin `body` la previsualización se renderizaba igual, con
+         *     el cuerpo vacío, así que enseñaba un correo que no era el que se iba a
+         *     mandar — y el envío de después sí valida, con lo que la vista previa
+         *     mentía justo en el caso en que había algo que corregir.
+         */
         get: operations["payment.sendPaymentPreview"];
         put?: never;
         post?: never;
@@ -2758,6 +2862,26 @@ export interface components {
         };
         /** Appointment */
         Appointment: string[];
+        /**
+         * AppointmentRequest
+         * @description Cita de agenda. Reglas movidas literalmente desde el método privado
+         *     `AppointmentController::validated()`, que el generador del OpenAPI no podía
+         *     ver: solo recorre el AST de la propia acción, no los ayudantes a los que
+         *     llama. Ver docs/guia-integradores.md.
+         */
+        AppointmentRequest: {
+            customer_id?: number | null;
+            item_id?: number | null;
+            staff_user_id?: number | null;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at?: string | null;
+            /** @enum {string|null} */
+            status?: "booked" | "confirmed" | "attended" | "no_show" | "cancelled" | null;
+            source?: string | null;
+            notes?: string | null;
+        };
         /** BankAccount */
         BankAccount: {
             id: number;
@@ -2823,18 +2947,51 @@ export interface components {
                 exchange_rate: string;
             }[];
         };
+        /**
+         * ChangeInvoiceStatusRequest
+         * @description Cambio de estado de una factura (`POST /invoices/{invoice}/status`).
+         *
+         *     El juego de valores es CERRADO y son exactamente las tres transiciones que
+         *     el controlador implementa. Antes se aceptaba cualquier string: `DRAFT`,
+         *     `VIEWED` y `OVERDUE` —que el servidor MCP llegó a anunciar— respondían
+         *     `200 {"success": true}` sin tocar la factura, así que ni el panel ni un
+         *     agente podían distinguir un cambio real de uno que no ocurrió. Mismo patrón
+         *     que ChangeEstimateStatusController, que ya validaba así.
+         *
+         *     Los tres que NO están, y por qué:
+         *      - `DRAFT`: volver a borrador no existe. Publicar asigna número oficial y
+         *        registra en VeriFactu; deshacerlo se hace con una rectificativa.
+         *      - `VIEWED`: lo pone el servidor cuando el cliente abre el PDF
+         *        (InvoicePdfController), no es una transición que se pida.
+         *      - `OVERDUE`: no es un estado almacenado sino un filtro derivado de
+         *        `due_date` + `paid_status` (ver el scope de Invoice).
+         */
+        ChangeInvoiceStatusRequest: {
+            /**
+             * @description PUBLISHED asigna el número oficial y lanza el registro en
+             *     VeriFactu; SENT publica antes si aún era borrador; COMPLETED
+             *     exige que ya esté publicada o enviada.
+             * @enum {string}
+             */
+            status: "PUBLISHED" | "SENT" | "COMPLETED";
+            /**
+             * @description Slug de la plantilla a fijar al publicar. Si no existe en la
+             *     compañía, se ignora en silencio y la factura conserva la suya.
+             */
+            template_name?: string | null;
+        };
         /** CompanyResource */
         CompanyResource: {
-            id: string;
+            id: number;
             name: string;
             trade_name: string;
-            vat_id: string;
+            vat_id: string | null;
             tax_id: string;
-            logo: string;
+            logo: string | null;
             logo_path: string;
-            unique_hash: string;
+            unique_hash: string | null;
             owner_id: string;
-            slug: string;
+            slug: string | null;
             address?: components["schemas"]["AddressResource"];
             roles: components["schemas"]["RoleResource"][];
         };
@@ -2870,35 +3027,60 @@ export interface components {
         };
         /** CountryResource */
         CountryResource: {
-            id: string;
+            id: number;
             code: string;
             name: string;
             phone_code: string;
         };
         /** Currency */
-        Currency: string[];
-        /** CurrencyResource */
-        CurrencyResource: {
-            id: string;
+        Currency: {
+            id: number;
             name: string;
             code: string;
-            symbol: string;
-            precision: string;
+            symbol: string | null;
+            precision: number;
+            exchange_rate: string | null;
+            swap_currency_symbol: string;
+            thousand_separator: string;
+            decimal_separator: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
+        /** CurrencyResource */
+        CurrencyResource: {
+            id: number;
+            name: string;
+            code: string;
+            symbol: string | null;
+            precision: number;
             thousand_separator: string;
             decimal_separator: string;
             swap_currency_symbol: string;
-            exchange_rate: string;
+            exchange_rate: string | null;
+        };
+        /** CustomFieldRequest */
+        CustomFieldRequest: {
+            name: string;
+            label: string;
+            model_type: string;
+            order: string;
+            type: string;
+            is_required: boolean;
+            options?: string[];
+            placeholder?: string | null;
         };
         /** CustomFieldResource */
         CustomFieldResource: {
-            id: string;
+            id: number;
             name: string;
             slug: string;
             label: string;
             model_type: string;
             type: string;
-            placeholder: string;
-            options: string;
+            placeholder: string | null;
+            options: string | null;
             boolean_answer: string;
             date_answer: string;
             time_answer: string;
@@ -2907,29 +3089,29 @@ export interface components {
             date_time_answer: string;
             is_required: string;
             in_use: string;
-            order: string;
-            company_id: string;
+            order: number;
+            company_id: number | null;
             default_answer: string;
-            company?: components["schemas"]["CompanyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
         };
         /** CustomFieldValueResource */
         CustomFieldValueResource: {
-            id: string;
+            id: number;
             custom_field_valuable_type: string;
-            custom_field_valuable_id: string;
+            custom_field_valuable_id: number;
             type: string;
-            boolean_answer: string;
-            date_answer: string;
-            time_answer: string;
-            string_answer: string;
-            number_answer: string;
-            date_time_answer: string;
-            custom_field_id: string;
-            company_id: string;
+            boolean_answer: string | null;
+            date_answer: string | null;
+            time_answer: string | null;
+            string_answer: string | null;
+            number_answer: string | null;
+            date_time_answer: string | null;
+            custom_field_id: number;
+            company_id: number | null;
             default_answer: string;
             default_formatted_answer: string | null;
             custom_field?: components["schemas"]["CustomFieldResource"];
-            company?: components["schemas"]["CompanyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
         };
         /** Customer */
         Customer: {
@@ -3037,6 +3219,20 @@ export interface components {
         /** DeleteReceivedInvoicesRequest */
         DeleteReceivedInvoicesRequest: {
             ids: string;
+        };
+        /**
+         * DeleteRecurringInvoicesRequest
+         * @description Borrado múltiple de facturas recurrentes (`POST /recurring-invoices/delete`).
+         *     Mismo patrón que DeleteEstimatesRequest / DeleteInvoiceRequest, que es como
+         *     se declara el resto de borrados múltiples del panel.
+         *
+         *     El endpoint leía `$request->ids` sin validar y
+         *     `RecurringInvoice::deleteRecurringInvoice()` itera sin comprobar el `find()`,
+         *     así que un id inexistente reventaba con un 500. Con el `exists` pasa a ser un
+         *     422 que dice cuál falla.
+         */
+        DeleteRecurringInvoicesRequest: {
+            ids: number[];
         };
         /** DeleteSuppliersRequest */
         DeleteSuppliersRequest: {
@@ -3153,6 +3349,74 @@ export interface components {
             company?: components["schemas"]["CompanyResource"];
             currency?: components["schemas"]["CurrencyResource"];
         };
+        /** EstimatesRequest */
+        EstimatesRequest: {
+            estimate_date: string;
+            expiry_date?: string | null;
+            customer_id?: number | null;
+            lead_id?: number | null;
+            /**
+             * @description Opcional en el alta: si no llega, lo genera el servidor con el mismo
+             *     SerialNumberFormatter que alimenta a GET /next-number, que es de donde
+             *     lo saca el panel. Exigirlo obligaba a un cliente de la API a replicar el
+             *     formato de numeración de la empresa para poder crear un presupuesto.
+             *     En PUT sigue siendo obligatorio (más abajo): el documento ya tiene uno.
+             */
+            estimate_number?: string | null;
+            exchange_rate?: string | null;
+            /**
+             * @description Descuento global: opcional en el contrato y rellenado a 0 en
+             *     prepareForValidation (el panel lo manda siempre, un cliente de la API
+             *     no tiene por qué). Ver DocumentHeaderPayload.
+             */
+            discount?: number | null;
+            discount_val?: number | null;
+            /**
+             * @description Agregados: el servidor es su oráculo —DocumentTotals los recompone desde
+             *     las líneas y getEstimatePayload los sobrescribe—, así que exigirlos era
+             *     pedirle al cliente un cálculo que se iba a descartar. Si llegan, siguen
+             *     comprobándose contra las líneas (ValidatesDocumentTotals).
+             */
+            sub_total?: number | null;
+            total?: number | null;
+            tax?: string | null;
+            template_name?: string | null;
+            items: {
+                description?: string | null;
+                name: string;
+                quantity: number;
+                price: number;
+                /**
+                 * @description Derivables: opcionales en el contrato y rellenados en prepareForValidation
+                 *     (el panel los manda siempre; un cliente de la API no tiene por qué).
+                 */
+                discount_val?: number | null;
+                tax?: number | null;
+                total?: number | null;
+                /**
+                 * @description Impuestos. El importe es derivable a partir del porcentaje
+                 *     (DocumentTaxPayload), así que un cliente de la API puede declarar
+                 *     «IVA 21 %» sin calcular nada; el panel sigue mandándolo ya hecho.
+                 */
+                taxes?: {
+                    tax_type_id?: number | null;
+                    percent?: number | null;
+                    amount?: number | null;
+                }[] | null;
+            }[];
+            taxes?: {
+                tax_type_id?: number | null;
+                percent?: number | null;
+                amount?: number | null;
+            }[] | null;
+            /**
+             * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
+             *     espacio de más que arrastraba el payload de aquí), y el panel reenvía
+             *     al editar lo que leyó. Se normaliza al leerlo, no se rechaza.
+             */
+            tax_per_item?: string | null;
+            tax_included?: boolean | null;
+        };
         /** ExpenseCategoryRequest */
         ExpenseCategoryRequest: {
             name: string;
@@ -3167,6 +3431,24 @@ export interface components {
             amount: string;
             formatted_created_at: string;
             company?: components["schemas"]["CompanyResource"];
+        };
+        /** ExpenseRequest */
+        ExpenseRequest: {
+            expense_date: string;
+            expense_number?: string | null;
+            expense_category_id: string;
+            exchange_rate?: string | null;
+            payment_method_id?: string | null;
+            amount: string;
+            customer_id?: string | null;
+            supplier_id?: string | null;
+            notes?: string | null;
+            currency_id: string;
+            /**
+             * Format: binary
+             * @description Maximum file size: 20000 kilobytes.
+             */
+            attachment_receipt?: string | null;
         };
         /** ExpenseResource */
         ExpenseResource: {
@@ -3197,6 +3479,23 @@ export interface components {
             company?: components["schemas"]["CompanyResource"];
             currency?: components["schemas"]["CurrencyResource"];
             payment_method?: components["schemas"]["PaymentMethodResource"];
+        };
+        /**
+         * ForgotPasswordRequest
+         * @description Envío del enlace de restablecimiento (`POST /auth/password/email`).
+         *
+         *     Mismas reglas que el `validateEmail()` del trait
+         *     `Illuminate\Foundation\Auth\SendsPasswordResetEmails` (laravel/ui), palabra
+         *     por palabra. Estaban ahí dentro y por eso el OpenAPI publicaba este endpoint
+         *     sin cuerpo: el generador solo mira la acción del controlador, y la acción
+         *     venía entera del trait.
+         */
+        ForgotPasswordRequest: {
+            /**
+             * Format: email
+             * @description Correo de la cuenta. La respuesta no distingue si existe o no.
+             */
+            email: string;
         };
         /** InvestmentAssetResource */
         InvestmentAssetResource: {
@@ -3332,6 +3631,22 @@ export interface components {
             company?: components["schemas"]["CompanyResource"];
             currency?: components["schemas"]["CurrencyResource"];
         };
+        /**
+         * InvoiceSeriesRequest
+         * @description Serie de numeración de facturas. Reglas movidas literalmente desde el método
+         *     privado `InvoiceSeriesController::validatedData()`, que el generador del
+         *     OpenAPI no podía ver: solo recorre el AST de la propia acción, no los
+         *     ayudantes a los que llama. Ver docs/guia-integradores.md.
+         */
+        InvoiceSeriesRequest: {
+            code: string;
+            name: string;
+            number_format?: string | null;
+            default_template_id?: number | null;
+            next_sequence?: number;
+            is_default?: boolean;
+            is_active?: boolean;
+        };
         /** InvoiceSeriesResource */
         InvoiceSeriesResource: {
             id: string;
@@ -3350,6 +3665,46 @@ export interface components {
             created_at: string;
             updated_at: string;
         };
+        /**
+         * InvoiceTemplatePreviewRequest
+         * @description Previsualización en PDF de una plantilla YA GUARDADA
+         *     (`POST /invoice-templates/{invoiceTemplate}/preview`).
+         *
+         *     Ojo, el cuerpo aquí NO es el del previsualizador genérico
+         *     `POST /templates/preview` (ese sí recibe `config` y `base_template` sueltos y
+         *     los valida en línea, así que el OpenAPI ya los publicaba). En esta ruta
+         *     `InvoiceTemplateController::preview()` hace `merge()` de `config`,
+         *     `base_template` y `template_id` **desde la plantilla de la ruta**, pisando lo
+         *     que mande el cliente. Lo único que el cliente controla de verdad es lo de
+         *     abajo, y eso es lo que el contrato debe decir.
+         */
+        InvoiceTemplatePreviewRequest: {
+            /**
+             * @description Factura de la que sacar los datos de muestra. Sin ella se coge
+             *     una cualquiera de la compañía que tenga líneas y cliente.
+             */
+            invoice_id?: number | null;
+            /**
+             * @description Membrete aún no guardado (editor): data-URI para verlo al
+             *     instante. 5 MB de imagen ≈ 7 M de caracteres en base64.
+             */
+            letterhead?: string | null;
+        };
+        /**
+         * InvoiceTemplateRequest
+         * @description Plantilla de factura. Reglas movidas literalmente desde el método privado
+         *     `InvoiceTemplateController::validatedData()`, que el generador del OpenAPI no
+         *     podía ver: solo recorre el AST de la propia acción, no los ayudantes a los
+         *     que llama. Ver docs/guia-integradores.md.
+         */
+        InvoiceTemplateRequest: {
+            name: string;
+            slug?: string;
+            /** @enum {string} */
+            base_template?: "invoice1" | "invoice2" | "invoice3" | "invoice4" | "invoice5" | "invoice6" | "invoice7" | "invoice8" | "invoice9";
+            config?: string[];
+            is_default?: boolean;
+        };
         /** InvoiceTemplateResource */
         InvoiceTemplateResource: {
             id: string;
@@ -3365,7 +3720,72 @@ export interface components {
             updated_at: string;
         };
         /** InvoicesRequest */
-        InvoicesRequest: Record<string, never>;
+        InvoicesRequest: {
+            invoice_date: string;
+            due_date?: string | null;
+            customer_id: number;
+            invoice_number?: string | null;
+            exchange_rate?: string | null;
+            /**
+             * @description Descuento global: opcional en el contrato y rellenado a 0 en
+             *     prepareForValidation (el panel lo manda siempre, un cliente de la API
+             *     no tiene por qué). Ver DocumentHeaderPayload.
+             */
+            discount?: number | null;
+            discount_val?: number | null;
+            /**
+             * @description Agregados: el servidor es su oráculo —DocumentTotals los recompone desde
+             *     las líneas y getInvoicePayload los sobrescribe—, así que exigirlos era
+             *     pedirle al cliente un cálculo que se iba a descartar. Si llegan, siguen
+             *     comprobándose contra las líneas (ValidatesDocumentTotals).
+             */
+            sub_total?: number | null;
+            total?: number | null;
+            tax?: string | null;
+            /**
+             * @description Opcional como en EstimatesRequest: getInvoicePayload cae a 'invoice1'.
+             *     Exigirlo obligaba a un cliente de la API a conocer el nombre interno de
+             *     una plantilla para poder emitir una factura.
+             */
+            template_name?: string | null;
+            invoice_series_id?: number | null;
+            payment_method_id?: number | null;
+            items: {
+                description?: string | null;
+                name: string;
+                quantity: number;
+                price: number;
+                /**
+                 * @description Derivables: opcionales en el contrato y rellenados en prepareForValidation
+                 *     (el panel los manda siempre; un cliente de la API no tiene por qué).
+                 */
+                discount_val?: number | null;
+                tax?: number | null;
+                total?: number | null;
+                /**
+                 * @description Impuestos. El importe es derivable a partir del porcentaje
+                 *     (DocumentTaxPayload), así que un cliente de la API puede declarar
+                 *     «IVA 21 %» sin calcular nada; el panel sigue mandándolo ya hecho.
+                 */
+                taxes?: {
+                    tax_type_id?: number | null;
+                    percent?: number | null;
+                    amount?: number | null;
+                }[] | null;
+            }[];
+            taxes?: {
+                tax_type_id?: number | null;
+                percent?: number | null;
+                amount?: number | null;
+            }[] | null;
+            /**
+             * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
+             *     espacio de más que arrastra EstimatesRequest), y el panel reenvía al
+             *     editar lo que leyó. Se normaliza al leerlo, no se rechaza.
+             */
+            tax_per_item?: string | null;
+            tax_included?: boolean | null;
+        };
         /** ItemCategory */
         ItemCategory: string[];
         /** ItemResource */
@@ -3508,7 +3928,19 @@ export interface components {
             device_name: string;
         };
         /** Note */
-        Note: string[];
+        Note: {
+            id: number;
+            type: string;
+            name: string | null;
+            notes: string | null;
+            noteable_type: string;
+            noteable_id: number;
+            company_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** PaymentMethodRequest */
         PaymentMethodRequest: {
             name: string;
@@ -3520,6 +3952,17 @@ export interface components {
             company_id: string;
             type: string;
             company?: components["schemas"]["CompanyResource"];
+        };
+        /** PaymentRequest */
+        PaymentRequest: {
+            payment_date: string;
+            customer_id: string;
+            exchange_rate?: string | null;
+            amount: number;
+            payment_number: string;
+            invoice_id?: string | null;
+            payment_method_id?: string | null;
+            notes?: string | null;
         };
         /** PaymentResource */
         PaymentResource: {
@@ -3626,6 +4069,32 @@ export interface components {
             base_total: string;
             taxes?: components["schemas"]["TaxResource"][];
         };
+        /** ReceivedInvoiceRequest */
+        ReceivedInvoiceRequest: {
+            received_invoice_date: string;
+            due_date?: string | null;
+            supplier_id: string;
+            received_invoice_number: string;
+            exchange_rate?: string | null;
+            discount: number;
+            discount_val: number;
+            sub_total: number;
+            total: number;
+            tax: string;
+            items: {
+                name: string;
+                quantity: number;
+                price: number;
+                description?: string | null;
+                /**
+                 * @description Derivables: opcionales en el contrato y rellenados en prepareForValidation
+                 *     (el panel los manda siempre; un cliente de la API no tiene por qué).
+                 */
+                discount_val?: number | null;
+                tax?: number | null;
+                total?: number | null;
+            }[];
+        };
         /** ReceivedInvoiceResource */
         ReceivedInvoiceResource: {
             id: string;
@@ -3671,6 +4140,84 @@ export interface components {
             company?: components["schemas"]["CompanyResource"];
             currency?: components["schemas"]["CurrencyResource"];
         };
+        /** RecurringInvoiceRequest */
+        RecurringInvoiceRequest: {
+            starts_at: string;
+            /**
+             * @description Los tres de abajo el panel los manda siempre porque su formulario los
+             *     tiene a mano (stub/recurring-invoice.js: send_automatically true, status
+             *     ACTIVE, limit_by NONE). Exigirlos obligaba a un cliente de la API a
+             *     declarar decisiones que tienen un valor por defecto obvio; los pone
+             *     getRecurringInvoicePayload con ese mismo valor.
+             */
+            send_automatically?: boolean | null;
+            status?: string | null;
+            limit_by?: string | null;
+            customer_id: number;
+            exchange_rate?: string | null;
+            /**
+             * @description Descuento global: opcional en el contrato y rellenado a 0 en
+             *     prepareForValidation (el panel lo manda siempre, un cliente de la API
+             *     no tiene por qué). Ver DocumentHeaderPayload.
+             */
+            discount?: number | null;
+            discount_val?: number | null;
+            /**
+             * @description Agregados: desde este cambio el servidor es su oráculo también aquí
+             *     —DocumentTotals los recompone desde las líneas y
+             *     getRecurringInvoicePayload los sobrescribe—, así que exigirlos era
+             *     pedirle al cliente un cálculo que se va a descartar. Si llegan, se
+             *     comprueban contra las líneas (ValidatesDocumentTotals).
+             */
+            sub_total?: number | null;
+            total?: number | null;
+            tax?: string | null;
+            /**
+             * @description Igual que en facturas y presupuestos desde el #296: si no llega, la pone
+             *     el payload. Un cliente de la API no tiene por qué conocer el nombre
+             *     interno de una plantilla.
+             */
+            template_name?: string | null;
+            frequency: string;
+            limit_count?: string;
+            limit_date?: string;
+            items: {
+                name: string;
+                quantity: number;
+                price: number;
+                description?: string | null;
+                /**
+                 * @description Derivables: opcionales en el contrato y rellenados en prepareForValidation
+                 *     (el panel los manda siempre; un cliente de la API no tiene por qué).
+                 */
+                discount_val?: number | null;
+                tax?: number | null;
+                total?: number | null;
+                /**
+                 * @description Impuestos, por línea o de documento. El `amount` es opcional: si no
+                 *     llega, lo deriva el servidor del porcentaje (DocumentTaxPayload), así
+                 *     que un cliente de la API puede declarar «IVA 21 %» sin calcular nada;
+                 *     el panel sigue mandándolo ya hecho.
+                 */
+                taxes?: {
+                    tax_type_id?: number | null;
+                    percent?: number | null;
+                    amount?: number | null;
+                }[] | null;
+            }[];
+            taxes?: {
+                tax_type_id?: number | null;
+                percent?: number | null;
+                amount?: number | null;
+            }[] | null;
+            /**
+             * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
+             *     espacio de más que arrastraba este mismo request), y el panel reenvía
+             *     al editar lo que leyó. Se normaliza al leerlo, no se rechaza.
+             */
+            tax_per_item?: string | null;
+            tax_included?: boolean | null;
+        };
         /** RecurringInvoiceResource */
         RecurringInvoiceResource: {
             id: string;
@@ -3714,7 +4261,16 @@ export interface components {
             currency?: components["schemas"]["CurrencyResource"];
         };
         /** Role */
-        Role: string[];
+        Role: {
+            id: number;
+            name: string;
+            title: string | null;
+            scope: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** RoleResource */
         RoleResource: {
             id: string;
@@ -3724,7 +4280,12 @@ export interface components {
             formatted_created_at: string | null;
             abilities: string | string[];
         };
-        /** SendEstimatesRequest */
+        /**
+         * SendEstimatesRequest
+         * @description Mandar un presupuesto por correo (`POST /estimates/{id}/send`) y su vista
+         *     previa. Todo el cuerpo —y el remitente que pone la instancia— está en
+         *     {@see SendDocumentMailRequest}.
+         */
         SendEstimatesRequest: {
             subject: string;
             body: string;
@@ -3733,16 +4294,26 @@ export interface components {
             cc?: string | null;
             bcc?: string | null;
         };
-        /** SendInvoiceRequest */
+        /**
+         * SendInvoiceRequest
+         * @description Mandar una factura por correo (`POST /invoices/{id}/send`) y su vista previa.
+         *     Todo el cuerpo —y el remitente que pone la instancia— está en
+         *     {@see SendDocumentMailRequest}.
+         */
         SendInvoiceRequest: {
-            body: string;
             subject: string;
+            body: string;
             from: string;
             to: string;
             cc?: string | null;
             bcc?: string | null;
         };
-        /** SendPaymentRequest */
+        /**
+         * SendPaymentRequest
+         * @description Mandar un recibo de pago por correo (`POST /payments/{id}/send`) y su vista
+         *     previa. Todo el cuerpo —y el remitente que pone la instancia— está en
+         *     {@see SendDocumentMailRequest}.
+         */
         SendPaymentRequest: {
             subject: string;
             body: string;
@@ -3756,6 +4327,54 @@ export interface components {
             formatted_created_at: string;
             formatted_execution_date: string;
             formatted_total: string;
+        };
+        /**
+         * StoreApprovalRequest
+         * @description POST /api/v1/approvals (paso 2, plataforma de integradores) — una app de
+         *     partner propone un write-effect sobre el tenant. La forma de `proposal` es
+         *     EXACTAMENTE la del contrato estructurado del flujo de delegación
+         *     (summary + changes[] + evals[], ver
+         *     {@see \App\Http\Controllers\Api\TenantDelegationCallbackController::structuredResultRules}):
+         *     misma primitiva, mismo panel, misma decisión del owner.
+         *
+         *     La autorización NO va aquí: es scope (api.scopes, dominio `approvals`) +
+         *     credencial de partner (token OAuth con ability `approvals:write`), que el
+         *     controller comprueba explícitamente — el partner no es owner del tenant y no
+         *     pasa gate de Bouncer.
+         */
+        StoreApprovalRequest: {
+            title: string;
+            task_type?: string | null;
+            context?: string | null;
+            /** @description Propuesta estructurada — réplica del contrato del flujo actual. */
+            proposal: {
+                schema_version?: number | null;
+                /** @enum {string|null} */
+                mode?: "applied" | "preview" | null;
+                agent_trace_id?: string | null;
+                summary: string;
+                changes?: {
+                    label: string;
+                    type?: string | null;
+                    action?: string | null;
+                    link?: string | null;
+                    record_id?: string | null;
+                    apply?: string[] | null;
+                }[] | null;
+                evals?: {
+                    label: string;
+                    pass: boolean;
+                    detail?: string | null;
+                    nivel?: number | null;
+                    cuenta_para_sello?: boolean | null;
+                }[] | null;
+                verifiability?: {
+                    nivel?: number | null;
+                    cuenta_para_sello?: boolean | null;
+                    /** @enum {string|null} */
+                    sello?: "pass" | "fail" | "n/a" | null;
+                } | null;
+            };
         };
         /** SupplierRequest */
         SupplierRequest: {
@@ -3871,6 +4490,13 @@ export interface components {
                 agent_skill: string | null;
                 status: string;
                 hermes_kanban_id: string | null;
+                /**
+                 * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
+                 *     propuesta viene de una app de partner y no del agente Pim.
+                 */
+                plane: string;
+                origin_client_id: string | null;
+                origin_client_name: string | null;
                 /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
                 result: string | null;
                 result_data: unknown[] | null;
@@ -4066,16 +4692,16 @@ export interface components {
             formatted_created_at: string;
             currency?: components["schemas"]["CurrencyResource"];
             companies?: {
-                id: string;
+                id: number;
                 name: string;
                 trade_name: string;
-                vat_id: string;
+                vat_id: string | null;
                 tax_id: string;
-                logo: string;
+                logo: string | null;
                 logo_path: string;
-                unique_hash: string;
+                unique_hash: string | null;
                 owner_id: string;
-                slug: string;
+                slug: string | null;
                 address?: components["schemas"]["AddressResource"];
                 roles: components["schemas"]["RoleResource"][];
                 role: string | null;
@@ -4134,7 +4760,11 @@ export interface operations {
     "accountingSummary.index": {
         parameters: {
             query?: {
-                year?: string;
+                from_date?: string | null;
+                to_date?: string | null;
+                quarter?: number | null;
+                year?: number | null;
+                group_by?: "customer" | "category" | null;
             };
             header?: never;
             path?: never;
@@ -4159,9 +4789,38 @@ export interface operations {
                             irpf: number;
                             result: string;
                         }[];
+                    } | {
+                        data: {
+                            from_date: unknown;
+                            to_date: unknown;
+                            total_sales: number;
+                            total_received: number;
+                            total_expenses: string;
+                            net_profit: string;
+                            vat_collected: number;
+                            vat_paid: number;
+                            vat_balance: string;
+                            irpf: number;
+                            invoices_count: number;
+                            received_invoices_count: number;
+                            expenses_count: number;
+                            tax_breakdown: {
+                                name: string;
+                                percent: number;
+                                base: number;
+                                tax_amount: number;
+                            }[];
+                            by_customer: {
+                                customer_name: string | "Sin cliente";
+                                total: number;
+                                count: number;
+                            }[];
+                            by_category: unknown[];
+                        };
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     appVersion: {
@@ -4215,7 +4874,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4238,6 +4901,7 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "appointment.show": {
@@ -4275,7 +4939,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4288,6 +4956,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "appointment.destroy": {
@@ -4313,6 +4982,145 @@ export interface operations {
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "approvals.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreApprovalRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        approval: {
+                            id: number;
+                            plane: string;
+                            title: string;
+                            task_type: string | null;
+                            context: unknown[] | null;
+                            /**
+                             * @description pending|in_progress|completed|failed — para el partner:
+                             *     in_progress = pendiente de decisión; completed = aprobada;
+                             *     failed = rechazada.
+                             */
+                            status: string;
+                            proposal: unknown[] | null;
+                            /**
+                             * @description proposed|needs_changes|approved|rejected. `needs_changes` NO es
+                             *     terminal: el owner pidió una revisión — en v1 el partner remite
+                             *     una propuesta nueva (no hay PATCH) o espera la decisión.
+                             */
+                            proposal_status: string | null;
+                            result: string | null;
+                            proposed_at: string;
+                            created_at: string;
+                            updated_at: string;
+                        };
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Este endpoint exige un token OAuth de app de partner con el scope approvals:write.";
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No hay un tenant en contexto para esta propuesta.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "approvals.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        approval: {
+                            id: number;
+                            plane: string;
+                            title: string;
+                            task_type: string | null;
+                            context: unknown[] | null;
+                            /**
+                             * @description pending|in_progress|completed|failed — para el partner:
+                             *     in_progress = pendiente de decisión; completed = aprobada;
+                             *     failed = rechazada.
+                             */
+                            status: string;
+                            proposal: unknown[] | null;
+                            /**
+                             * @description proposed|needs_changes|approved|rejected. `needs_changes` NO es
+                             *     terminal: el owner pidió una revisión — en v1 el partner remite
+                             *     una propuesta nueva (no hay PATCH) o espera la decisión.
+                             */
+                            proposal_status: string | null;
+                            result: string | null;
+                            proposed_at: string;
+                            created_at: string;
+                            updated_at: string;
+                        };
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Este endpoint exige un token OAuth de app de partner con el scope approvals:write.";
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No hay un tenant en contexto para esta propuesta.";
+                    };
+                };
+            };
         };
     };
     "auth.login": {
@@ -4731,7 +5539,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeInvoiceStatusRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4755,26 +5567,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        /** @constant */
-                        message: "Solo se pueden completar facturas ya publicadas o enviadas.";
-                    } | {
-                        success: boolean;
-                        /** @constant */
-                        message: "Solo se pueden enviar facturas en estado borrador o publicada.";
-                    } | {
-                        success: boolean;
-                        /** @constant */
-                        message: "Solo se pueden publicar facturas en estado borrador.";
-                    };
-                };
-            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "estimate.cloneEstimate": {
@@ -5101,6 +5894,142 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "custom-fields.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `CustomFieldResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CustomFieldResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "custom-fields.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description `CustomFieldResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CustomFieldResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "custom-fields.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The custom field ID */
+                customField: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `CustomFieldResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CustomFieldResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "custom-fields.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The custom field ID */
+                customField: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description `CustomFieldResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CustomFieldResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "custom-fields.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The custom field ID */
+                customField: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "customer.customerStats": {
@@ -5791,7 +6720,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimatesRequest"];
+            };
+        };
         responses: {
             /** @description `EstimateResource` */
             200: {
@@ -5845,7 +6778,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimatesRequest"];
+            };
+        };
         responses: {
             /** @description `EstimateResource` */
             200: {
@@ -6057,7 +6994,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExpenseRequest"];
+            };
+        };
         responses: {
             /** @description `ExpenseResource` */
             200: {
@@ -6111,7 +7052,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExpenseRequest"];
+            };
+        };
         responses: {
             /** @description `ExpenseResource` */
             200: {
@@ -6237,7 +7182,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6247,21 +7196,12 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Password reset email sent.";
-                        data: string;
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
                         /** @constant */
-                        error: "Email could not be sent to this email address.";
+                        data: "passwords.sent";
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "exchangeRate.getActiveProvider": {
@@ -6652,7 +7592,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceSeriesRequest"];
+            };
+        };
         responses: {
             /** @description `InvoiceSeriesResource` */
             200: {
@@ -6666,6 +7610,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "invoice-series.show": {
@@ -6705,7 +7650,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceSeriesRequest"];
+            };
+        };
         responses: {
             /** @description `InvoiceSeriesResource` */
             200: {
@@ -6720,6 +7669,7 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "invoice-series.destroy": {
@@ -6805,7 +7755,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["InvoiceTemplatePreviewRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6817,6 +7771,7 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "invoiceTemplate.showLetterhead": {
@@ -6937,7 +7892,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceTemplateRequest"];
+            };
+        };
         responses: {
             /** @description `InvoiceTemplateResource` */
             200: {
@@ -6951,6 +7910,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "invoice-templates.show": {
@@ -6990,7 +7950,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceTemplateRequest"];
+            };
+        };
         responses: {
             /** @description `InvoiceTemplateResource` */
             200: {
@@ -7005,17 +7969,7 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Las plantillas del sistema no se pueden modificar. Crea una copia para personalizarla.";
-                    };
-                };
-            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "invoice-templates.destroy": {
@@ -7176,11 +8130,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["InvoicesRequest"] & {
-                    items?: string;
-                };
+                "application/json": components["schemas"]["InvoicesRequest"];
             };
         };
         responses: {
@@ -7233,11 +8185,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["InvoicesRequest"] & {
-                    items?: string;
-                };
+                "application/json": components["schemas"]["InvoicesRequest"];
             };
         };
         responses: {
@@ -8318,7 +9268,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequest"];
+            };
+        };
         responses: {
             /** @description `PaymentResource` */
             200: {
@@ -8372,7 +9326,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequest"];
+            };
+        };
         responses: {
             /** @description `PaymentResource` */
             200: {
@@ -8830,7 +9788,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceivedInvoiceRequest"];
+            };
+        };
         responses: {
             /** @description `ReceivedInvoiceResource` */
             200: {
@@ -8882,7 +9844,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceivedInvoiceRequest"];
+            };
+        };
         responses: {
             /** @description `ReceivedInvoiceResource` */
             200: {
@@ -9172,7 +10138,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteRecurringInvoicesRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -9185,6 +10155,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "recurring-invoices.index": {
@@ -9220,7 +10191,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringInvoiceRequest"];
+            };
+        };
         responses: {
             /** @description `RecurringInvoiceResource` */
             200: {
@@ -9274,7 +10249,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringInvoiceRequest"];
+            };
+        };
         responses: {
             /** @description `RecurringInvoiceResource` */
             200: {
@@ -9536,8 +10515,8 @@ export interface operations {
     "invoice.sendInvoicePreview": {
         parameters: {
             query: {
-                body: string;
                 subject: string;
+                body: string;
                 from: string;
                 to: string;
                 cc?: string | null;
@@ -9598,7 +10577,14 @@ export interface operations {
     };
     "payment.sendPaymentPreview": {
         parameters: {
-            query?: never;
+            query: {
+                subject: string;
+                body: string;
+                from: string;
+                to: string;
+                cc?: string | null;
+                bcc?: string | null;
+            };
             header?: never;
             path: {
                 /** @description The payment ID */
@@ -9618,6 +10604,7 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "sepaRemittance.eligibleInvoices": {
@@ -10019,6 +11006,13 @@ export interface operations {
                             agent_skill: string | null;
                             status: string;
                             hermes_kanban_id: string | null;
+                            /**
+                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
+                             *     propuesta viene de una app de partner y no del agente Pim.
+                             */
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
                             /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
                             result: string | null;
                             result_data: unknown[] | null;
@@ -10069,6 +11063,13 @@ export interface operations {
                             agent_skill: string | null;
                             status: string;
                             hermes_kanban_id: string | null;
+                            /**
+                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
+                             *     propuesta viene de una app de partner y no del agente Pim.
+                             */
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
                             /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
                             result: string | null;
                             result_data: unknown[] | null;
@@ -10101,6 +11102,13 @@ export interface operations {
                             agent_skill: string | null;
                             status: string;
                             hermes_kanban_id: string | null;
+                            /**
+                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
+                             *     propuesta viene de una app de partner y no del agente Pim.
+                             */
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
                             /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
                             result: string | null;
                             result_data: unknown[] | null;
