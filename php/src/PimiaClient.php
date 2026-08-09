@@ -9,6 +9,8 @@ use Pimia\Exception\NotAuthenticatedException;
 use Pimia\Exception\OAuthException;
 use Pimia\Exception\RateLimitException;
 use Pimia\Exception\UnauthorizedException;
+use Pimia\Http\ResponseMeta;
+use Pimia\Http\ResponseWithMeta;
 use Pimia\Http\Transport;
 use Pimia\OAuth\OAuthClient;
 use Pimia\OAuth\TokenSet;
@@ -64,19 +66,33 @@ final class PimiaClient
         return $this->request('GET', $path, query: $query);
     }
 
-    public function post(string $path, mixed $body = null): mixed
+    /**
+     * @param  string|null  $idempotencyKey  Clave de idempotencia: manda una
+     *                                       única por operación (un UUID
+     *                                       nuevo) y reúsala SOLO en los
+     *                                       reintentos de esa misma. Pimia
+     *                                       escribe una vez y reproduce la
+     *                                       respuesta original; la misma clave
+     *                                       con otro cuerpo responde 422. Para
+     *                                       saber si lo recibido es un eco,
+     *                                       usa {@see requestWithMeta()}.
+     * @param  array<string, string>  $headers
+     */
+    public function post(string $path, mixed $body = null, ?string $idempotencyKey = null, array $headers = []): mixed
     {
-        return $this->request('POST', $path, body: $body);
+        return $this->request('POST', $path, body: $body, idempotencyKey: $idempotencyKey, headers: $headers);
     }
 
-    public function put(string $path, mixed $body = null): mixed
+    /** @param array<string, string> $headers */
+    public function put(string $path, mixed $body = null, ?string $idempotencyKey = null, array $headers = []): mixed
     {
-        return $this->request('PUT', $path, body: $body);
+        return $this->request('PUT', $path, body: $body, idempotencyKey: $idempotencyKey, headers: $headers);
     }
 
-    public function patch(string $path, mixed $body = null): mixed
+    /** @param array<string, string> $headers */
+    public function patch(string $path, mixed $body = null, ?string $idempotencyKey = null, array $headers = []): mixed
     {
-        return $this->request('PATCH', $path, body: $body);
+        return $this->request('PATCH', $path, body: $body, idempotencyKey: $idempotencyKey, headers: $headers);
     }
 
     public function delete(string $path): mixed
@@ -88,9 +104,46 @@ final class PimiaClient
      * Petición contra `/api/v1`. `$path` puede llevar el prefijo o no.
      *
      * @param  array<string, mixed>  $query
+     * @param  array<string, string>  $headers
      */
-    public function request(string $method, string $path, array $query = [], mixed $body = null): mixed
-    {
+    public function request(
+        string $method,
+        string $path,
+        array $query = [],
+        mixed $body = null,
+        ?string $idempotencyKey = null,
+        array $headers = [],
+    ): mixed {
+        return $this->requestWithMeta($method, $path, $query, $body, $idempotencyKey, $headers)->data;
+    }
+
+    /**
+     * Lo mismo que {@see request()}, pero devuelve también los metadatos.
+     *
+     * Existe por la idempotencia: tras un reintento el cuerpo es idéntico al
+     * de la primera llamada —ese es justo el contrato—, así que el cuerpo solo
+     * no dice si Pimia escribió o se limitó a repetirse.
+     * `$meta->idempotentReplay` sí.
+     *
+     * ```php
+     * $clave = bin2hex(random_bytes(16));
+     * $r = $client->requestWithMeta('POST', '/estimates', body: $datos, idempotencyKey: $clave);
+     * if ($r->meta->idempotentReplay) {
+     *     // el presupuesto ya existía; no se ha duplicado
+     * }
+     * ```
+     *
+     * @param  array<string, mixed>  $query
+     * @param  array<string, string>  $headers
+     */
+    public function requestWithMeta(
+        string $method,
+        string $path,
+        array $query = [],
+        mixed $body = null,
+        ?string $idempotencyKey = null,
+        array $headers = [],
+    ): ResponseWithMeta {
         $tokens = $this->currentTokens();
 
         if ($tokens->isExpired($this->config->expirySkewSeconds)) {
@@ -109,6 +162,11 @@ final class PimiaClient
                     ['accept' => 'application/json'],
                     $payload === null ? [] : ['content-type' => 'application/json'],
                     $this->config->headers,
+                    $headers,
+                    // Después de $headers para que la opción con nombre mande
+                    // sobre una cabecera puesta a mano: si alguien usa las dos,
+                    // la explícita del API es la que quiso de verdad.
+                    $idempotencyKey === null ? [] : ['idempotency-key' => $idempotencyKey],
                     ['authorization' => 'Bearer '.$tokens->accessToken],
                 ),
                 $payload,
@@ -117,7 +175,17 @@ final class PimiaClient
             $this->captureRateLimit($response);
 
             if ($response->isSuccessful()) {
-                return $response->body;
+                return new ResponseWithMeta(
+                    $response->body,
+                    new ResponseMeta(
+                        status: $response->status,
+                        // Presente solo cuando Pimia reproduce; su ausencia
+                        // significa «esta escritura ocurrió de verdad».
+                        idempotentReplay: $response->header('idempotency-replayed') === 'true',
+                        requestId: $response->header('x-request-id'),
+                        rateLimit: $this->rateLimit,
+                    ),
+                );
             }
 
             $requestId = $response->header('x-request-id');

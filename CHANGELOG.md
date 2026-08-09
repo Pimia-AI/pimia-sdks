@@ -12,6 +12,38 @@ pública puede cambiar entre minors.
 
 ### Añadido
 
+- **Idempotencia de primera clase en los dos SDKs.** `Idempotency-Key` deja de
+  ser una cabecera que montarte a mano:
+
+  ```ts
+  await client.estimates.create(presupuesto, { idempotencyKey: clave })
+  ```
+  ```php
+  $client->estimates->create($presupuesto, $clave);
+  ```
+
+  Y, sobre todo, ya se puede **saber si la respuesta es un eco**. Tras un
+  reintento el cuerpo es idéntico al de la primera llamada —ese es justo el
+  contrato—, así que el cuerpo solo no distingue «he creado el presupuesto» de
+  «ya estaba creado». `requestWithMeta` devuelve las dos cosas:
+
+  ```ts
+  const { data, meta } = await client.requestWithMeta('/estimates', {
+    method: 'POST', body: presupuesto, idempotencyKey: clave,
+  })
+  meta.idempotentReplay // ← true si Pimia se limitó a repetirse
+  ```
+
+  `meta` trae además `status`, `requestId` y `rateLimit`. Va **por petición** y
+  no como estado del cliente —al revés que `rateLimit`— a propósito: la
+  idempotencia se consulta justo cuando hay reintentos, que es cuando puede
+  haber varias llamadas en vuelo, y un campo compartido daría la respuesta de
+  otra.
+
+  `request()`, `post()`, `put()` y `patch()` siguen devolviendo solo el cuerpo:
+  nada cambia para el código existente. En PHP, además, `request()` acepta ya
+  cabeceras por petición, que antes no admitía.
+
 - **El contrato dice ahora qué scope exige cada endpoint.**
   `spec/pimia-api-v1.json` incorpora un esquema de seguridad `oauth2` con el
   catálogo de scopes de partner (21, cada uno con su descripción) y **214

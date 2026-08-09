@@ -44,6 +44,16 @@ export interface RequestOptions {
   body?: unknown
   headers?: Record<string, string>
   signal?: AbortSignal
+  /**
+   * Clave de idempotencia para este `POST`. Manda una única por operación —un
+   * UUID nuevo— y reúsala SOLO en los reintentos de esa misma operación:
+   * Pimia ejecuta la escritura una vez y reproduce la respuesta original en
+   * los reintentos. La misma clave con otro cuerpo responde 422.
+   *
+   * Para saber si lo que recibiste es un eco y no una escritura nueva, usa
+   * {@link PimiaClient.requestWithMeta} y mira `meta.idempotentReplay`.
+   */
+  idempotencyKey?: string
 }
 
 /** Cabeceras de rate limit que devuelve la API en cada respuesta. */
@@ -51,6 +61,40 @@ export interface RateLimit {
   limit?: number
   remaining?: number
 }
+
+/**
+ * Lo que la respuesta dice ADEMÁS del cuerpo.
+ *
+ * Va por petición y no como estado del cliente —al contrario que
+ * {@link PimiaClient.rateLimit}— a propósito: `idempotentReplay` solo
+ * significa algo referido a UNA llamada concreta, y justo se consulta cuando
+ * hay reintentos, que es cuando puede haber varias en vuelo. Un campo
+ * compartido en el cliente daría la respuesta de otra.
+ */
+export interface ResponseMeta {
+  status: number
+  /**
+   * `true` si Pimia reprodujo la respuesta de una petición anterior con la
+   * misma `Idempotency-Key` en vez de volver a escribir. Es la diferencia
+   * entre «he creado la factura» y «ya estaba creada»: sin esto, un partner
+   * no puede distinguirlas en sus propios registros.
+   */
+  idempotentReplay: boolean
+  requestId?: string
+  rateLimit: RateLimit
+}
+
+/** Cuerpo y metadatos de una misma respuesta. */
+export interface ResponseWithMeta<T> {
+  data: T
+  meta: ResponseMeta
+}
+
+/** Lo que se puede afinar en una escritura (`post`/`put`/`patch`). */
+export type WriteOptions = Pick<
+  RequestOptions,
+  'headers' | 'query' | 'signal' | 'idempotencyKey'
+>
 
 export class PimiaClient {
   readonly oauth: OAuth
@@ -85,8 +129,9 @@ export class PimiaClient {
     return {
       list: (query?: RequestOptions['query']) => this.get('/invoices', query),
       get: (id: number | string) => this.get(`/invoices/${id}`),
-      create: (body: unknown) => this.post('/invoices', body),
-      update: (id: number | string, body: unknown) => this.put(`/invoices/${id}`, body),
+      create: (body: unknown, options?: WriteOptions) => this.post('/invoices', body, options),
+      update: (id: number | string, body: unknown, options?: WriteOptions) =>
+        this.put(`/invoices/${id}`, body, options),
     }
   }
 
@@ -94,8 +139,9 @@ export class PimiaClient {
     return {
       list: (query?: RequestOptions['query']) => this.get('/customers', query),
       get: (id: number | string) => this.get(`/customers/${id}`),
-      create: (body: unknown) => this.post('/customers', body),
-      update: (id: number | string, body: unknown) => this.put(`/customers/${id}`, body),
+      create: (body: unknown, options?: WriteOptions) => this.post('/customers', body, options),
+      update: (id: number | string, body: unknown, options?: WriteOptions) =>
+        this.put(`/customers/${id}`, body, options),
     }
   }
 
@@ -103,7 +149,7 @@ export class PimiaClient {
     return {
       list: (query?: RequestOptions['query']) => this.get('/estimates', query),
       get: (id: number | string) => this.get(`/estimates/${id}`),
-      create: (body: unknown) => this.post('/estimates', body),
+      create: (body: unknown, options?: WriteOptions) => this.post('/estimates', body, options),
     }
   }
 
@@ -111,16 +157,16 @@ export class PimiaClient {
     return this.request<T>(path, { method: 'GET', query })
   }
 
-  post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'POST', body })
+  post<T = unknown>(path: string, body?: unknown, options?: WriteOptions): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'POST', body })
   }
 
-  put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'PUT', body })
+  put<T = unknown>(path: string, body?: unknown, options?: WriteOptions): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'PUT', body })
   }
 
-  patch<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'PATCH', body })
+  patch<T = unknown>(path: string, body?: unknown, options?: WriteOptions): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'PATCH', body })
   }
 
   delete<T = unknown>(path: string): Promise<T> {
@@ -132,6 +178,31 @@ export class PimiaClient {
    * `/invoices` y `/api/v1/invoices` son lo mismo.
    */
   async request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
+    const { data } = await this.requestWithMeta<T>(path, options)
+
+    return data
+  }
+
+  /**
+   * Lo mismo que {@link request}, pero devuelve también los metadatos de la
+   * respuesta.
+   *
+   * Existe por la idempotencia: tras un reintento, el cuerpo es idéntico al de
+   * la primera llamada —ese es justo el contrato—, así que el cuerpo solo no
+   * dice si Pimia escribió o se limitó a repetirse. `meta.idempotentReplay` sí.
+   *
+   * ```ts
+   * const clave = crypto.randomUUID()
+   * const { data, meta } = await client.requestWithMeta('/estimates', {
+   *   method: 'POST', body, idempotencyKey: clave,
+   * })
+   * if (meta.idempotentReplay) log('el presupuesto ya existía; no se duplicó')
+   * ```
+   */
+  async requestWithMeta<T = unknown>(
+    path: string,
+    options: RequestOptions = {},
+  ): Promise<ResponseWithMeta<T>> {
     let tokens = await this.currentTokens()
 
     if (isExpired(tokens, this.skew)) {
@@ -149,6 +220,12 @@ export class PimiaClient {
           ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
           ...this.extraHeaders,
           ...options.headers,
+          // Después de `options.headers` para que la opción con nombre mande
+          // sobre una cabecera puesta a mano: si alguien usa las dos, la
+          // explícita del API es la que quiso de verdad.
+          ...(options.idempotencyKey === undefined
+            ? {}
+            : { 'idempotency-key': options.idempotencyKey }),
           authorization: `Bearer ${tokens.accessToken}`,
         },
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
@@ -158,7 +235,17 @@ export class PimiaClient {
       this.captureRateLimit(response)
 
       if (response.ok) {
-        return (await parseBody(response)) as T
+        return {
+          data: (await parseBody(response)) as T,
+          meta: {
+            status: response.status,
+            // Presente solo cuando Pimia reproduce; su ausencia significa
+            // «esta escritura ocurrió de verdad».
+            idempotentReplay: response.headers.get('idempotency-replayed') === 'true',
+            requestId: response.headers.get('x-request-id') ?? undefined,
+            rateLimit: this.lastRateLimit,
+          },
+        }
       }
 
       const body = await parseBody(response)

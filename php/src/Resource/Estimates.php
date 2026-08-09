@@ -25,8 +25,8 @@ final class Estimates
     }
 
     /** @param array<string, mixed> $data */
-    public function create(array $data): mixed
+    public function create(array $data, ?string $idempotencyKey = null): mixed
     {
-        return $this->client->post('/estimates', $data);
+        return $this->client->post('/estimates', $data, $idempotencyKey);
     }
 }

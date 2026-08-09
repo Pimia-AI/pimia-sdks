@@ -31,9 +31,9 @@ final class Invoices
     }
 
     /** @param array<string, mixed> $data */
-    public function create(array $data): mixed
+    public function create(array $data, ?string $idempotencyKey = null): mixed
     {
-        return $this->client->post('/invoices', $data);
+        return $this->client->post('/invoices', $data, $idempotencyKey);
     }
 
     /** @param array<string, mixed> $data */

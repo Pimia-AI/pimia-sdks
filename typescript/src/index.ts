@@ -7,7 +7,14 @@
  */
 
 export { PimiaClient } from './client.js'
-export type { PimiaClientOptions, RateLimit, RequestOptions } from './client.js'
+export type {
+  PimiaClientOptions,
+  RateLimit,
+  RequestOptions,
+  ResponseMeta,
+  ResponseWithMeta,
+  WriteOptions,
+} from './client.js'
 
 export { OAuth, createPkceChallenge, createState } from './oauth.js'
 export type {
