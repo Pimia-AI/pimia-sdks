@@ -67,11 +67,13 @@ que salió mal la primera vez.
 > punta antes de cambiar el workflow: split real, push a una rama de usar y
 > tirar en el espejo y borrado de esa rama.
 >
-> `SPLIT_PUSH_TOKEN` queda huérfano: se puede borrar en cuanto un release pase
-> en verde (`gh secret delete SPLIT_PUSH_TOKEN --repo Pimia-AI/pimia-sdks`).
+> `SPLIT_PUSH_TOKEN` **ya no existe** (retirado el 2026-08-10, tras pasar en
+> verde el release de la v0.4.0 con el espejo incluido). Los únicos secretos que
+> usa el workflow son `NPM_TOKEN` y `SPLIT_PUSH_KEY`. Si en algún sitio lees que
+> el PAT es un fallback, es texto viejo: no hay PAT que reactivar.
 >
 > Comprobación de que el espejo quedó bien tras publicar:
-> `curl -s https://repo.packagist.org/p2/pimia/pimia-php.json | grep -o '"version":"v0.3.0"'`
+> `curl -s https://repo.packagist.org/p2/pimia/pimia-php.json | grep -o '"version":"v0.4.0"'`
 
 ## Runbook del próximo release
 
@@ -159,10 +161,13 @@ git push git@github.com:Pimia-AI/pimia-php.git :refs/heads/smoke-test   # limpia
 git branch -D split/php-smoke
 ```
 
-## Split manual del espejo PHP (si el job falla o no hay `SPLIT_PUSH_TOKEN`)
+## Split manual del espejo PHP (rescate, si el job del espejo falla)
+
+Empuja con **tu** clave SSH, no con la deploy key del workflow: es un rescate a
+mano, no el camino normal. Ajusta `VERSION` a la que estés publicando.
 
 ```bash
-VERSION=v0.3.0
+VERSION=v0.4.0
 git branch -D split/php 2>/dev/null
 git subtree split --prefix=php -b split/php
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:main
