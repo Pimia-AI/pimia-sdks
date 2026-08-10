@@ -35,7 +35,7 @@ class ApiException extends PimiaException
             $status === 401 => new UnauthorizedException($status, $message, $body, $requestId),
             $status === 403 => self::forbidden($status, $message, $body, $requestId),
             $status === 404 => new NotFoundException($status, $message, $body, $requestId),
-            $status === 422 => new ValidationException($status, $message, $body, $requestId),
+            $status === 422 => self::unprocessable($status, $message, $body, $requestId),
             default => new self($status, $message, $body, $requestId),
         };
     }
@@ -51,6 +51,37 @@ class ApiException extends PimiaException
         }
 
         return new ForbiddenException($status, $message, $body, $requestId);
+    }
+
+    /**
+     * Reconoce el 422 de referencia duplicada por su campo `error`, no por la
+     * prosa del mensaje —que está en castellano y puede cambiar—. Sin un
+     * `existing_id` usable no se especializa: sin ese id no hay find-or-create
+     * que hacer, y una ValidationException normal describe mejor lo que pasó.
+     *
+     * @param  array<string, mixed>|string|null  $body
+     */
+    private static function unprocessable(int $status, string $message, array|string|null $body, ?string $requestId): self
+    {
+        if (! is_array($body) || ($body['error'] ?? null) !== 'external_ref_already_used') {
+            return new ValidationException($status, $message, $body, $requestId);
+        }
+
+        // El core lo manda como entero; se normaliza igualmente porque en este
+        // contrato hay enteros que llegan como cadena según el driver.
+        if (! isset($body['existing_id']) || ! is_numeric($body['existing_id'])) {
+            return new ValidationException($status, $message, $body, $requestId);
+        }
+
+        return new DuplicateExternalRefException(
+            (int) $body['existing_id'],
+            is_string($body['external_ref'] ?? null) ? $body['external_ref'] : '',
+            is_string($body['entity_type'] ?? null) ? $body['entity_type'] : '',
+            $status,
+            $message,
+            $body,
+            $requestId,
+        );
     }
 
     /**

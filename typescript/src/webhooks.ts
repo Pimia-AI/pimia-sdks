@@ -89,6 +89,27 @@ export type IsoDateTime = string
 type OpenEnum<T extends string> = T | (string & {})
 
 /**
+ * Referencia externa **de quien recibe esta entrega**: la que TU app puso sobre
+ * el recurso del evento, nunca la de otro integrador.
+ *
+ * No se calcula una vez y se reparte. El core la resuelve endpoint por endpoint
+ * contra el `client_id` del destinatario, porque un mismo evento se entrega a
+ * todos los endpoints suscritos de la company y esos pueden pertenecer a
+ * integradores distintos: con un valor común en el payload, la referencia del
+ * integrador A habría llegado al endpoint de B. Una referencia escrita sin
+ * client OAuth (panel, token personal) no sale nunca por este canal.
+ *
+ * Es `string | null` y **no** opcional a propósito: la clave viaja siempre, con
+ * `null` cuando no hay referencia. Un payload cuya forma cambia según el dato es
+ * un payload que el receptor no puede tipar.
+ *
+ * Solo la llevan los cinco eventos de recurso (`customer.*`, `invoice.created`,
+ * `invoice.paid`, `estimate.accepted`). `approval.decided`, `invoice.received` y
+ * `app.revoked` no van sobre un recurso etiquetable y no la incluyen.
+ */
+export type ExternalRef = string | null
+
+/**
  * Una decisión de aprobación delegada se resolvió.
  *
  * Es de plano tenant (no de company) y solo llega al `client_id` dueño de la
@@ -150,6 +171,8 @@ export interface CustomerPayload {
   company_id: number
   created_at: IsoDateTime | null
   updated_at: IsoDateTime | null
+  /** Tu referencia para este cliente. Ver {@link ExternalRef}. */
+  external_ref: ExternalRef
 }
 
 /** Alta de factura. Importes en céntimos. */
@@ -169,6 +192,14 @@ export interface InvoiceCreatedPayload {
   due_amount: number
   currency_id: number | null
   created_at: IsoDateTime | null
+  /**
+   * Tu referencia para esta factura. Ver {@link ExternalRef}.
+   *
+   * Llega poblada también cuando la factura nace de
+   * `POST /estimates/{id}/convert-to-invoice` con `external_ref` en el cuerpo:
+   * sellar en la conversión existe justo para que este evento no salga nulo.
+   */
+  external_ref: ExternalRef
 }
 
 /**
@@ -189,6 +220,14 @@ export interface EstimateAcceptedPayload {
   total: number
   currency_id: number | null
   accepted_at: IsoDateTime | null
+  /**
+   * Tu referencia para este presupuesto. Ver {@link ExternalRef}.
+   *
+   * Es el asidero que `lead_id` no podía ser: aquel es un entero de Pimia y no
+   * admite el cuid ni el uuid de un CRM de fuera, así que recuperas tu
+   * oportunidad desde el propio evento sin mantener ninguna tabla de mapeo.
+   */
+  external_ref: ExternalRef
 }
 
 /**
@@ -209,6 +248,8 @@ export interface InvoicePaidPayload {
   due_amount: number
   currency_id: number | null
   paid_at: IsoDateTime | null
+  /** Tu referencia para esta factura. Ver {@link ExternalRef}. */
+  external_ref: ExternalRef
 }
 
 /** Payload de cada evento del catálogo, por nombre. */

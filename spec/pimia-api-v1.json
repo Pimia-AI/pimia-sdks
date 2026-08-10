@@ -1789,7 +1789,7 @@
         "/currencies/bulk-update-exchange-rate": {
             "post": {
                 "operationId": "general.bulkExchangeRate",
-                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
+                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.\n\nAsistente de arranque: fija el tipo de cambio de cada moneda en uso y\nRECALCULA con \u00e9l los importes base de todas las facturas, presupuestos y\npagos de esa moneda \u2014 documentos ya emitidos incluidos. Corre una sola vez\npor empresa (mientras `bulk_exchange_rate_configured` sea 'NO').\n\nReescribir en masa los importes de documentos emitidos es configuraci\u00f3n de\nempresa, no una operaci\u00f3n de uso diario: va con el mismo gate de owner que\nel resto de lo que escribe en Settings. Hasta 2026-08-10 no ten\u00eda ninguno\n\u2014el FormRequest autoriza a todo el mundo\u2014 y para un token de API la \u00fanica\nbarrera era que `settings:write` no est\u00e9 en el cat\u00e1logo OAuth.\n\nOJO al frontend: el modal lo abre `LayoutBasic` en cuanto entra CUALQUIER\nusuario con la marca a 'NO'. Sin la condici\u00f3n de owner que se a\u00f1adi\u00f3 all\u00ed,\neste gate deja a un empleado atrapado en un modal que no puede completar.",
                 "summary": "Handle the incoming request",
                 "tags": [
                     "BulkExchangeRate"
@@ -1814,6 +1814,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -2442,7 +2445,8 @@
         "/estimates/{estimate}/convert-to-invoice": {
             "post": {
                 "operationId": "estimate.convertEstimate",
-                "summary": "Handle the incoming request",
+                "description": "Acepta `external_ref` para etiquetar la factura resultante **en el mismo\npaso**. Etiquetarla despu\u00e9s, con `PUT /invoices/{id}`, llega tarde:\n`invoice.created` ya ha salido con la referencia nula, y entre las dos\nllamadas hay una ventana en la que la factura existe y no la encuentras\npor tu referencia.",
+                "summary": "Convertir un presupuesto en factura borrador",
                 "tags": [
                     "ConvertEstimate"
                 ],
@@ -2457,6 +2461,15 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConvertEstimateRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -2473,6 +2486,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -3189,6 +3205,16 @@
                 "summary": "Display a listing of the resource",
                 "tags": [
                     "Customers"
+                ],
+                "parameters": [
+                    {
+                        "name": "external_ref",
+                        "in": "query",
+                        "description": "Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ning\u00fan mapeo local.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -4616,6 +4642,16 @@
                 "tags": [
                     "Estimates"
                 ],
+                "parameters": [
+                    {
+                        "name": "external_ref",
+                        "in": "query",
+                        "description": "Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ning\u00fan mapeo local.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Array of `EstimateResource`",
@@ -5509,7 +5545,7 @@
         "/fiscal-quarters/toggle": {
             "post": {
                 "operationId": "fiscalQuarter.toggle",
-                "description": "**No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
+                "description": "**No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.\n\nCerrar un trimestre corta el alta y la edici\u00f3n de facturas emitidas y\nrecibidas con fecha en ese periodo ({@see FiscalQuarter::isLocked}); esta\nmisma acci\u00f3n lo REABRE. Es cierre contable, as\u00ed que va con el gate de\nowner que ya gobierna la configuraci\u00f3n sensible del tenant.\n\nHasta 2026-08-10 no ten\u00eda ninguno: el `index` y el `toggle` colgaban de la\nability de LECTURA de informes que gatea la pantalla (VIEW_FINANCIAL_REPORT\nen el router del panel), de modo que cualquiera que pudiera ver el informe\ncontable pod\u00eda reabrir un ejercicio cerrado. Para un token de API la \u00fanica\nbarrera era que `reports:write` no est\u00e9 en el cat\u00e1logo OAuth \u2014 una ausencia\nque proteg\u00eda por accidente y que este gate deja de necesitar.\n\nEl `index` sigue sin gate a prop\u00f3sito: leer qu\u00e9 trimestres est\u00e1n cerrados\nes lo que pinta el panel y no cambia nada.\n\n`locked` (opcional) es el ESTADO DESEADO, y es lo que deber\u00edan mandar los\nclientes: con \u00e9l la operaci\u00f3n es idempotente y dice lo que quiere en vez\nde depender de lo que hab\u00eda. Sin \u00e9l se conserva el alternado hist\u00f3rico.\n\nEl alternado ciego tiene una carrera que no es te\u00f3rica: el cliente decide\nqu\u00e9 va a pasar leyendo un estado que ya puede haber cambiado. El panel\npinta \u00abCerrar T1\u00bb porque lo ley\u00f3 abierto, otro usuario lo cierra, y el\nclic acaba REABRIENDO el trimestre que su bot\u00f3n promet\u00eda cerrar. Por la\nv\u00eda del MCP era peor: `toggle_fiscal_quarter_lock` declaraba este mismo\npar\u00e1metro y el servidor lo ignoraba, as\u00ed que un agente que pidiera cerrar\nun trimestre ya cerrado lo abr\u00eda \u2014 en una operaci\u00f3n que el propio MCP\nanuncia como PELIGROSA.",
                 "summary": "Toggle lock state for a quarter",
                 "tags": [
                     "FiscalQuarter"
@@ -5528,6 +5564,12 @@
                                         "type": "integer",
                                         "minimum": 1,
                                         "maximum": 4
+                                    },
+                                    "locked": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -5587,6 +5629,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -7526,6 +7571,14 @@
                         "schema": {
                             "type": "string",
                             "default": 10
+                        }
+                    },
+                    {
+                        "name": "external_ref",
+                        "in": "query",
+                        "description": "Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ning\u00fan mapeo local.",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -23831,6 +23884,21 @@
                 ],
                 "title": "ContactResource"
             },
+            "ConvertEstimateRequest": {
+                "type": "object",
+                "description": "Cuerpo \u2014opcional\u2014 de la conversi\u00f3n de un presupuesto en factura.",
+                "properties": {
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa: TU identificador para la factura que sale de\nesta conversi\u00f3n (el id del pedido o de la venta cerrada en tu\nsistema). Sin \u00e9l la factura nace sin etiquetar y los webhooks\n`invoice.created` e `invoice.paid` llegan con `external_ref`\nnulo. El alcance es tu client OAuth, igual que en el alta\ndirecta de facturas. Duplicada dentro de tu namespace \u2192 422 con\n`existing_id`, y la conversi\u00f3n entera se deshace.",
+                        "maxLength": 255
+                    }
+                },
+                "title": "ConvertEstimateRequest"
+            },
             "CountryResource": {
                 "type": "object",
                 "properties": {
@@ -24289,6 +24357,14 @@
                             "null"
                         ]
                     },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa: TU identificador para este cliente (el id\ndel deal, del contacto o del pedido en tu sistema). El alcance\nes tu client OAuth, as\u00ed que dos integradores pueden usar la\nmisma cadena sin pisarse y ninguno ve la del otro. Se consulta\ncon `GET /customers?external_ref=\u2026`, vuelve en el recurso y\nviaja en los webhooks `customer.*`. Si ya la lleva otro cliente\ntuyo, la respuesta es un 422 con `existing_id` \u2014 que es el\nfind-or-create sin mantener mapeo local. `null` la desvincula.",
+                        "maxLength": 255
+                    },
                     "currency_id": {
                         "type": [
                             "string",
@@ -24521,6 +24597,13 @@
                     "notes": {
                         "type": "string"
                     },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa DE QUIEN PREGUNTA: la resuelve el client OAuth\ndel token, as\u00ed que dos integradores ven cada uno la suya y el\npanel (sin client) ve la del namespace de la company. Siempre\npresente aunque sea null, para que el tipo del SDK no alterne."
+                    },
                     "iban": {
                         "type": "string"
                     },
@@ -24580,6 +24663,7 @@
                     "prefix",
                     "tax_id",
                     "notes",
+                    "external_ref",
                     "iban",
                     "bic",
                     "sepa_mandate_id",
@@ -25039,6 +25123,13 @@
                     "lead_id": {
                         "type": "string"
                     },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa del client OAuth del token (null si no hay).\nEs el asidero que `lead_id` no pod\u00eda ser: aquel es un entero de\nPimia y no admite el cuid o el uuid de un CRM de fuera."
+                    },
                     "exchange_rate": {
                         "type": "string"
                     },
@@ -25155,6 +25246,7 @@
                     "template_name",
                     "customer_id",
                     "lead_id",
+                    "external_ref",
                     "exchange_rate",
                     "base_discount_val",
                     "base_sub_total",
@@ -25193,6 +25285,14 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa: TU identificador para este presupuesto (el\nid de la oportunidad en tu CRM). Es el asidero que `lead_id` no\npod\u00eda ser: aquel es un entero de Pimia y no admite un cuid ni un\nuuid. El alcance es tu client OAuth. Se consulta con\n`GET /estimates?external_ref=\u2026` y viaja en el payload de\n`estimate.accepted`, as\u00ed que recuperas tu oportunidad en el\nevento sin mantener ning\u00fan mapeo. Duplicada dentro de tu\nnamespace \u2192 422 con `existing_id`. `null` la desvincula.",
+                        "maxLength": 255
                     },
                     "estimate_number": {
                         "type": [
@@ -25940,6 +26040,13 @@
                     "customer_id": {
                         "type": "string"
                     },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa del client OAuth del token (null si no hay):\ncada integrador ve la suya y solo la suya."
+                    },
                     "payment_method_id": {
                         "type": "string"
                     },
@@ -26176,6 +26283,7 @@
                     "template_name",
                     "invoice_series_id",
                     "customer_id",
+                    "external_ref",
                     "payment_method_id",
                     "recurring_invoice_id",
                     "sequence_number",
@@ -26458,6 +26566,14 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "external_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia externa: TU identificador para esta factura (el id\ndel pedido o de la suscripci\u00f3n en tu sistema). El alcance es tu\nclient OAuth. Se consulta con `GET /invoices?external_ref=\u2026` y\nviaja en los payloads de `invoice.created` e `invoice.paid`.\nDuplicada dentro de tu namespace \u2192 422 con `existing_id`.\n`null` la desvincula.",
+                        "maxLength": 255
                     },
                     "exchange_rate": {
                         "type": [
@@ -30568,6 +30684,25 @@
             }
         },
         "responses": {
+            "AuthorizationException": {
+                "description": "Authorization error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
             "ValidationException": {
                 "description": "Validation error",
                 "content": {
@@ -30593,25 +30728,6 @@
                             "required": [
                                 "message",
                                 "errors"
-                            ]
-                        }
-                    }
-                }
-            },
-            "AuthorizationException": {
-                "description": "Authorization error",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
                             ]
                         }
                     }

@@ -15,6 +15,17 @@ namespace Pimia\Webhooks;
  * Las marcas de tiempo son ISO-8601 **con offset** (`2026-08-10T12:34:56+02:00`),
  * nunca `Z` puro. Los importes van en **céntimos**.
  *
+ * `external_ref` es la referencia externa **de quien recibe esta entrega**: la
+ * que TU app puso sobre el recurso, nunca la de otro integrador. No se calcula
+ * una vez y se reparte — el core la resuelve endpoint por endpoint contra el
+ * `client_id` del destinatario, porque un mismo evento se entrega a todos los
+ * endpoints suscritos de la company y esos pueden ser de integradores distintos.
+ * Una referencia escrita sin client OAuth (panel, token personal) no sale nunca
+ * por este canal. La clave viaja **siempre**, con `null` cuando no hay
+ * referencia: un payload cuya forma cambia según el dato no se puede tipar. Solo
+ * la llevan los cinco eventos de recurso; `approval.decided`, `invoice.received`
+ * y `app.revoked` no van sobre un recurso etiquetable y no la incluyen.
+ *
  * @phpstan-type ApprovalDecidedPayload array{
  *     plane: string,
  *     delegation_ref: string,
@@ -48,6 +59,7 @@ namespace Pimia\Webhooks;
  *     company_id: int,
  *     created_at: string|null,
  *     updated_at: string|null,
+ *     external_ref: string|null,
  * }
  * @phpstan-type InvoiceCreatedPayload array{
  *     id: int,
@@ -64,6 +76,7 @@ namespace Pimia\Webhooks;
  *     due_amount: int,
  *     currency_id: int|null,
  *     created_at: string|null,
+ *     external_ref: string|null,
  * }
  * @phpstan-type EstimateAcceptedPayload array{
  *     id: int,
@@ -78,6 +91,7 @@ namespace Pimia\Webhooks;
  *     total: int,
  *     currency_id: int|null,
  *     accepted_at: string|null,
+ *     external_ref: string|null,
  * }
  * @phpstan-type InvoicePaidPayload array{
  *     id: int,
@@ -91,6 +105,7 @@ namespace Pimia\Webhooks;
  *     due_amount: int,
  *     currency_id: int|null,
  *     paid_at: string|null,
+ *     external_ref: string|null,
  * }
  */
 final class WebhookDelivery

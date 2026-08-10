@@ -177,6 +177,66 @@ $pimia = new PimiaClient($config, $transport, $tokens);
 $invoices = $pimia->invoices->list(['page' => 1]);
 ```
 
+## Tu identificador dentro de Pimia: `external_ref`
+
+Cuelga **tu** identificador —el id del deal, del pedido, de la oportunidad— del
+recurso de Pimia, y recupéralo por él. Es la alternativa a mantener una tabla
+`mapeo` en tu lado, que es lo que todo integrador acaba escribiendo y lo que se
+desincroniza en cuanto un proceso se cae a medias.
+
+Acepta `external_ref` el alta de clientes, presupuestos y facturas, y también
+`POST /estimates/{id}/convert-to-invoice`, para que la factura que sale de una
+conversión nazca ya etiquetada. Se consulta con `?external_ref=…` en los tres
+listados, vuelve en el recurso y **viaja en los webhooks**.
+
+**El alcance es tu client OAuth**: dos integradores pueden usar la misma cadena
+sin pisarse y ninguno ve la del otro. Máximo 255 caracteres; `null` desvincula.
+
+### El patrón: find-or-create sin mapeo local
+
+No consultes antes de crear. **Intenta crear con tu referencia**, y si ya
+existía, el propio error te dice cuál es — en `existingId`. Una llamada en el
+caso normal, y sin la carrera que tiene el «consulta y luego crea»:
+
+```ts
+import { DuplicateExternalRefError } from '@pimia/sdk'
+
+async function clienteDelDeal(dealId: string, nombre: string): Promise<number> {
+  try {
+    const { id } = await crearCliente({ name: nombre, external_ref: `deal_${dealId}` })
+    return id
+  } catch (error) {
+    if (error instanceof DuplicateExternalRefError) return error.existingId
+    throw error
+  }
+}
+```
+
+```php
+use Pimia\Exception\DuplicateExternalRefException;
+
+try {
+    $cliente = $pimia->customers()->create([
+        'name' => $nombre,
+        'external_ref' => "deal_{$dealId}",
+    ]);
+
+    return (int) $cliente['id'];
+} catch (DuplicateExternalRefException $e) {
+    return $e->existingId;
+}
+```
+
+Por debajo es un **422** con `error: "external_ref_already_used"`, y el cuerpo
+trae además el `errors` de siempre: si ya tratabas los 422 por ahí, tu código
+sigue funcionando: el error nuevo hereda del de validación.
+
+En los webhooks la clave llega **siempre** en los cinco eventos de recurso
+(`customer.created`, `customer.updated`, `invoice.created`, `invoice.paid`,
+`estimate.accepted`), con `null` cuando no hay referencia — nunca ausente, para
+que el payload se pueda tipar. Y llega resuelta **para ti**: el emisor la
+calcula endpoint por endpoint, así que nunca ves la de otro integrador.
+
 ## Errores que merece la pena distinguir
 
 | Situación | TypeScript | PHP |
@@ -184,6 +244,7 @@ $invoices = $pimia->invoices->list(['page' => 1]);
 | Token muerto o app revocada por el usuario | `UnauthorizedError` | `UnauthorizedException` |
 | Falta un scope (con el scope exacto dentro) | `MissingScopeError` | `MissingScopeException` |
 | Validación de negocio, errores por campo | `ValidationError` | `ValidationException` |
+| `external_ref` ya usada (trae `existingId`) | `DuplicateExternalRefError` | `DuplicateExternalRefException` |
 | Rate limit, con `retryAfter` | `RateLimitError` | `RateLimitException` |
 | Fallo del flujo OAuth | `OAuthError` | `OAuthException` |
 
@@ -256,10 +317,11 @@ de dominio cubren facturas, clientes y presupuestos — para el resto,
 `client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
 workflow de release, que publica los tres artefactos.
 
-**v0.3.0 en preparación**: verificador de webhooks y tipos de los ocho eventos
-en los dos SDKs, `estimates.convertToInvoice`, y helpers que devuelven tipos
-del OpenAPI en vez de `unknown`. Pendiente de código: ampliar helpers al resto
-del dominio y DTOs de PHP generados del spec.
+**v0.4.0**: `external_ref` —tu identificador colgado del recurso y consultable
+por él— en el contrato, en los webhooks y con el 422 duplicado tipado, sobre el
+verificador de webhooks y los tipos de los ocho eventos que trajo la 0.3.0.
+Pendiente de código: ampliar helpers al resto del dominio y DTOs de PHP
+generados del spec.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,

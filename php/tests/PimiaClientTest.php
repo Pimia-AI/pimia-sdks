@@ -6,6 +6,7 @@ namespace Pimia\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Pimia\Config;
+use Pimia\Exception\DuplicateExternalRefException;
 use Pimia\Exception\MissingScopeException;
 use Pimia\Exception\NotAuthenticatedException;
 use Pimia\Exception\RateLimitException;
@@ -209,6 +210,80 @@ final class PimiaClientTest extends TestCase
             $this->fail('esperaba ValidationException');
         } catch (ValidationException $e) {
             $this->assertSame(['customer_id' => ['requerido']], $e->errors());
+        }
+    }
+
+    /**
+     * Cuerpo exacto de `App\Exceptions\DuplicateExternalRef::render()` del core.
+     *
+     * @return array<string, mixed>
+     */
+    private static function cuerpoDeRefDuplicada(mixed $existingId = 41): array
+    {
+        $mensaje = 'La referencia externa «deal_42» ya está asociada a customer 41.';
+
+        return [
+            'error' => 'external_ref_already_used',
+            'message' => $mensaje,
+            'external_ref' => 'deal_42',
+            'entity_type' => 'customer',
+            'existing_id' => $existingId,
+            'errors' => ['external_ref' => [$mensaje]],
+        ];
+    }
+
+    public function test_la_referencia_duplicada_trae_el_id_existente(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json(self::cuerpoDeRefDuplicada(), 422),
+            new TokenSet('at-1'),
+        );
+
+        try {
+            $client->post('/customers', ['name' => 'Acme', 'external_ref' => 'deal_42']);
+            $this->fail('esperaba DuplicateExternalRefException');
+        } catch (DuplicateExternalRefException $e) {
+            // Lo que cierra el find-or-create sin mapeo local.
+            $this->assertSame(41, $e->existingId);
+            $this->assertSame('deal_42', $e->externalRef);
+            $this->assertSame('customer', $e->entityType);
+            // Sigue siendo un 422 de validación: quien ya capturaba
+            // ValidationException y leía errors() no se entera del cambio.
+            $this->assertInstanceOf(ValidationException::class, $e);
+            $this->assertArrayHasKey('external_ref', $e->errors());
+        }
+    }
+
+    public function test_un_422_corriente_no_se_promueve(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json([
+                'message' => 'The given data was invalid.',
+                'errors' => ['external_ref' => ['muy largo']],
+            ], 422),
+            new TokenSet('at-1'),
+        );
+
+        try {
+            $client->post('/customers', []);
+            $this->fail('esperaba ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertNotInstanceOf(DuplicateExternalRefException::class, $e);
+        }
+    }
+
+    public function test_sin_existing_id_usable_se_queda_en_validation_exception(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json(self::cuerpoDeRefDuplicada(null), 422),
+            new TokenSet('at-1'),
+        );
+
+        try {
+            $client->post('/customers', []);
+            $this->fail('esperaba ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertNotInstanceOf(DuplicateExternalRefException::class, $e);
         }
     }
 
