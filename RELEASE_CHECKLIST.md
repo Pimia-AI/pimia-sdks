@@ -45,6 +45,24 @@ Verificada antes de tagear: TypeScript 48/48 y build estricto; PHP 57/57 en el
 contenedor de Hetzner dev, desde un **clone de la rama** (el código llega a los
 servidores por git, nunca por `scp` ni `docker cp`).
 
+**v0.5.0 — 2026-08-10**: la segunda oleada del primer integrador real
+(recomendación (d) del informe de dirección) — `externalRef` en
+`convertToInvoice` (TS como opción, PHP como tercer parámetro: es lo que hace
+que `invoice.created`/`invoice.paid` no lleguen con la referencia nula) y
+`ReadOptions` (`headers`, `signal`) en las lecturas TS. Todo aditivo. El PR
+del TS (#17) llegó sin la paridad PHP; se añadió en el PR de release (#18) —
+para la próxima: **un hueco tapado en un SDK se tapa en los dos o se anota la
+asimetría en el changelog**, que es lo que ahora hace la entrada de 0.5.0 con
+`ReadOptions` (en PHP no existe: el cliente HTTP es PSR-18 inyectado y el
+timeout va ahí).
+
+Verificada antes de tagear: TS 55/55 y build estricto en local; matriz entera
+de la CI en verde sobre el PR #18 (Node 20/22/24, PHP 8.2/8.3/8.4, starter,
+guarda de deriva spec↔`api.ts`) — desde esta versión la CI de PR cubre lo que
+antes se hacía a mano en el contenedor de Hetzner. El paso 4 del runbook (bump
+del starter) se hizo tras publicar; la nota de abajo sobre `^0.1.0` quedó
+vieja: la 0.4.0 ya lo subió.
+
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
 
