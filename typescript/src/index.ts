@@ -35,6 +35,7 @@ export { MemoryTokenStore, isExpired, tokenSetFromResponse } from './tokens.js'
 export type { TokenSet, TokenStore } from './tokens.js'
 
 export {
+  DuplicateExternalRefError,
   ForbiddenError,
   MissingScopeError,
   NotAuthenticatedError,
@@ -62,6 +63,7 @@ export type {
   AppRevokedPayload,
   CustomerPayload,
   EstimateAcceptedPayload,
+  ExternalRef,
   InvoiceCreatedPayload,
   InvoicePaidPayload,
   InvoiceReceivedPayload,

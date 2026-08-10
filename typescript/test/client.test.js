@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  DuplicateExternalRefError,
   MemoryTokenStore,
   MissingScopeError,
   NotAuthenticatedError,
@@ -240,6 +241,71 @@ test('un 422 expone los errores por campo', async () => {
     (error) => {
       assert.ok(error instanceof ValidationError)
       assert.deepEqual(error.errors, { customer_id: ['requerido'] })
+      return true
+    },
+  )
+})
+
+/** Cuerpo exacto de `App\Exceptions\DuplicateExternalRef::render()` del core. */
+function cuerpoDeRefDuplicada(existingId = 41) {
+  const mensaje = `La referencia externa «deal_42» ya está asociada a customer ${existingId}.`
+
+  return {
+    error: 'external_ref_already_used',
+    message: mensaje,
+    external_ref: 'deal_42',
+    entity_type: 'customer',
+    existing_id: existingId,
+    errors: { external_ref: [mensaje] },
+  }
+}
+
+test('la referencia duplicada llega como DuplicateExternalRefError con el id existente', async () => {
+  const { client } = clientWith(() => json(cuerpoDeRefDuplicada(), 422), { accessToken: 'at-1' })
+
+  await assert.rejects(
+    () => client.post('/customers', { name: 'Acme', external_ref: 'deal_42' }),
+    (error) => {
+      assert.ok(error instanceof DuplicateExternalRefError)
+      // Lo que cierra el find-or-create sin mapeo local.
+      assert.equal(error.existingId, 41)
+      assert.equal(error.externalRef, 'deal_42')
+      assert.equal(error.entityType, 'customer')
+      // Sigue siendo un 422 de validación: quien ya trataba `errors` no se entera.
+      assert.ok(error instanceof ValidationError)
+      assert.deepEqual(error.errors, { external_ref: [cuerpoDeRefDuplicada().message] })
+      return true
+    },
+  )
+})
+
+test('un 422 corriente NO se promueve a DuplicateExternalRefError', async () => {
+  const { client } = clientWith(
+    () => json({ message: 'The given data was invalid.', errors: { external_ref: ['muy largo'] } }, 422),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(
+    () => client.post('/customers', {}),
+    (error) => {
+      assert.ok(error instanceof ValidationError)
+      assert.ok(!(error instanceof DuplicateExternalRefError))
+      return true
+    },
+  )
+})
+
+test('sin existing_id usable se queda en ValidationError: no hay find-or-create que hacer', async () => {
+  const { client } = clientWith(
+    () => json({ ...cuerpoDeRefDuplicada(), existing_id: null }, 422),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(
+    () => client.post('/customers', {}),
+    (error) => {
+      assert.ok(error instanceof ValidationError)
+      assert.ok(!(error instanceof DuplicateExternalRefError))
       return true
     },
   )

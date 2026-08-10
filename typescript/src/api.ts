@@ -234,6 +234,21 @@ export interface paths {
         /**
          * Handle the incoming request
          * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         *
+         *     Asistente de arranque: fija el tipo de cambio de cada moneda en uso y
+         *     RECALCULA con él los importes base de todas las facturas, presupuestos y
+         *     pagos de esa moneda — documentos ya emitidos incluidos. Corre una sola vez
+         *     por empresa (mientras `bulk_exchange_rate_configured` sea 'NO').
+         *
+         *     Reescribir en masa los importes de documentos emitidos es configuración de
+         *     empresa, no una operación de uso diario: va con el mismo gate de owner que
+         *     el resto de lo que escribe en Settings. Hasta 2026-08-10 no tenía ninguno
+         *     —el FormRequest autoriza a todo el mundo— y para un token de API la única
+         *     barrera era que `settings:write` no esté en el catálogo OAuth.
+         *
+         *     OJO al frontend: el modal lo abre `LayoutBasic` en cuanto entra CUALQUIER
+         *     usuario con la marca a 'NO'. Sin la condición de owner que se añadió allí,
+         *     este gate deja a un empleado atrapado en un modal que no puede completar.
          */
         post: operations["general.bulkExchangeRate"];
         delete?: never;
@@ -385,7 +400,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Handle the incoming request */
+        /**
+         * Convertir un presupuesto en factura borrador
+         * @description Acepta `external_ref` para etiquetar la factura resultante **en el mismo
+         *     paso**. Etiquetarla después, con `PUT /invoices/{id}`, llega tarde:
+         *     `invoice.created` ya ha salido con la referencia nula, y entre las dos
+         *     llamadas hay una ventana en la que la factura existe y no la encuentras
+         *     por tu referencia.
+         */
         post: operations["estimate.convertEstimate"];
         delete?: never;
         options?: never;
@@ -882,6 +904,34 @@ export interface paths {
         /**
          * Toggle lock state for a quarter
          * @description **No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         *
+         *     Cerrar un trimestre corta el alta y la edición de facturas emitidas y
+         *     recibidas con fecha en ese periodo ({@see FiscalQuarter::isLocked}); esta
+         *     misma acción lo REABRE. Es cierre contable, así que va con el gate de
+         *     owner que ya gobierna la configuración sensible del tenant.
+         *
+         *     Hasta 2026-08-10 no tenía ninguno: el `index` y el `toggle` colgaban de la
+         *     ability de LECTURA de informes que gatea la pantalla (VIEW_FINANCIAL_REPORT
+         *     en el router del panel), de modo que cualquiera que pudiera ver el informe
+         *     contable podía reabrir un ejercicio cerrado. Para un token de API la única
+         *     barrera era que `reports:write` no esté en el catálogo OAuth — una ausencia
+         *     que protegía por accidente y que este gate deja de necesitar.
+         *
+         *     El `index` sigue sin gate a propósito: leer qué trimestres están cerrados
+         *     es lo que pinta el panel y no cambia nada.
+         *
+         *     `locked` (opcional) es el ESTADO DESEADO, y es lo que deberían mandar los
+         *     clientes: con él la operación es idempotente y dice lo que quiere en vez
+         *     de depender de lo que había. Sin él se conserva el alternado histórico.
+         *
+         *     El alternado ciego tiene una carrera que no es teórica: el cliente decide
+         *     qué va a pasar leyendo un estado que ya puede haber cambiado. El panel
+         *     pinta «Cerrar T1» porque lo leyó abierto, otro usuario lo cierra, y el
+         *     clic acaba REABRIENDO el trimestre que su botón prometía cerrar. Por la
+         *     vía del MCP era peor: `toggle_fiscal_quarter_lock` declaraba este mismo
+         *     parámetro y el servidor lo ignoraba, así que un agente que pidiera cerrar
+         *     un trimestre ya cerrado lo abría — en una operación que el propio MCP
+         *     anuncia como PELIGROSA.
          */
         post: operations["fiscalQuarter.toggle"];
         delete?: never;
@@ -2977,6 +3027,22 @@ export interface components {
             created_at: string;
             updated_at: string;
         };
+        /**
+         * ConvertEstimateRequest
+         * @description Cuerpo —opcional— de la conversión de un presupuesto en factura.
+         */
+        ConvertEstimateRequest: {
+            /**
+             * @description Referencia externa: TU identificador para la factura que sale de
+             *     esta conversión (el id del pedido o de la venta cerrada en tu
+             *     sistema). Sin él la factura nace sin etiquetar y los webhooks
+             *     `invoice.created` e `invoice.paid` llegan con `external_ref`
+             *     nulo. El alcance es tu client OAuth, igual que en el alta
+             *     directa de facturas. Duplicada dentro de tu namespace → 422 con
+             *     `existing_id`, y la conversión entera se deshace.
+             */
+            external_ref?: string | null;
+        };
         /** CountryResource */
         CountryResource: {
             id: number;
@@ -3082,6 +3148,17 @@ export interface components {
             prefix?: string | null;
             tax_id?: string | null;
             notes?: string | null;
+            /**
+             * @description Referencia externa: TU identificador para este cliente (el id
+             *     del deal, del contacto o del pedido en tu sistema). El alcance
+             *     es tu client OAuth, así que dos integradores pueden usar la
+             *     misma cadena sin pisarse y ninguno ve la del otro. Se consulta
+             *     con `GET /customers?external_ref=…`, vuelve en el recurso y
+             *     viaja en los webhooks `customer.*`. Si ya la lleva otro cliente
+             *     tuyo, la respuesta es un 422 con `existing_id` — que es el
+             *     find-or-create sin mantener mapeo local. `null` la desvincula.
+             */
+            external_ref?: string | null;
             currency_id?: string | null;
             payment_method_id?: number | null;
             billing?: {
@@ -3140,6 +3217,13 @@ export interface components {
             prefix: string;
             tax_id: string;
             notes: string;
+            /**
+             * @description Referencia externa DE QUIEN PREGUNTA: la resuelve el client OAuth
+             *     del token, así que dos integradores ven cada uno la suya y el
+             *     panel (sin client) ve la del namespace de la company. Siempre
+             *     presente aunque sea null, para que el tipo del SDK no alterne.
+             */
+            external_ref: string | null;
             iban: string;
             bic: string;
             sepa_mandate_id: string;
@@ -3281,6 +3365,12 @@ export interface components {
             template_name: string;
             customer_id: string;
             lead_id: string;
+            /**
+             * @description Referencia externa del client OAuth del token (null si no hay).
+             *     Es el asidero que `lead_id` no podía ser: aquel es un entero de
+             *     Pimia y no admite el cuid o el uuid de un CRM de fuera.
+             */
+            external_ref: string | null;
             exchange_rate: string;
             base_discount_val: string;
             base_sub_total: string;
@@ -3314,6 +3404,17 @@ export interface components {
             expiry_date?: string | null;
             customer_id?: number | null;
             lead_id?: number | null;
+            /**
+             * @description Referencia externa: TU identificador para este presupuesto (el
+             *     id de la oportunidad en tu CRM). Es el asidero que `lead_id` no
+             *     podía ser: aquel es un entero de Pimia y no admite un cuid ni un
+             *     uuid. El alcance es tu client OAuth. Se consulta con
+             *     `GET /estimates?external_ref=…` y viaja en el payload de
+             *     `estimate.accepted`, así que recuperas tu oportunidad en el
+             *     evento sin mantener ningún mapeo. Duplicada dentro de tu
+             *     namespace → 422 con `existing_id`. `null` la desvincula.
+             */
+            external_ref?: string | null;
             /**
              * @description Opcional en el alta: si no llega, lo genera el servidor con el mismo
              *     SerialNumberFormatter que alimenta a GET /next-number, que es de donde
@@ -3534,6 +3635,11 @@ export interface components {
             template_name: string;
             invoice_series_id: string;
             customer_id: string;
+            /**
+             * @description Referencia externa del client OAuth del token (null si no hay):
+             *     cada integrador ve la suya y solo la suya.
+             */
+            external_ref: string | null;
             payment_method_id: string;
             recurring_invoice_id: string;
             sequence_number: string;
@@ -3685,6 +3791,15 @@ export interface components {
             due_date?: string | null;
             customer_id: number;
             invoice_number?: string | null;
+            /**
+             * @description Referencia externa: TU identificador para esta factura (el id
+             *     del pedido o de la suscripción en tu sistema). El alcance es tu
+             *     client OAuth. Se consulta con `GET /invoices?external_ref=…` y
+             *     viaja en los payloads de `invoice.created` e `invoice.paid`.
+             *     Duplicada dentro de tu namespace → 422 con `existing_id`.
+             *     `null` la desvincula.
+             */
+            external_ref?: string | null;
             exchange_rate?: string | null;
             /**
              * @description Descuento global: opcional en el contrato y rellenado a 0 en
@@ -4721,6 +4836,18 @@ export interface components {
         };
     };
     responses: {
+        /** @description Authorization error */
+        AuthorizationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
+                };
+            };
+        };
         /** @description Validation error */
         ValidationException: {
             headers: {
@@ -4734,18 +4861,6 @@ export interface components {
                     errors: {
                         [key: string]: string[];
                     };
-                };
-            };
-        };
-        /** @description Authorization error */
-        AuthorizationException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Error overview. */
-                    message: string;
                 };
             };
         };
@@ -5437,6 +5552,7 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -5760,7 +5876,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConvertEstimateRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -5772,6 +5892,7 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "general.countries": {
@@ -6075,7 +6196,10 @@ export interface operations {
     };
     "customers.index": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
+                external_ref?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6633,7 +6757,10 @@ export interface operations {
     };
     "estimates.index": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
+                external_ref?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7095,6 +7222,7 @@ export interface operations {
                 "application/json": {
                     year: number;
                     quarter: number;
+                    locked?: boolean | null;
                 };
             };
         };
@@ -7116,6 +7244,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -8014,6 +8143,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: string;
+                /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
+                external_ref?: string;
             };
             header?: never;
             path?: never;
