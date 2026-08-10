@@ -399,6 +399,39 @@ final class PimiaClientTest extends TestCase
         $this->assertArrayNotHasKey('idempotency-key', $transport->calls[0]['headers']);
     }
 
+    // El externalRef del convert es lo que hace que invoice.created e
+    // invoice.paid lleguen con TU referencia y no con null: tiene que viajar
+    // en el cuerpo de ESTA llamada, porque etiquetar despues llega tarde.
+
+    public function test_convert_to_invoice_manda_external_ref_en_el_cuerpo(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => ['id' => 907]], 201),
+            new TokenSet('at-1'),
+        );
+
+        $client->estimates->convertToInvoice(60, 'deal-abc:invoice', 'deal-abc');
+
+        $llamada = $transport->calls[0];
+        $this->assertStringContainsString('/estimates/60/convert-to-invoice', $llamada['url']);
+        // El transporte recibe el cuerpo ya serializado (json_encode en request()).
+        $this->assertSame(['external_ref' => 'deal-abc'], json_decode((string) $llamada['body'], true));
+        $this->assertSame('deal-abc:invoice', $llamada['headers']['idempotency-key']);
+    }
+
+    public function test_convert_to_invoice_sin_referencia_manda_el_cuerpo_vacio_de_siempre(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => ['id' => 907]], 201),
+            new TokenSet('at-1'),
+        );
+
+        $client->estimates->convertToInvoice(60, 'deal-abc:invoice');
+
+        // `[]` serializado: la forma de siempre del convert sin referencia.
+        $this->assertSame('[]', (string) $transport->calls[0]['body']);
+    }
+
     public function test_request_with_meta_distingue_la_escritura_real_del_eco(): void
     {
         $respuesta = ['data' => ['id' => 60, 'estimate_number' => 'PRE-000029']];
