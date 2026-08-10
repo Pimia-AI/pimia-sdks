@@ -9,7 +9,7 @@ de primera clase (`idempotencyKey` + `requestWithMeta`) y siete operaciones que
 el spec no reflejaba. Todo aditivo. `@pimia/design-tokens` va a 0.2.0 **sin
 cambios**: el versionado es en bloque y el tag arrastra a los tres paquetes.
 
-**v0.3.0 — 2026-08-10 (preparada, SIN publicar)**: verificador de webhooks y
+**v0.3.0 publicada el 2026-08-10**: verificador de webhooks y
 tipos de los ocho eventos del catálogo en los dos SDKs,
 `estimates.convertToInvoice`, helpers que devuelven tipos del OpenAPI, y el
 spec regenerado con la oleada 1 del plan de integradores. Es la primera
@@ -23,6 +23,27 @@ cosa—; starter compilado con las dos pieles; y la guarda de deriva
 spec↔`api.ts` en verde. Nota para la próxima: las imágenes `php:X-cli` vienen
 sin `unzip` y `composer install` muere con «The zip extension and unzip/7z
 commands are both missing» — hay que instalarlo antes.
+
+**v0.4.0 — 2026-08-10**: `external_ref`, la referencia externa consultable, en
+los dos SDKs — campo en el alta de clientes/presupuestos/facturas y en el
+cuerpo del convert, filtro en los tres listados, la clave en los cinco eventos
+de recurso de los webhooks, y el 422 `external_ref_already_used` tipado con
+`existingId` (el find-or-create sin mapeo local). Todo aditivo.
+
+Sale el mismo día que la 0.3.0 porque el contrato del core llegó después: la
+0.3.0 se publicó sin nada de esto. Dos avisos de esta preparación, por si se
+repiten:
+
+- **`scripts/sync-spec.sh` copia del working tree del checkout del core**, no
+  de `origin/main`. Si ese checkout está en otra rama —lo normal con varios
+  worktrees a la vez—, se sincroniza un spec viejo sin que nada avise. Sacarlo
+  a mano con `git show origin/main:docs/openapi/pimia-api-v1.json` y comparar.
+- **`origin/main` del core se mueve durante la sesión.** Comprobar el estado de
+  los PRs de los que dependa la release justo antes de tagear, no al empezar.
+
+Verificada antes de tagear: TypeScript 48/48 y build estricto; PHP 57/57 en el
+contenedor de Hetzner dev, desde un **clone de la rama** (el código llega a los
+servidores por git, nunca por `scp` ni `docker cp`).
 
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.

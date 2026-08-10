@@ -10,6 +10,64 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
+## [0.4.0] — 2026-08-10
+
+La versión de **`external_ref`**: tu identificador colgado del recurso de
+Pimia, y consultable por él. Es la alternativa a la tabla `mapeo` que todo
+integrador acaba manteniendo en su lado — y que se desincroniza en cuanto un
+proceso se cae entre el `POST` y el guardado del mapeo.
+
+Sale justo después de la 0.3.0 porque el contrato del core llegó más tarde ese
+mismo día: la 0.3.0 se publicó sin nada de esto.
+
+`@pimia/design-tokens` se publica en 0.4.0 **sin cambio alguno**: los paquetes
+de este monorepo versionan en bloque.
+
+### Añadido
+
+- **`external_ref` en el contrato**, vía spec regenerado: opcional
+  (`string|null`, máx. 255) en el alta de clientes, presupuestos y facturas y
+  en el cuerpo de `POST /estimates/{id}/convert-to-invoice`; **siempre
+  presente** (`string | null`) en los tres recursos; y filtro `?external_ref=…`
+  en los tres listados. El alcance es tu client OAuth: dos integradores pueden
+  usar la misma cadena sin pisarse y ninguno ve la del otro.
+
+- **`DuplicateExternalRefError` / `DuplicateExternalRefException`** para el 422
+  `external_ref_already_used`. Traen `existingId`, que es lo que convierte el
+  choque en un **find-or-create sin mapeo local**: intenta crear con tu
+  referencia y, si ya existía, el propio error dice cuál es.
+
+  ```ts
+  try {
+    const { id } = await crearCliente({ name, external_ref: `deal_${dealId}` })
+    return id
+  } catch (error) {
+    if (error instanceof DuplicateExternalRefError) return error.existingId
+    throw error
+  }
+  ```
+
+  Heredan del error de validación a propósito, y el cuerpo trae también el
+  `errors` de siempre: quien ya trataba los 422 por ahí no necesita rama nueva.
+
+- **`external_ref` en los payloads de webhook**, en los cinco eventos de
+  recurso (`customer.created`, `customer.updated`, `invoice.created`,
+  `invoice.paid`, `estimate.accepted`), en los dos SDKs. La clave viaja
+  **siempre**, con `null` cuando no hay referencia — nunca ausente, para que el
+  payload se pueda tipar; por eso es `string | null` y no opcional. Llega
+  resuelta para el receptor: el emisor la calcula endpoint por endpoint, así
+  que nunca ves la de otro integrador. Los otros tres eventos
+  (`approval.decided`, `invoice.received`, `app.revoked`) no van sobre un
+  recurso etiquetable y no la llevan.
+
+- Tipo `ExternalRef` exportado en TypeScript, donde vive la explicación del
+  campo.
+
+### Cambiado
+
+- El README documenta el patrón find-or-create y suma el error nuevo a la tabla
+  de errores.
+
 ## [0.3.0] — 2026-08-10
 
 La versión de los **webhooks**. Cierra la carencia que más código imponía a
