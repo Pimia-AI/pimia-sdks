@@ -447,3 +447,90 @@ test('request() sigue devolviendo solo el cuerpo', async () => {
 
   assert.deepEqual(await client.request('/customers/7'), { data: { id: 7 } })
 })
+
+// ── Timeouts en las lecturas ────────────────────────────────────────────────
+// Hasta la 0.4 los atajos de lectura no aceptaban opciones: `get(path, query)` y
+// `delete(path)` a secas. Ponerle un timeout a un GET obligaba a bajar a
+// `request()`, o a quedarse sin él — que es lo que pasa de verdad. Un cliente
+// que sondea y se cuelga en una lectura deja de sondear sin dar un solo error.
+
+test('get() propaga el AbortSignal', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+  const señal = AbortSignal.timeout(1000)
+
+  await client.get('/invoices', { page: 1 }, { signal: señal })
+
+  assert.equal(calls[0].init.signal, señal)
+  // Y la query sigue en su sitio, que es el parámetro que ya existía.
+  assert.match(calls[0].url, /\?page=1$/)
+})
+
+test('get() acepta opciones sin query', async () => {
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+  const señal = AbortSignal.timeout(1000)
+
+  await client.get('/currencies', undefined, { signal: señal, headers: { 'x-probe': '1' } })
+
+  assert.equal(calls[0].init.signal, señal)
+  assert.equal(calls[0].init.headers['x-probe'], '1')
+})
+
+test('delete() propaga el AbortSignal', async () => {
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+  const señal = AbortSignal.timeout(1000)
+
+  await client.delete('/customers/7', { signal: señal })
+
+  assert.equal(calls[0].init.method, 'DELETE')
+  assert.equal(calls[0].init.signal, señal)
+})
+
+test('los atajos de recurso también aceptan señal', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+  const señal = AbortSignal.timeout(1000)
+
+  await client.customers.list({ page: 1 }, { signal: señal })
+  await client.customers.get(7, { signal: señal })
+  await client.estimates.list(undefined, { signal: señal })
+  await client.invoices.get(9, { signal: señal })
+
+  assert.deepEqual(calls.map((c) => c.init.signal), [señal, señal, señal, señal])
+  // El `undefined` de la query no debe colarse en la URL.
+  assert.equal(calls[2].url, `${BASE}/api/v1/estimates`)
+  assert.equal(calls[3].url, `${BASE}/api/v1/invoices/9`)
+})
+
+// ── external_ref en la conversión ───────────────────────────────────────────
+
+test('convertToInvoice manda external_ref en el cuerpo', async () => {
+  const { client, calls } = clientWith(() => json({ data: { id: 900 } }), { accessToken: 'at-1' })
+
+  await client.estimates.convertToInvoice(55, {
+    externalRef: 'deal:42',
+    idempotencyKey: 'deal:42:invoice',
+  })
+
+  const [call] = calls
+  assert.equal(call.url, `${BASE}/api/v1/estimates/55/convert-to-invoice`)
+  assert.deepEqual(JSON.parse(call.init.body), { external_ref: 'deal:42' })
+  // La referencia NO debe filtrarse a las opciones de la petición.
+  assert.equal(call.init.headers['idempotency-key'], 'deal:42:invoice')
+})
+
+test('convertToInvoice sin externalRef manda cuerpo vacío, no un null', async () => {
+  const { client, calls } = clientWith(() => json({ data: { id: 900 } }), { accessToken: 'at-1' })
+
+  // La llamada de siempre: no debe romperse ni cambiar de cuerpo.
+  await client.estimates.convertToInvoice(55, { idempotencyKey: 'estimate:55:invoice' })
+
+  assert.deepEqual(JSON.parse(calls[0].init.body), {})
+})
+
+test('convertToInvoice con externalRef null desvincula a propósito', async () => {
+  const { client, calls } = clientWith(() => json({ data: { id: 900 } }), { accessToken: 'at-1' })
+
+  await client.estimates.convertToInvoice(55, { externalRef: null })
+
+  // Distinto de no mandarlo: el null explícito es «quítale la referencia».
+  assert.deepEqual(JSON.parse(calls[0].init.body), { external_ref: null })
+})

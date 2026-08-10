@@ -16,6 +16,7 @@ export type {
   InvoicesRequest,
   PimiaClientOptions,
   RateLimit,
+  ReadOptions,
   RequestOptions,
   ResourceEnvelope,
   ResponseMeta,
