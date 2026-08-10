@@ -92,6 +92,57 @@ if ($r->meta->idempotentReplay) {
 }
 ```
 
+## Recibir webhooks
+
+`WebhookVerifier` comprueba la firma `PIMIA-WEBHOOK-v1` y te devuelve la
+entrega ya parseada. No reimplementes el HMAC:
+
+```php
+use Pimia\Exception\WebhookVerificationException;
+use Pimia\Webhooks\WebhookEvent;
+use Pimia\Webhooks\WebhookVerifier;
+
+$verifier = new WebhookVerifier(getenv('PIMIA_WEBHOOK_SECRET'));
+
+try {
+    // ⚠️ El cuerpo CRUDO. En Laravel, $request->getContent() — nunca
+    // json_encode($request->all()): Pimia firma los bytes que envía y
+    // reserializar rompe la firma sin que se vea por qué.
+    $hook = $verifier->verify($request->headers->all(), $request->getContent());
+} catch (WebhookVerificationException $e) {
+    return response($e->reason, 400);
+}
+
+// Pimia reintenta: la misma entrega llega con el mismo id.
+if ($yaProcesado($hook->delivery)) {
+    return response('', 200);
+}
+
+match ($hook->event) {
+    WebhookEvent::EstimateAccepted => $facturar($hook->payload['id']),
+    WebhookEvent::InvoicePaid      => $cobrar($hook->payload['id']),
+    default                        => null, // incluye el catálogo futuro
+};
+
+return response('', 200); // responde rápido; el trabajo pesado, a una cola
+```
+
+Los ocho eventos del catálogo están en el enum `WebhookEvent` y sus payloads
+documentados como *array shapes* (PHPStan y Psalm los entienden). Un evento que
+este SDK todavía no conozca **no es un error**: se verifica igual y llega con
+`$hook->event === null` y el nombre crudo en `$hook->eventName`.
+
+Detalles que ahorran un rato:
+
+- El constructor acepta una **lista** de secretos, para rotarlo sin ventana de
+  caída.
+- La ventana anti-replay son 300 s; ajústala con `toleranceSeconds:`.
+- `$e->reason` es legible por máquina (`signature_mismatch`,
+  `timestamp_out_of_window`, `missing_headers`, `invalid_timestamp`,
+  `invalid_json`) para tus métricas.
+- `WebhookVerifier::sign()` firma un cuerpo como lo haría Pimia: úsalo en **tus
+  tests**, no en producción.
+
 ## Más
 
 Documentación completa, modelo mental (un tenant = una base URL = un token),

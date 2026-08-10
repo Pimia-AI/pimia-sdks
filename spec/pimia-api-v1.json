@@ -954,118 +954,10 @@
                 "security": [
                     {
                         "oauth2": [
-                            "approvals:read"
+                            "approvals:write"
                         ]
                     }
                 ]
-            }
-        },
-        "/auth/login": {
-            "post": {
-                "operationId": "auth.login",
-                "tags": [
-                    "Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "type": {
-                                            "type": "string",
-                                            "const": "Bearer"
-                                        },
-                                        "token": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "type",
-                                        "token"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
-                ]
-            }
-        },
-        "/auth/logout": {
-            "post": {
-                "operationId": "auth.logout",
-                "tags": [
-                    "Auth"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "success"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
-                ]
-            }
-        },
-        "/auth/check": {
-            "get": {
-                "operationId": "auth.check",
-                "tags": [
-                    "Auth"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/bank-accounts": {
@@ -1897,6 +1789,7 @@
         "/currencies/bulk-update-exchange-rate": {
             "post": {
                 "operationId": "general.bulkExchangeRate",
+                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Handle the incoming request",
                 "tags": [
                     "BulkExchangeRate"
@@ -1926,12 +1819,9 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "settings:write"
                 ]
             }
         },
@@ -2736,6 +2626,7 @@
             },
             "post": {
                 "operationId": "custom-fields.store",
+                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Store a newly created resource in storage",
                 "tags": [
                     "CustomFields"
@@ -2776,12 +2667,9 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "settings:write"
                 ]
             }
         },
@@ -2832,6 +2720,7 @@
             },
             "put": {
                 "operationId": "custom-fields.update",
+                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Update the specified resource in storage",
                 "tags": [
                     "CustomFields"
@@ -2886,16 +2775,14 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "settings:write"
                 ]
             },
             "delete": {
                 "operationId": "custom-fields.destroy",
+                "description": "**No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Remove the specified resource from storage",
                 "tags": [
                     "CustomFields"
@@ -2937,12 +2824,9 @@
                         "$ref": "#/components/responses/ModelNotFoundException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "settings:write"
                 ]
             }
         },
@@ -5625,6 +5509,7 @@
         "/fiscal-quarters/toggle": {
             "post": {
                 "operationId": "fiscalQuarter.toggle",
+                "description": "**No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Toggle lock state for a quarter",
                 "tags": [
                     "FiscalQuarter"
@@ -5707,68 +5592,9 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "reports:write"
-                        ]
-                    }
-                ]
-            }
-        },
-        "/auth/password/email": {
-            "post": {
-                "operationId": "forgotPassword.sendResetLinkEmail",
-                "description": "La RESPUESTA, en cambio, ya no es la del trait: es SIEMPRE la misma,\nexista el correo o no. Ver `respuestaNeutra()`.",
-                "summary": "Igual que el `sendResetLinkEmail()` del trait, pero con la validaci\u00f3n en\nun FormRequest en vez de en su `validateEmail()` privado: ah\u00ed dentro el\ngenerador del OpenAPI no la ve y este endpoint se publicaba sin cuerpo.\nMismas reglas (`required|email`)",
-                "tags": [
-                    "ForgotPassword"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ForgotPasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Password reset email sent."
-                                        },
-                                        "data": {
-                                            "type": "string",
-                                            "const": "passwords.sent"
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "reports:write"
                 ]
             }
         },
@@ -9444,33 +9270,91 @@
         "/next-number": {
             "get": {
                 "operationId": "general.nextNumber",
-                "summary": "Handle the incoming request",
+                "description": "Calcula al vuelo qu\u00e9 n\u00famero le tocar\u00eda al pr\u00f3ximo documento del tipo pedido, con el\nformato de numeraci\u00f3n configurado por la empresa. Es lo que el panel pinta en el\nformulario antes de guardar.\n\n**No reserva nada y no es determinista.** No consume secuencia: dos llamadas\nseguidas \u2014o dos integradores a la vez\u2014 reciben el MISMO n\u00famero, y quien guarde\nprimero se lo queda; el segundo se estrella contra el `unique` con un `422`.\nEl valor caduca en cuanto alguien crea un documento de ese tipo.\n\n**No lo necesitas para escribir, y usarlo para eso te perjudica.** Desde el\n2026-08-10 ninguna alta exige que el n\u00famero lo pongas t\u00fa: `invoice_number`,\n`estimate_number`, `payment_number` y `received_invoice_number` son opcionales y,\nsi no llegan, los asigna el servidor con este mismo formateador ya dentro de la\ntransacci\u00f3n que escribe. Pedir el n\u00famero aqu\u00ed para reenviarlo en el cuerpo solo\na\u00f1ade una carrera que el servidor no tiene, y de paso rompe la reproducibilidad\ndel cuerpo entre reintentos con `Idempotency-Key` (gu\u00eda del integrador \u00a77).\nSu uso leg\u00edtimo es previsualizar en una interfaz el n\u00famero que le tocar\u00eda al\ndocumento \u2014 para eso lo llama el panel.\n\n**Comprueba `success` antes de leer `nextNumber`.** Un fallo llega con `200` y el\nsobre `{\"success\": false, \"message\": \"...\"}`; desestructurar `nextNumber` a ciegas\ndegrada en silencio a `null`.",
+                "summary": "Siguiente n\u00famero de documento (orientativo, NO lo reserva)",
                 "tags": [
                     "NextNumber"
                 ],
                 "parameters": [
                     {
-                        "name": "invoice_series_id",
+                        "name": "key",
                         "in": "query",
+                        "required": true,
+                        "description": "Tipo de documento cuyo n\u00famero se calcula. Obligatorio: un valor fuera de la lista devuelve `success: false`.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                                "invoice",
+                                "credit_note",
+                                "estimate",
+                                "payment",
+                                "delivery_note",
+                                "received_invoice"
+                            ]
                         }
                     },
                     {
                         "name": "series_id",
                         "in": "query",
+                        "description": "Serie de facturaci\u00f3n a usar (solo `key=invoice`). Sin ella manda la serie por defecto de la empresa. `invoice_series_id` es su alias hist\u00f3rico y solo se mira si `series_id` no viene.",
                         "schema": {
-                            "type": "string"
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "invoice_series_id",
+                        "in": "query",
+                        "description": "Alias hist\u00f3rico de `series_id`. En clientes nuevos usa `series_id`.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "model_id",
+                        "in": "query",
+                        "description": "Id del documento que se est\u00e1 EDITANDO. Con \u00e9l el c\u00e1lculo reutiliza la secuencia que ese documento ya tiene en vez de proponer la siguiente; sin \u00e9l siempre propone la siguiente.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "query",
+                        "description": "Id del cliente, para los formatos de numeraci\u00f3n que llevan su serie o su contador (`{{CUSTOMER_SERIES}}`, `{{CUSTOMER_SEQUENCE}}`). Irrelevante en el resto de formatos.",
+                        "schema": {
+                            "type": "integer"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Siempre `200`, tambi\u00e9n cuando falla: el discriminante es `success`. `nextNumber` es el n\u00famero propuesto (`null` si `success` es `false`) e `isUsed` dice si la empresa ya tiene alg\u00fan documento de ese tipo \u2014 el panel lo usa para saber si el formato de numeraci\u00f3n todav\u00eda se puede cambiar.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "nextNumber": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "isUsed": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "nextNumber",
+                                        "isUsed"
+                                    ]
                                 }
                             }
                         }
@@ -12285,84 +12169,6 @@
                 ]
             }
         },
-        "/auth/reset/password": {
-            "post": {
-                "operationId": "resetPassword.reset",
-                "summary": "Reset the given user's password",
-                "tags": [
-                    "ResetPassword"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "token": {
-                                        "type": "string"
-                                    },
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email"
-                                    },
-                                    "password": {
-                                        "type": "string"
-                                    },
-                                    "password_confirmation": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "token",
-                                    "email",
-                                    "password",
-                                    "password_confirmation"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string",
-                                                    "const": "Password reset successfully."
-                                                }
-                                            },
-                                            "required": [
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:write"
-                        ]
-                    }
-                ]
-            }
-        },
         "/search": {
             "get": {
                 "operationId": "general.search",
@@ -14121,7 +13927,7 @@
         "/tasks/{task}/delegate": {
             "post": {
                 "operationId": "task.delegate",
-                "description": "Reusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
+                "description": "**No disponible para integradores.** Exige `delegation:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.\n\nReusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
                 "summary": "POST tasks/{task}/delegate \u2014 delega esta tarea CRM a su agente Pim",
                 "tags": [
                     "Task"
@@ -14463,13 +14269,10 @@
                         "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "crm:write",
-                            "delegation:write"
-                        ]
-                    }
+                "x-pimia-partner-availability": "owner-only",
+                "x-pimia-required-scopes": [
+                    "crm:write",
+                    "delegation:write"
                 ]
             }
         },
@@ -24615,6 +24418,27 @@
                                 ]
                             }
                         }
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -25490,6 +25314,27 @@
                                             }
                                         }
                                     }
+                                },
+                                "customFields": {
+                                    "type": "array",
+                                    "description": "Valores de campo personalizado DE LA L\u00cdNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta tambi\u00e9n la clave `custom_fields`, la forma hist\u00f3rica del panel.",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer",
+                                                "description": "Id de la definici\u00f3n del campo personalizado."
+                                            },
+                                            "value": {
+                                                "type": "string",
+                                                "description": "Valor a guardar."
+                                            }
+                                        },
+                                        "required": [
+                                            "id",
+                                            "value"
+                                        ]
+                                    }
                                 }
                             },
                             "required": [
@@ -25541,6 +25386,27 @@
                             "boolean",
                             "null"
                         ]
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -25662,6 +25528,17 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 20000 kilobytes."
+                    },
+                    "customFields": {
+                        "type": "string",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso. En `multipart/form-data` viaja como cadena JSON: `[{\"id\":3,\"value\":\"REF-42\"}]`."
+                    },
+                    "is_attachment_receipt_removed": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "description": "Borra el recibo adjunto del gasto. Solo surte efecto en la actualizaci\u00f3n; en `multipart/form-data` viaja como `1` o `0`."
                     }
                 },
                 "required": [
@@ -25782,21 +25659,6 @@
                     "payment_method_id"
                 ],
                 "title": "ExpenseResource"
-            },
-            "ForgotPasswordRequest": {
-                "type": "object",
-                "description": "Env\u00edo del enlace de restablecimiento (`POST /auth/password/email`).\n\nMismas reglas que el `validateEmail()` del trait\n`Illuminate\\Foundation\\Auth\\SendsPasswordResetEmails` (laravel/ui), palabra\npor palabra. Estaban ah\u00ed dentro y por eso el OpenAPI publicaba este endpoint\nsin cuerpo: el generador solo mira la acci\u00f3n del controlador, y la acci\u00f3n\nven\u00eda entera del trait.",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "description": "Correo de la cuenta. La respuesta no distingue si existe o no."
-                    }
-                },
-                "required": [
-                    "email"
-                ],
-                "title": "ForgotPasswordRequest"
             },
             "InvestmentAssetResource": {
                 "type": "object",
@@ -26723,6 +26585,27 @@
                                             }
                                         }
                                     }
+                                },
+                                "customFields": {
+                                    "type": "array",
+                                    "description": "Valores de campo personalizado DE LA L\u00cdNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta tambi\u00e9n la clave `custom_fields`, la forma hist\u00f3rica del panel.",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer",
+                                                "description": "Id de la definici\u00f3n del campo personalizado."
+                                            },
+                                            "value": {
+                                                "type": "string",
+                                                "description": "Valor a guardar."
+                                            }
+                                        },
+                                        "required": [
+                                            "id",
+                                            "value"
+                                        ]
+                                    }
                                 }
                             },
                             "required": [
@@ -26774,6 +26657,27 @@
                             "boolean",
                             "null"
                         ]
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -27074,6 +26978,13 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "opening_stock": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Existencias iniciales del art\u00edculo. En el alta se guarda 0 si no llega; en la actualizaci\u00f3n se conserva el valor que ya ten\u00eda."
                     }
                 },
                 "required": [
@@ -27451,26 +27362,6 @@
                 ],
                 "title": "LeadResource"
             },
-            "LoginRequest": {
-                "type": "object",
-                "properties": {
-                    "username": {
-                        "type": "string"
-                    },
-                    "password": {
-                        "type": "string"
-                    },
-                    "device_name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "username",
-                    "password",
-                    "device_name"
-                ],
-                "title": "LoginRequest"
-            },
             "Note": {
                 "type": "object",
                 "properties": {
@@ -27590,7 +27481,11 @@
                         "type": "number"
                     },
                     "payment_number": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=payment, que es\nde donde lo saca el panel. Exigirlo obligaba a un cliente de la API a\nreplicar el formato de numeraci\u00f3n de la empresa, y encima a congelar el\ncuerpo entre reintentos: `next-number` no reserva nada, as\u00ed que pedirlo\ndos veces puede dar dos n\u00fameros distintos y el reintento con la misma\nIdempotency-Key rebotaba con 422 por \u00abcuerpo distinto\u00bb.\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): el pago ya tiene uno."
                     },
                     "invoice_id": {
                         "type": [
@@ -27609,13 +27504,33 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
+                        }
                     }
                 },
                 "required": [
                     "payment_date",
                     "customer_id",
-                    "amount",
-                    "payment_number"
+                    "amount"
                 ],
                 "title": "PaymentRequest"
             },
@@ -28086,7 +28001,11 @@
                         "type": "string"
                     },
                     "received_invoice_number": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=received_invoice,\nque es de donde lo saca el panel. Es el n\u00famero del LIBRO DE RECIBIDAS \u2014el\ndel proveedor va en `reference_number`\u2014, as\u00ed que numerarlo es cosa nuestra,\nno del cliente de la API: exigirlo le obligaba a replicar el formato de la\nempresa y a congelar el cuerpo entre reintentos (`next-number` no reserva,\ndos llamadas pueden dar n\u00fameros distintos y la misma Idempotency-Key\nrebotaba con 422 por \u00abcuerpo distinto\u00bb).\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): la factura ya tiene uno."
                     },
                     "exchange_rate": {
                         "type": [
@@ -28162,7 +28081,6 @@
                 "required": [
                     "received_invoice_date",
                     "supplier_id",
-                    "received_invoice_number",
                     "discount",
                     "discount_val",
                     "sub_total",
@@ -28535,6 +28453,27 @@
                             "boolean",
                             "null"
                         ]
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -29311,6 +29250,27 @@
                                     "null"
                                 ]
                             }
+                        }
+                    },
+                    "customFields": {
+                        "type": "array",
+                        "description": "Valores de campo personalizado del recurso. `id` es el de la definici\u00f3n, que se descubre en `GET /custom-fields` (cat\u00e1logo `meta`, legible con cualquier token); las definiciones las crea el due\u00f1o del tenant desde su panel. Se devuelven en la clave `fields` del recurso.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "description": "Id de la definici\u00f3n del campo personalizado."
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Valor a guardar."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "value"
+                            ]
                         }
                     }
                 },

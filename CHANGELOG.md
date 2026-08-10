@@ -10,6 +10,129 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
+## [0.3.0] — 2026-08-10
+
+La versión de los **webhooks**. Cierra la carencia que más código imponía a
+cada integrador: hasta ahora el SDK no traía ni verificador de firma ni tipos
+de payload —el spec declaraba `webhooks = Record<string, never>`—, así que
+todo el que recibía eventos reescribía las mismas ~28 líneas de HMAC y
+adivinaba la forma de lo que le llegaba.
+
+`@pimia/design-tokens` se publica en 0.3.0 **sin cambio alguno**: los paquetes
+de este monorepo versionan en bloque.
+
+### Añadido
+
+- **Verificador de webhooks y tipos de los 8 eventos del catálogo**, en los dos
+  SDKs. Un receptor completo pasa a ser esto:
+
+  ```ts
+  import { verifyWebhook, WebhookVerificationError } from '@pimia/sdk'
+
+  // OJO: express.raw(), no express.json() — ver más abajo.
+  app.post('/pimia', express.raw({ type: 'application/json' }), async (req, res) => {
+    let hook
+    try {
+      hook = await verifyWebhook({ secret: SECRET, headers: req.headers, body: req.body })
+    } catch (error) {
+      return res.status(400).send((error as WebhookVerificationError).reason)
+    }
+
+    if (hook.known && hook.event === 'estimate.accepted') {
+      await facturar(hook.payload.id) // payload tipado, sin castings
+    }
+
+    res.sendStatus(200)
+  })
+  ```
+  ```php
+  $verifier = new Pimia\Webhooks\WebhookVerifier($secret);
+  $hook = $verifier->verify($request->headers->all(), $request->getContent());
+
+  match ($hook->event) {
+      WebhookEvent::EstimateAccepted => $facturar($hook->payload['id']),
+      default => null,
+  };
+  ```
+
+  Comprueba, en este orden: las cuatro cabeceras
+  (`x-pimia-signature`/`-timestamp`/`-event`/`-delivery`), que el timestamp esté
+  dentro de la ventana anti-replay (300 s, configurable), que el HMAC-SHA256 del
+  canónico `PIMIA-WEBHOOK-v1` cuadre —comparación en **tiempo constante**— y que
+  el cuerpo sea JSON. Cada fallo llega con un `reason` legible por máquina
+  (`signature_mismatch`, `timestamp_out_of_window`…): distinguir «me están
+  atacando» de «tengo el reloj mal» importa para tus métricas.
+
+  Tres decisiones que conviene conocer:
+
+  - **Se firman los BYTES recibidos, no el objeto.** Parsear y volver a
+    serializar da un objeto equivalente y otros bytes, y la firma deja de
+    cuadrar sin que se vea por qué. Es la trampa número uno de estas
+    integraciones, y hay un test dedicado a ella.
+  - **Un evento que el SDK no conozca no es un error.** El catálogo del servidor
+    puede crecer sin que actualices: la firma se verifica igual y la entrega
+    llega con `known: false` (TS) o `event === null` (PHP). Con `known: true`, el
+    `switch` sobre `event` narra al payload exacto de cada uno de los ocho.
+  - **La deduplicación es tuya y el SDK no la finge.** Pimia reintenta hasta
+    cinco veces; `delivery` es el mismo en todas y es tu clave de idempotencia.
+
+  `secret` acepta también una **lista**, para rotar el secreto sin ventana de
+  caída. Y se incluye `signWebhook()` / `WebhookVerifier::sign()` para que
+  puedas testear tu receptor sin reimplementar el HMAC — que es justo lo que
+  este módulo viene a evitar.
+
+  Los payloads están tipados contra los emisores reales del core, no supuestos.
+  Ojo con dos asimetrías que el tipo refleja tal cual: `invoice.received` no
+  castea `id`, `sequence_number` ni `currency_id` en origen (llegan como número
+  **o** cadena), y `invoice.paid` puede traer `due_amount` **negativo** si hubo
+  sobrepago.
+
+- **`estimates.convertToInvoice(id, { idempotencyKey })`** en los dos SDKs. Era
+  el helper que faltaba para cerrar el bucle `estimate.accepted` → facturar, y
+  obligaba a ir por ruta cruda. Documenta de paso dos cosas que el spec no dice:
+  la factura nace **borrador y sin numerar** (`data.invoice_number` es `null`
+  hasta que la publiques) y el id de la nueva factura está en `data.id` — el
+  `r?.data?.id ?? r?.id` defensivo que circula por ahí tiene la segunda rama
+  muerta.
+
+### Cambiado
+
+- **Los helpers tipados devuelven tipos del OpenAPI en vez de `unknown`.**
+  `invoices`, `customers` y `estimates` (`list`, `get`, `create`, `update`)
+  atan su respuesta a la operación correspondiente del spec, y sus cuerpos de
+  escritura a `InvoicesRequest` / `CustomerRequest` / `EstimatesRequest` — que
+  desde el spec de hoy **ya incluyen `customFields`**. Se exportan además
+  `InvoiceResource`, `CustomerResource`, `EstimateResource` y los tres tipos de
+  petición.
+
+  Es un cambio **incompatible** si pasabas cuerpos que no encajan con el
+  contrato: en 0.x los minors pueden romper. El escape sigue ahí — `client.post()`
+  crudo no tipa nada.
+
+  Cuatro de esas respuestas (`POST /invoices`, `PUT /invoices/{id}`,
+  `PUT /customers/{id}`, `convert-to-invoice`) usan un `ResourceEnvelope<T>`
+  declarado a mano en vez del tipo generado: su `200` sale del generador como
+  objeto **vacío**, y `Record<string, never>` afirmaría que la respuesta no
+  tiene propiedades, escondiendo el `data`. La forma está verificada contra los
+  controladores del core.
+
+- **El spec se regenera desde `origin/main` del core.** Entra la oleada 1 del
+  plan de integradores: `customFields` declarado en las nueve escrituras que lo
+  aceptan (incluida la forma por línea de `InvoiceItem`/`EstimateItem`),
+  `payment_number` y `received_invoice_number` **opcionales** —los genera el
+  servidor, como ya pasaba con `estimate_number`—, el contrato de
+  `GET /next-number` saneado (parámetro `key` documentado y respuesta
+  `{success, nextNumber, isUsed}` tipada, con el aviso de que no reserva nada
+  ni es determinista) y las operaciones con scopes inconcedibles marcadas como
+  no disponibles para integradores.
+
+- **El starter kit deja de enseñar el apaño de `next-number`.** Pedía el número
+  antes de crear el presupuesto y lo mandaba en el cuerpo: eso añadía una
+  carrera que el servidor no tiene y rompía la reproducibilidad del cuerpo entre
+  reintentos con `Idempotency-Key`. Ahora manda solo lo que decide él —cliente,
+  fechas y líneas— y deja que el servidor numere y recomponga los totales. El
+  cuerpo del ejemplo pasa de 20 campos a 4.
+
 ## [0.2.0] — 2026-08-09
 
 Todo lo de esta versión es **aditivo**: nada de lo que funcionaba en 0.1.0

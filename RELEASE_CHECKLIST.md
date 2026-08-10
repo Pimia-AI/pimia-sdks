@@ -9,14 +9,39 @@ de primera clase (`idempotencyKey` + `requestWithMeta`) y siete operaciones que
 el spec no reflejaba. Todo aditivo. `@pimia/design-tokens` va a 0.2.0 **sin
 cambios**: el versionado es en bloque y el tag arrastra a los tres paquetes.
 
+**v0.3.0 — 2026-08-10 (preparada, SIN publicar)**: verificador de webhooks y
+tipos de los ocho eventos del catálogo en los dos SDKs,
+`estimates.convertToInvoice`, helpers que devuelven tipos del OpenAPI, y el
+spec regenerado con la oleada 1 del plan de integradores. Es la primera
+versión con un **cambio incompatible**: los cuerpos de escritura de
+`invoices`/`customers`/`estimates` pasan de `unknown` a los tipos del spec.
+
+Verificada antes de tagear: TypeScript 45/45 y build estricto; PHP 54/54 en
+**8.2, 8.3 y 8.4** —la matriz entera de la CI, en Hetzner dev, con los ficheros
+comprobados por `sha256sum` contra los locales para no estar probando otra
+cosa—; starter compilado con las dos pieles; y la guarda de deriva
+spec↔`api.ts` en verde. Nota para la próxima: las imágenes `php:X-cli` vienen
+sin `unzip` y `composer install` muere con «The zip extension and unzip/7z
+commands are both missing» — hay que instalarlo antes.
+
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
 
-**Sin deuda abierta.** El ciclo está cerrado de punta a punta: un tag publica
-en npm, regenera el espejo y Packagist lo recoge solo (hook activo sobre
-`Pimia-AI/pimia-php`, evento `push`). El fix del job de split está mergeado
-([#6](https://github.com/Pimia-AI/pimia-sdks/pull/6)) — hizo falta porque la
-v0.1.0 del espejo se sincronizó **a mano**.
+> ## 🚨 BLOQUEO ACTIVO ANTES DE PUBLICAR LA 0.3.0
+>
+> **`SPLIT_PUSH_TOKEN` está caducado.** El job del espejo PHP falla con `403` y
+> la v0.2.0 hubo que rescatarla empujando el subtree a mano (receta más abajo).
+> El PAT solo lo puede regenerar Pablo:
+> github.com/settings/personal-access-tokens → fine-grained, *Contents: read
+> and write* sobre `Pimia-AI/pimia-php`.
+>
+> **No tagees hasta que el secret esté renovado.** Si se tagea con el token
+> muerto, npm publica y el espejo no, y entonces ya no se puede rehacer el tag
+> (ver el aviso de abajo): quedaría Packagist una versión por detrás de npm
+> hasta el siguiente release.
+>
+> Comprobación rápida de que el espejo quedó bien tras publicar:
+> `curl -s https://repo.packagist.org/p2/pimia/pimia-php.json | grep -o '"version":"v0.3.0"'`
 
 ## Runbook del próximo release
 
@@ -26,6 +51,13 @@ v0.1.0 del espejo se sincronizó **a mano**.
 2. Con `main` verde: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 3. El workflow publica los dos paquetes de npm y regenera el espejo PHP con
    su tag. Packagist lo recoge solo, si la GitHub App está puesta.
+4. **Después de publicar**, subir las dependencias `@pimia/*` de
+   `examples/starter-vertical/package.json` a la versión recién publicada, en
+   un commit aparte. Van una detrás a propósito: el job `starter` de la CI
+   instala **desde npm** antes de compilar, así que declarar una versión que
+   todavía no existe pondría la CI en rojo justo en la PR del release. Hoy
+   siguen en `^0.1.0` —se olvidó en la 0.2.0— y eso significa que un partner
+   que copie el starter se lleva un SDK que no compila con su código.
 
 **⚠️ Un tag solo se puede mover mientras no se haya publicado NADA.** En
 cuanto npm acepte el primer paquete, un fallo posterior se arregla subiendo
@@ -61,10 +93,11 @@ no dice «tu token expiró» — mirar aquí primero.
 ## Split manual del espejo PHP (si el job falla o no hay `SPLIT_PUSH_TOKEN`)
 
 ```bash
+VERSION=v0.3.0
 git branch -D split/php 2>/dev/null
 git subtree split --prefix=php -b split/php
 git push --force git@github.com:Pimia-AI/pimia-php.git split/php:main
-git push --force git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/v0.1.0
+git push --force git@github.com:Pimia-AI/pimia-php.git split/php:refs/tags/$VERSION
 ```
 
 ## Conectar Packagist con GitHub (si algún día hay que rehacerlo)

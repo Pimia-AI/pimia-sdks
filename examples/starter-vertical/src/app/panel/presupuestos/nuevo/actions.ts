@@ -10,6 +10,22 @@
  *  - **la validación es del servidor**. Un `422` trae los errores por campo en
  *    `error.errors`: enséñalos, no los tragues. Y un `403` significa que tu app
  *    no pidió `estimates:write`.
+ *
+ * **Manda solo lo que decides tú.** El cuerpo de este ejemplo era el triple de
+ * largo porque replicaba lo que envía el panel. Ya no hace falta, y esas dos
+ * lecciones costaron un bug cada una:
+ *
+ *  - `estimate_number` es **opcional** desde el 2026-08-06: si no llega, lo
+ *    asigna el servidor con el mismo formateador que usa el panel, ya dentro de
+ *    la transacción que escribe. Pedirlo antes con `GET /next-number` —como
+ *    hacía este ejemplo— solo añadía una carrera que el servidor no tiene: ese
+ *    endpoint no reserva nada y dos llamadas seguidas devuelven el mismo
+ *    número, así que el segundo en guardar se comía un `422`. Sirve para
+ *    previsualizar en una interfaz, no para escribir;
+ *  - `sub_total`, `tax` y `total` los **recompone el servidor** desde las
+ *    líneas, y `discount`/`discount_val` se rellenan solos. Por línea, igual
+ *    con `discount_val`, `tax` y `total`. Enviarlos es fabricar un checksum
+ *    contra ti mismo.
  */
 
 import { redirect } from 'next/navigation'
@@ -24,34 +40,6 @@ function toCents(raw: string): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null
 
   return Math.round(Number(normalized) * 100)
-}
-
-/**
- * El número de documento lo decide PIMIA, no tú: la numeración es correlativa
- * por empresa y con formato configurable (requisito legal). Pero al crear un
- * presupuesto hay que MANDARLO, así que primero se pide:
- *
- *   GET /next-number?key=estimate  →  { nextNumber: "PRE-000130" }
- *
- * `next-number` vive en el dominio `meta`, que cualquier token puede leer: no
- * hace falta un scope extra. Claves disponibles: invoice, credit_note,
- * estimate, payment, delivery_note.
- *
- * Ojo con la carrera: entre pedir el número y crear el documento, otro cliente
- * puede haber usado ese hueco — el número es único por empresa y la API
- * responderá 422. Pídelo justo antes de crear y reintenta si choca.
- */
-async function nextNumber(
-  pimia: Awaited<ReturnType<typeof requireClient>>['pimia'],
-  key: 'estimate' | 'invoice',
-): Promise<string> {
-  const response = (await pimia.get('/next-number', { key })) as { nextNumber?: string }
-
-  if (!response?.nextNumber) {
-    throw new Error('Pimia no devolvió el siguiente número de documento.')
-  }
-
-  return response.nextNumber
 }
 
 export async function presupuestar(formData: FormData): Promise<never> {
@@ -69,41 +57,27 @@ export async function presupuestar(formData: FormData): Promise<never> {
   const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
 
   try {
-    const created = (await pimia.estimates.create({
+    const created = await pimia.estimates.create({
       // Si tu tenant tiene VARIAS empresas, manda también la cabecera
       // `company` (el SDK admite `headers`): sin ella la API usa la primera
       // empresa del usuario, que puede no ser la que quieres.
-      estimate_number: await nextNumber(pimia, 'estimate'),
       customer_id: customerId,
       estimate_date: today,
       expiry_date: expiry,
-      sub_total: cents,
-      total: cents,
-      tax: 0,
-      discount: '0',
-      discount_val: 0,
-      discount_type: 'fixed',
       items: [
         {
           name: descripcion.slice(0, 100),
           description: descripcion,
           quantity: 1,
           price: cents,
-          total: cents,
-          // ⚠️ La validación de la API NO exige estos tres campos, pero el
-          // servidor los lee al crear la línea: sin ellos responde 500 en vez
-          // de 422 (verificado contra dev el 2026-07-30). Mándalos siempre,
-          // aunque no apliques descuento.
-          discount: '0',
-          discount_type: 'fixed',
-          discount_val: 0,
         },
       ],
-    })) as { data?: { id?: number } }
+    })
 
     // Al detalle del recién creado: ahí viven los siguientes pasos del ciclo
-    // (marcarlo como enviado, convertirlo en factura…).
-    const nuevoId = created?.data?.id
+    // (marcarlo como enviado, convertirlo en factura…). El `data.id` ya viene
+    // tipado del spec: sin castings ni `?? r?.id` defensivos.
+    const nuevoId = created.data.id
 
     redirect(nuevoId ? `/panel/presupuestos/${nuevoId}?ok=creado` : '/panel/presupuestos')
   } catch (error) {

@@ -14,6 +14,7 @@
  *  - **errores tipados**: MissingScopeError trae el scope exacto que falta.
  */
 
+import type { components, operations } from './api.js'
 import {
   NotAuthenticatedError,
   OAuthError,
@@ -23,6 +24,55 @@ import {
 } from './errors.js'
 import { OAuth, type OAuthConfig } from './oauth.js'
 import { isExpired, type TokenSet, type TokenStore } from './tokens.js'
+
+type Schemas = components['schemas']
+
+/** Cliente tal y como lo devuelve la API. */
+export type CustomerResource = Schemas['CustomerResource']
+/** Factura tal y como la devuelve la API. */
+export type InvoiceResource = Schemas['InvoiceResource']
+/** Presupuesto tal y como lo devuelve la API. */
+export type EstimateResource = Schemas['EstimateResource']
+
+/** Cuerpo de alta/edición de cliente. Incluye `customFields`. */
+export type CustomerRequest = Schemas['CustomerRequest']
+/** Cuerpo de alta/edición de factura. Incluye `customFields`. */
+export type InvoicesRequest = Schemas['InvoicesRequest']
+/** Cuerpo de alta/edición de presupuesto. Incluye `customFields`. */
+export type EstimatesRequest = Schemas['EstimatesRequest']
+
+/**
+ * El cuerpo JSON del `200` de una operación, sacado del OpenAPI.
+ *
+ * Atarlo al spec y no escribirlo a mano es lo que hace que un cambio de
+ * contrato aparezca al regenerar los tipos en vez de en producción.
+ */
+type Ok<O extends keyof operations> = operations[O] extends {
+  responses: { 200: { content: { 'application/json': infer Body } } }
+}
+  ? Body
+  : never
+
+/**
+ * El sobre `{ data: … }` de Laravel para las escrituras que el spec **no
+ * tipa**.
+ *
+ * Hay 17 operaciones cuyo `200` sale del generador como objeto vacío, y entre
+ * ellas están `POST /invoices`, `PUT /invoices/{id}`, `PUT /customers/{id}` y
+ * `POST /estimates/{id}/convert-to-invoice`. Usar ahí el tipo generado sería
+ * peor que no tipar: `Record<string, never>` afirma que la respuesta **no
+ * tiene propiedades**, y el `data` real desaparecería del autocompletado.
+ *
+ * Así que el sobre se declara aquí y el recurso de dentro sí sale del spec.
+ * Está verificado contra los controladores del core, no supuesto: los cuatro
+ * devuelven `new XResource($modelo)` con el envoltorio `data` de Laravel
+ * activo. La causa del hueco es del generador —un `@return JsonResponse`
+ * heredado que le gana a la inferencia—, no del contrato; cuando se arregle
+ * en el core, estos tipos pasarán a salir de `Ok<…>` como los demás.
+ */
+export interface ResourceEnvelope<T> {
+  data: T
+}
 
 export interface PimiaClientOptions extends OAuthConfig {
   tokens: TokenStore
@@ -127,29 +177,67 @@ export class PimiaClient {
 
   get invoices() {
     return {
-      list: (query?: RequestOptions['query']) => this.get('/invoices', query),
-      get: (id: number | string) => this.get(`/invoices/${id}`),
-      create: (body: unknown, options?: WriteOptions) => this.post('/invoices', body, options),
-      update: (id: number | string, body: unknown, options?: WriteOptions) =>
-        this.put(`/invoices/${id}`, body, options),
+      list: (query?: RequestOptions['query']) => this.get<Ok<'invoices.index'>>('/invoices', query),
+      get: (id: number | string) => this.get<Ok<'invoices.show'>>(`/invoices/${id}`),
+      /**
+       * Devuelve `{ data: InvoiceResource }`. El tipo NO sale del spec: el
+       * `200` de `invoices.store` está vacío ahí (ver {@link ResourceEnvelope}).
+       */
+      create: (body: InvoicesRequest, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<InvoiceResource>>('/invoices', body, options),
+      /** Mismo caso que `create`: el `200` de `invoices.update` no está tipado en el spec. */
+      update: (id: number | string, body: InvoicesRequest, options?: WriteOptions) =>
+        this.put<ResourceEnvelope<InvoiceResource>>(`/invoices/${id}`, body, options),
     }
   }
 
   get customers() {
     return {
-      list: (query?: RequestOptions['query']) => this.get('/customers', query),
-      get: (id: number | string) => this.get(`/customers/${id}`),
-      create: (body: unknown, options?: WriteOptions) => this.post('/customers', body, options),
-      update: (id: number | string, body: unknown, options?: WriteOptions) =>
-        this.put(`/customers/${id}`, body, options),
+      list: (query?: RequestOptions['query']) =>
+        this.get<Ok<'customers.index'>>('/customers', query),
+      get: (id: number | string) => this.get<Ok<'customers.show'>>(`/customers/${id}`),
+      create: (body: CustomerRequest, options?: WriteOptions) =>
+        this.post<Ok<'customers.store'>>('/customers', body, options),
+      /** El `200` de `customers.update` no está tipado en el spec. */
+      update: (id: number | string, body: CustomerRequest, options?: WriteOptions) =>
+        this.put<ResourceEnvelope<CustomerResource>>(`/customers/${id}`, body, options),
     }
   }
 
   get estimates() {
     return {
-      list: (query?: RequestOptions['query']) => this.get('/estimates', query),
-      get: (id: number | string) => this.get(`/estimates/${id}`),
-      create: (body: unknown, options?: WriteOptions) => this.post('/estimates', body, options),
+      list: (query?: RequestOptions['query']) =>
+        this.get<Ok<'estimates.index'>>('/estimates', query),
+      get: (id: number | string) => this.get<Ok<'estimates.show'>>(`/estimates/${id}`),
+      create: (body: EstimatesRequest, options?: WriteOptions) =>
+        this.post<Ok<'estimates.store'>>('/estimates', body, options),
+
+      /**
+       * Convierte un presupuesto aceptado en factura.
+       *
+       * El helper existe porque es el cierre natural del bucle
+       * `estimate.accepted` → facturar, y sin él hay que ir por ruta cruda y
+       * adivinar la forma de la respuesta.
+       *
+       * Dos cosas que conviene saber y que el spec no dice:
+       *
+       *  - **la factura nace BORRADOR y sin numerar**: `data.invoice_number` es
+       *    `null` hasta que la publiques cambiando su estado. No es un fallo;
+       *  - el id de la factura nueva está en `data.id`. El `r?.data?.id ?? r?.id`
+       *    defensivo que se ve por ahí sobra: la segunda rama nunca ocurre.
+       *
+       * Manda `idempotencyKey` —una clave estable por presupuesto, del estilo
+       * `estimate:{id}:invoice`— y el reintento tras un timeout no te creará
+       * una segunda factura.
+       *
+       * Exige `estimates:write` **e** `invoices:write`.
+       */
+      convertToInvoice: (id: number | string, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<InvoiceResource>>(
+          `/estimates/${id}/convert-to-invoice`,
+          {},
+          options,
+        ),
     }
   }
 

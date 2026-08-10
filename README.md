@@ -193,6 +193,35 @@ autorización al usuario. Es el caso normal cuando el usuario retira el acceso
 desde Ajustes → Apps conectadas; la causa original (p. ej. `invalid_grant` del
 token endpoint) queda en `error.cause` / `$e->getPrevious()` para diagnosticar.
 
+## Recibir webhooks
+
+Pimia avisa a tu app cuando pasa algo en el tenant. Los dos SDKs traen el
+verificador de la firma `PIMIA-WEBHOOK-v1` y los tipos de los ocho eventos del
+catálogo, así que no hay que reimplementar el HMAC ni adivinar el payload:
+
+```ts
+const hook = await verifyWebhook({ secret, headers: req.headers, body: req.body })
+if (hook.known && hook.event === 'invoice.paid') cobrar(hook.payload.id)
+```
+```php
+$hook = (new WebhookVerifier($secret))->verify($request->headers->all(), $request->getContent());
+```
+
+Tres cosas que no son obvias y cuestan un incidente cada una:
+
+1. **Se firman los BYTES que llegan.** `express.raw()` / `$request->getContent()`,
+   nunca el objeto reparseado: mismo contenido, otros bytes, firma rota.
+2. **Deduplica por `delivery`.** Pimia reintenta hasta cinco veces con backoff y
+   la misma entrega llega con el mismo id: procesarlo una sola vez es todo el
+   exactly-once que hace falta.
+3. **Responde 2xx rápido.** El trabajo pesado, a una cola; un receptor lento
+   acaba desactivado tras 20 entregas muertas seguidas.
+
+Los eventos: `approval.decided`, `invoice.received`, `app.revoked`,
+`customer.created`, `customer.updated`, `invoice.created`, `estimate.accepted`
+e `invoice.paid`. Detalle por lenguaje en los README de
+[typescript/](typescript/README.md#recibir-webhooks) y [php/](php/README.md#recibir-webhooks).
+
 ## El contrato
 
 [`spec/pimia-api-v1.json`](spec/pimia-api-v1.json) es el OpenAPI 3.1 de la
@@ -220,13 +249,17 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**v0.1.0, publicada el 2026-08-01** en npm (`@pimia/sdk`,
+**v0.2.0, publicada el 2026-08-09** en npm (`@pimia/sdk`,
 `@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). El núcleo OAuth, el
-cliente y los tipos están completos y con tests; los helpers de dominio
-cubren facturas, clientes y presupuestos — para el resto,
+cliente, la idempotencia y los tipos están completos y con tests; los helpers
+de dominio cubren facturas, clientes y presupuestos — para el resto,
 `client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
-workflow de release, que publica los tres artefactos. Pendiente de código:
-ampliar helpers, DTOs de PHP generados del spec y webhooks cuando existan.
+workflow de release, que publica los tres artefactos.
+
+**v0.3.0 en preparación**: verificador de webhooks y tipos de los ocho eventos
+en los dos SDKs, `estimates.convertToInvoice`, y helpers que devuelven tipos
+del OpenAPI en vez de `unknown`. Pendiente de código: ampliar helpers al resto
+del dominio y DTOs de PHP generados del spec.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,

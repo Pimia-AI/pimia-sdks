@@ -8,9 +8,16 @@
 
 export { PimiaClient } from './client.js'
 export type {
+  CustomerRequest,
+  CustomerResource,
+  EstimateResource,
+  EstimatesRequest,
+  InvoiceResource,
+  InvoicesRequest,
   PimiaClientOptions,
   RateLimit,
   RequestOptions,
+  ResourceEnvelope,
   ResponseMeta,
   ResponseWithMeta,
   WriteOptions,
@@ -39,6 +46,37 @@ export {
   UnauthorizedError,
   ValidationError,
 } from './errors.js'
+
+export {
+  WEBHOOK_DEFAULT_TOLERANCE_SECONDS,
+  WEBHOOK_EVENTS,
+  WEBHOOK_HEADERS,
+  WEBHOOK_SIGNATURE_VERSION,
+  WebhookVerificationError,
+  isWebhookEvent,
+  signWebhook,
+  verifyWebhook,
+} from './webhooks.js'
+export type {
+  ApprovalDecidedPayload,
+  AppRevokedPayload,
+  CustomerPayload,
+  EstimateAcceptedPayload,
+  InvoiceCreatedPayload,
+  InvoicePaidPayload,
+  InvoiceReceivedPayload,
+  IsoDateTime,
+  KnownWebhook,
+  PimiaWebhook,
+  SignWebhookOptions,
+  UnknownWebhook,
+  VerifyWebhookOptions,
+  WebhookBodyInput,
+  WebhookEvent,
+  WebhookHeadersInput,
+  WebhookPayloads,
+  WebhookVerificationReason,
+} from './webhooks.js'
 
 /** Scopes granulares del catálogo de Pimia (paso 4). Pide siempre lo mínimo. */
 export const SCOPES = {
