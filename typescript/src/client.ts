@@ -146,6 +146,20 @@ export type WriteOptions = Pick<
   'headers' | 'query' | 'signal' | 'idempotencyKey'
 >
 
+/**
+ * Lo que se puede afinar en una lectura (`get`/`delete` y los atajos de
+ * recurso).
+ *
+ * Sin `idempotencyKey`, que no significa nada en una lectura, y sin `query`,
+ * que en `get()` ya es un parámetro propio.
+ *
+ * Existe sobre todo por `signal`: hasta la 0.4 los atajos de lectura no
+ * aceptaban opciones, así que ponerle un timeout a un GET obligaba a bajar a
+ * `request()` — o a quedarse sin él, que es lo que pasa de verdad. Un cliente
+ * que sondea y se cuelga en una lectura deja de sondear sin dar un solo error.
+ */
+export type ReadOptions = Pick<RequestOptions, 'headers' | 'signal'>
+
 export class PimiaClient {
   readonly oauth: OAuth
   private readonly baseUrl: string
@@ -177,8 +191,10 @@ export class PimiaClient {
 
   get invoices() {
     return {
-      list: (query?: RequestOptions['query']) => this.get<Ok<'invoices.index'>>('/invoices', query),
-      get: (id: number | string) => this.get<Ok<'invoices.show'>>(`/invoices/${id}`),
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'invoices.index'>>('/invoices', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'invoices.show'>>(`/invoices/${id}`, undefined, options),
       /**
        * Devuelve `{ data: InvoiceResource }`. El tipo NO sale del spec: el
        * `200` de `invoices.store` está vacío ahí (ver {@link ResourceEnvelope}).
@@ -193,9 +209,10 @@ export class PimiaClient {
 
   get customers() {
     return {
-      list: (query?: RequestOptions['query']) =>
-        this.get<Ok<'customers.index'>>('/customers', query),
-      get: (id: number | string) => this.get<Ok<'customers.show'>>(`/customers/${id}`),
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'customers.index'>>('/customers', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'customers.show'>>(`/customers/${id}`, undefined, options),
       create: (body: CustomerRequest, options?: WriteOptions) =>
         this.post<Ok<'customers.store'>>('/customers', body, options),
       /** El `200` de `customers.update` no está tipado en el spec. */
@@ -206,9 +223,10 @@ export class PimiaClient {
 
   get estimates() {
     return {
-      list: (query?: RequestOptions['query']) =>
-        this.get<Ok<'estimates.index'>>('/estimates', query),
-      get: (id: number | string) => this.get<Ok<'estimates.show'>>(`/estimates/${id}`),
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'estimates.index'>>('/estimates', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'estimates.show'>>(`/estimates/${id}`, undefined, options),
       create: (body: EstimatesRequest, options?: WriteOptions) =>
         this.post<Ok<'estimates.store'>>('/estimates', body, options),
 
@@ -230,19 +248,45 @@ export class PimiaClient {
        * `estimate:{id}:invoice`— y el reintento tras un timeout no te creará
        * una segunda factura.
        *
+       * Y manda `externalRef` si la venta nació en tu sistema: es lo que hace
+       * que `invoice.created` e `invoice.paid` te lleguen con tu referencia en
+       * vez de con `null`. **Tiene que ir aquí, en la conversión**; etiquetar
+       * después con `PUT /invoices/{id}` llega tarde por dos motivos: para
+       * entonces `invoice.created` ya salió con la referencia nula, y entre las
+       * dos llamadas hay una ventana en la que la factura existe y no la
+       * encuentras por tu referencia.
+       *
+       * Va como opción y no como segundo parámetro para no romperle la llamada
+       * a quien ya hace `convertToInvoice(id, { idempotencyKey })`: el cuerpo lo
+       * monta el atajo, y `external_ref` es además el único campo que el
+       * endpoint acepta.
+       *
        * Exige `estimates:write` **e** `invoices:write`.
        */
-      convertToInvoice: (id: number | string, options?: WriteOptions) =>
-        this.post<ResourceEnvelope<InvoiceResource>>(
+      convertToInvoice: (
+        id: number | string,
+        options?: WriteOptions & { externalRef?: string | null },
+      ) => {
+        const { externalRef, ...resto } = options ?? {}
+
+        return this.post<ResourceEnvelope<InvoiceResource>>(
           `/estimates/${id}/convert-to-invoice`,
-          {},
-          options,
-        ),
+          // Cuerpo vacío si no se pide, y no `external_ref: null`: mandar el
+          // null explícito DESVINCULA la referencia, que no es lo mismo que no
+          // tocarla.
+          externalRef === undefined ? {} : { external_ref: externalRef },
+          resto,
+        )
+      },
     }
   }
 
-  get<T = unknown>(path: string, query?: RequestOptions['query']): Promise<T> {
-    return this.request<T>(path, { method: 'GET', query })
+  get<T = unknown>(
+    path: string,
+    query?: RequestOptions['query'],
+    options?: ReadOptions,
+  ): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'GET', query })
   }
 
   post<T = unknown>(path: string, body?: unknown, options?: WriteOptions): Promise<T> {
@@ -257,8 +301,8 @@ export class PimiaClient {
     return this.request<T>(path, { ...options, method: 'PATCH', body })
   }
 
-  delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>(path, { method: 'DELETE' })
+  delete<T = unknown>(path: string, options?: ReadOptions): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'DELETE' })
   }
 
   /**

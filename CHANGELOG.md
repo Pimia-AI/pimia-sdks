@@ -10,6 +10,27 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
+Dos huecos que destapó el primer integrador real al reconstruir su puente sobre
+`external_ref`. Todo **aditivo**: ninguna llamada existente cambia de firma ni
+de comportamiento.
+
+### Añadido
+
+- **`externalRef` en `estimates.convertToInvoice()`.** El endpoint acepta
+  `external_ref` en el cuerpo desde la 0.4.0 —es lo que hace que
+  `invoice.created` e `invoice.paid` no lleguen con la referencia nula— pero el
+  atajo no tenía por dónde mandarlo, así que había que bajar a `post()` crudo
+  justo en el paso que cierra el bucle. Va como opción (`{ externalRef }`) y no
+  como segundo parámetro, para no romperle la llamada a quien ya hace
+  `convertToInvoice(id, { idempotencyKey })`. Un `externalRef: null` explícito
+  desvincula la referencia; omitirlo manda cuerpo vacío, como hasta ahora.
+- **`ReadOptions` (`headers`, `signal`) en las lecturas**: `get()`, `delete()` y
+  los atajos de recurso (`customers.list/get`, `estimates.list/get`,
+  `invoices.list/get`). Antes ninguno aceptaba opciones, así que **no había
+  forma de ponerle un timeout a una lectura** sin abandonar los atajos e irse a
+  `request()`. Y lo que pasa en la práctica es que nadie se va: un cliente que
+  sondea se cuelga en un GET y deja de sondear sin dar un solo error.
+
 ## [0.4.0] — 2026-08-10
 
 La versión de **`external_ref`**: tu identificador colgado del recurso de
