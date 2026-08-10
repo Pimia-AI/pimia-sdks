@@ -47,11 +47,24 @@ final class Estimates
      * `estimate:{id}:invoice`— y el reintento tras un timeout no te creará una
      * segunda factura.
      *
+     * Y pasa `$externalRef` si la venta nació en tu sistema: es lo que hace
+     * que `invoice.created` e `invoice.paid` te lleguen con tu referencia en
+     * vez de con `null`. Tiene que ir aquí, en la conversión — etiquetar
+     * después con `PUT /invoices/{id}` llega tarde: `invoice.created` ya salió
+     * nulo, y entre las dos llamadas la factura existe sin que puedas
+     * encontrarla por tu referencia. Con `null` (el defecto) el cuerpo va
+     * vacío, como hasta ahora.
+     *
      * @return mixed `array{data: array<string, mixed>}` con la factura creada.
      *               Exige `estimates:write` **e** `invoices:write`.
      */
-    public function convertToInvoice(int|string $id, ?string $idempotencyKey = null): mixed
-    {
-        return $this->client->post("/estimates/{$id}/convert-to-invoice", [], $idempotencyKey);
+    public function convertToInvoice(
+        int|string $id,
+        ?string $idempotencyKey = null,
+        ?string $externalRef = null,
+    ): mixed {
+        $body = $externalRef === null ? [] : ['external_ref' => $externalRef];
+
+        return $this->client->post("/estimates/{$id}/convert-to-invoice", $body, $idempotencyKey);
     }
 }

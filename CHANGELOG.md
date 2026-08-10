@@ -8,7 +8,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [Sin publicar]
+## [0.5.0] — 2026-08-10
 
 Dos huecos que destapó el primer integrador real al reconstruir su puente sobre
 `external_ref`. Todo **aditivo**: ninguna llamada existente cambia de firma ni
@@ -20,16 +20,22 @@ de comportamiento.
   `external_ref` en el cuerpo desde la 0.4.0 —es lo que hace que
   `invoice.created` e `invoice.paid` no lleguen con la referencia nula— pero el
   atajo no tenía por dónde mandarlo, así que había que bajar a `post()` crudo
-  justo en el paso que cierra el bucle. Va como opción (`{ externalRef }`) y no
-  como segundo parámetro, para no romperle la llamada a quien ya hace
-  `convertToInvoice(id, { idempotencyKey })`. Un `externalRef: null` explícito
-  desvincula la referencia; omitirlo manda cuerpo vacío, como hasta ahora.
-- **`ReadOptions` (`headers`, `signal`) en las lecturas**: `get()`, `delete()` y
-  los atajos de recurso (`customers.list/get`, `estimates.list/get`,
-  `invoices.list/get`). Antes ninguno aceptaba opciones, así que **no había
-  forma de ponerle un timeout a una lectura** sin abandonar los atajos e irse a
-  `request()`. Y lo que pasa en la práctica es que nadie se va: un cliente que
-  sondea se cuelga en un GET y deja de sondear sin dar un solo error.
+  justo en el paso que cierra el bucle. En TS va como opción (`{ externalRef }`)
+  y no como segundo parámetro, para no romperle la llamada a quien ya hace
+  `convertToInvoice(id, { idempotencyKey })`; un `externalRef: null` explícito
+  desvincula la referencia y omitirlo manda cuerpo vacío, como hasta ahora.
+  **En PHP** es el tercer parámetro,
+  `convertToInvoice($id, $idempotencyKey, $externalRef)`: con `null` (el
+  defecto) el cuerpo va vacío — para el caso raro de desvincular
+  explícitamente, la ruta cruda sigue ahí.
+- **`ReadOptions` (`headers`, `signal`) en las lecturas** (TS): `get()`,
+  `delete()` y los atajos de recurso (`customers.list/get`,
+  `estimates.list/get`, `invoices.list/get`). Antes ninguno aceptaba opciones,
+  así que **no había forma de ponerle un timeout a una lectura** sin abandonar
+  los atajos e irse a `request()`. Y lo que pasa en la práctica es que nadie se
+  va: un cliente que sondea se cuelga en un GET y deja de sondear sin dar un
+  solo error. (En PHP no hay hueco equivalente: el cliente HTTP es PSR-18 y lo
+  inyectas tú, así que el timeout se configura en tu implementación.)
 
 ## [0.4.0] — 2026-08-10
 
