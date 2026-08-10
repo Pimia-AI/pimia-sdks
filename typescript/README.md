@@ -92,6 +92,63 @@ if (meta.idempotentReplay) {
 }
 ```
 
+## Recibir webhooks
+
+`verifyWebhook` comprueba la firma `PIMIA-WEBHOOK-v1` y te devuelve el evento
+tipado. No reimplementes el HMAC:
+
+```ts
+import express from 'express'
+import { verifyWebhook, WebhookVerificationError } from '@pimia/sdk'
+
+// ⚠️ express.raw(), NO express.json(): Pimia firma los bytes que envía, y
+// parsear + volver a serializar rompe la firma sin que se vea por qué.
+app.post('/pimia', express.raw({ type: 'application/json' }), async (req, res) => {
+  let hook
+
+  try {
+    hook = await verifyWebhook({
+      secret: process.env.PIMIA_WEBHOOK_SECRET,
+      headers: req.headers,
+      body: req.body,
+    })
+  } catch (error) {
+    return res.status(400).send((error as WebhookVerificationError).reason)
+  }
+
+  // Pimia reintenta: la misma entrega llega con el mismo `delivery`.
+  // Procesar cada uno una sola vez es todo el exactly-once que necesitas.
+  if (await yaProcesado(hook.delivery)) return res.sendStatus(200)
+
+  if (hook.known) {
+    switch (hook.event) {
+      case 'estimate.accepted':
+        await facturar(hook.payload.id) // payload tipado, sin castings
+        break
+      case 'invoice.paid':
+        await cobrar(hook.payload.id)
+        break
+    }
+  }
+
+  res.sendStatus(200) // responde rápido; el trabajo pesado, a una cola
+})
+```
+
+Los ocho eventos del catálogo (`approval.decided`, `invoice.received`,
+`app.revoked`, `customer.created`, `customer.updated`, `invoice.created`,
+`estimate.accepted`, `invoice.paid`) vienen tipados. Uno que este SDK todavía
+no conozca **no es un error**: se verifica igual y llega con `known: false`.
+
+Detalles que ahorran un rato:
+
+- `secret` acepta una **lista** de secretos, para rotarlo sin ventana de caída.
+- La ventana anti-replay son 300 s; ajústala con `toleranceSeconds`.
+- Los errores traen un `reason` (`signature_mismatch`, `timestamp_out_of_window`,
+  `missing_headers`, `invalid_timestamp`, `invalid_json`) para tus métricas.
+- `signWebhook()` firma un cuerpo como lo haría Pimia: úsalo en **tus tests**,
+  no en producción.
+
 ## Más
 
 Documentación completa, modelo mental (un tenant = una base URL = un token),

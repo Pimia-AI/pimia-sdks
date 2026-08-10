@@ -21,10 +21,12 @@ export default async function Presupuestar({
   const { error } = await searchParams
   const { pimia } = await clienteOPortada()
 
-  const response = (await callApi(() => pimia.customers.list({ limit: 100 }))) as {
-    data?: Array<{ id: number; name: string }>
-  }
-  const customers = response?.data ?? []
+  // Sin castings: `customers.list()` ya devuelve el tipo del OpenAPI. Ojo con
+  // `customer.id`, que llega como CADENA —los `numeric` de Postgres salen así
+  // por PDO y los Resources no los castean—; el formulario lo reenvía tal cual
+  // y `presupuestar()` lo pasa a número.
+  const response = await callApi(() => pimia.customers.list({ limit: 100 }))
+  const customers = response.data ?? []
 
   return (
     <>

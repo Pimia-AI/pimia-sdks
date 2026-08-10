@@ -122,54 +122,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["auth.login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["auth.logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["auth.check"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bank-accounts": {
         parameters: {
             query?: never;
@@ -279,7 +231,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
         post: operations["general.bulkExchangeRate"];
         delete?: never;
         options?: never;
@@ -499,7 +454,10 @@ export interface paths {
         /** Display a listing of the resource */
         get: operations["custom-fields.index"];
         put?: never;
-        /** Store a newly created resource in storage */
+        /**
+         * Store a newly created resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
         post: operations["custom-fields.store"];
         delete?: never;
         options?: never;
@@ -516,10 +474,16 @@ export interface paths {
         };
         /** Display the specified resource */
         get: operations["custom-fields.show"];
-        /** Update the specified resource in storage */
+        /**
+         * Update the specified resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
         put: operations["custom-fields.update"];
         post?: never;
-        /** Remove the specified resource from storage */
+        /**
+         * Remove the specified resource from storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
         delete: operations["custom-fields.destroy"];
         options?: never;
         head?: never;
@@ -915,32 +879,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Toggle lock state for a quarter */
-        post: operations["fiscalQuarter.toggle"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/password/email": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
         /**
-         * Igual que el `sendResetLinkEmail()` del trait, pero con la validación en
-         *     un FormRequest en vez de en su `validateEmail()` privado: ahí dentro el
-         *     generador del OpenAPI no la ve y este endpoint se publicaba sin cuerpo.
-         *     Mismas reglas (`required|email`)
-         * @description La RESPUESTA, en cambio, ya no es la del trait: es SIEMPRE la misma,
-         *     exista el correo o no. Ver `respuestaNeutra()`.
+         * Toggle lock state for a quarter
+         * @description **No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
          */
-        post: operations["forgotPassword.sendResetLinkEmail"];
+        post: operations["fiscalQuarter.toggle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1598,7 +1541,31 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Siguiente número de documento (orientativo, NO lo reserva)
+         * @description Calcula al vuelo qué número le tocaría al próximo documento del tipo pedido, con el
+         *     formato de numeración configurado por la empresa. Es lo que el panel pinta en el
+         *     formulario antes de guardar.
+         *
+         *     **No reserva nada y no es determinista.** No consume secuencia: dos llamadas
+         *     seguidas —o dos integradores a la vez— reciben el MISMO número, y quien guarde
+         *     primero se lo queda; el segundo se estrella contra el `unique` con un `422`.
+         *     El valor caduca en cuanto alguien crea un documento de ese tipo.
+         *
+         *     **No lo necesitas para escribir, y usarlo para eso te perjudica.** Desde el
+         *     2026-08-10 ninguna alta exige que el número lo pongas tú: `invoice_number`,
+         *     `estimate_number`, `payment_number` y `received_invoice_number` son opcionales y,
+         *     si no llegan, los asigna el servidor con este mismo formateador ya dentro de la
+         *     transacción que escribe. Pedir el número aquí para reenviarlo en el cuerpo solo
+         *     añade una carrera que el servidor no tiene, y de paso rompe la reproducibilidad
+         *     del cuerpo entre reintentos con `Idempotency-Key` (guía del integrador §7).
+         *     Su uso legítimo es previsualizar en una interfaz el número que le tocaría al
+         *     documento — para eso lo llama el panel.
+         *
+         *     **Comprueba `success` antes de leer `nextNumber`.** Un fallo llega con `200` y el
+         *     sobre `{"success": false, "message": "..."}`; desestructurar `nextNumber` a ciegas
+         *     degrada en silencio a `null`.
+         */
         get: operations["general.nextNumber"];
         put?: never;
         post?: never;
@@ -2196,23 +2163,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/reset/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset the given user's password */
-        post: operations["resetPassword.reset"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/search": {
         parameters: {
             query?: never;
@@ -2539,7 +2489,9 @@ export interface paths {
         put?: never;
         /**
          * POST tasks/{task}/delegate — delega esta tarea CRM a su agente Pim
-         * @description Reusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip
+         * @description **No disponible para integradores.** Exige `delegation:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         *
+         *     Reusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip
          *     delegar→agente→callback→sello): compone un context rico desde la tarea (título,
          *     descripción y el lead/cliente/proyecto vinculado con sus datos), crea la
          *     delegación, la entrega al Kanban del Copilot y la enlaza con la tarea.
@@ -3154,6 +3106,13 @@ export interface components {
                 phone?: string | null;
                 fax?: string | null;
             };
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** CustomerResource */
         CustomerResource: {
@@ -3403,6 +3362,13 @@ export interface components {
                     percent?: number | null;
                     amount?: number | null;
                 }[] | null;
+                /** @description Valores de campo personalizado DE LA LÍNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta también la clave `custom_fields`, la forma histórica del panel. */
+                customFields?: {
+                    /** @description Id de la definición del campo personalizado. */
+                    id: number;
+                    /** @description Valor a guardar. */
+                    value: string;
+                }[];
             }[];
             taxes?: {
                 tax_type_id?: number | null;
@@ -3416,6 +3382,13 @@ export interface components {
              */
             tax_per_item?: string | null;
             tax_included?: boolean | null;
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** ExpenseCategoryRequest */
         ExpenseCategoryRequest: {
@@ -3449,6 +3422,10 @@ export interface components {
              * @description Maximum file size: 20000 kilobytes.
              */
             attachment_receipt?: string | null;
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. En `multipart/form-data` viaja como cadena JSON: `[{"id":3,"value":"REF-42"}]`. */
+            customFields?: string;
+            /** @description Borra el recibo adjunto del gasto. Solo surte efecto en la actualización; en `multipart/form-data` viaja como `1` o `0`. */
+            is_attachment_receipt_removed?: boolean | null;
         };
         /** ExpenseResource */
         ExpenseResource: {
@@ -3479,23 +3456,6 @@ export interface components {
             company?: components["schemas"]["CompanyResource"];
             currency?: components["schemas"]["CurrencyResource"];
             payment_method?: components["schemas"]["PaymentMethodResource"];
-        };
-        /**
-         * ForgotPasswordRequest
-         * @description Envío del enlace de restablecimiento (`POST /auth/password/email`).
-         *
-         *     Mismas reglas que el `validateEmail()` del trait
-         *     `Illuminate\Foundation\Auth\SendsPasswordResetEmails` (laravel/ui), palabra
-         *     por palabra. Estaban ahí dentro y por eso el OpenAPI publicaba este endpoint
-         *     sin cuerpo: el generador solo mira la acción del controlador, y la acción
-         *     venía entera del trait.
-         */
-        ForgotPasswordRequest: {
-            /**
-             * Format: email
-             * @description Correo de la cuenta. La respuesta no distingue si existe o no.
-             */
-            email: string;
         };
         /** InvestmentAssetResource */
         InvestmentAssetResource: {
@@ -3772,6 +3732,13 @@ export interface components {
                     percent?: number | null;
                     amount?: number | null;
                 }[] | null;
+                /** @description Valores de campo personalizado DE LA LÍNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta también la clave `custom_fields`, la forma histórica del panel. */
+                customFields?: {
+                    /** @description Id de la definición del campo personalizado. */
+                    id: number;
+                    /** @description Valor a guardar. */
+                    value: string;
+                }[];
             }[];
             taxes?: {
                 tax_type_id?: number | null;
@@ -3785,6 +3752,13 @@ export interface components {
              */
             tax_per_item?: string | null;
             tax_included?: boolean | null;
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** ItemCategory */
         ItemCategory: string[];
@@ -3842,6 +3816,8 @@ export interface components {
             stock_alert_qty?: number | null;
             allow_sale_without_stock?: boolean | null;
             purchase_tax_type_id?: number | null;
+            /** @description Existencias iniciales del artículo. En el alta se guarda 0 si no llega; en la actualización se conserva el valor que ya tenía. */
+            opening_stock?: number | null;
         };
         /** LeadActivity */
         LeadActivity: string[];
@@ -3921,12 +3897,6 @@ export interface components {
                 name: string;
             } | null;
         };
-        /** LoginRequest */
-        LoginRequest: {
-            username: string;
-            password: string;
-            device_name: string;
-        };
         /** Note */
         Note: {
             id: number;
@@ -3959,10 +3929,27 @@ export interface components {
             customer_id: string;
             exchange_rate?: string | null;
             amount: number;
-            payment_number: string;
+            /**
+             * @description Opcional en el alta: si no llega, lo genera el servidor con el mismo
+             *     SerialNumberFormatter que alimenta a GET /next-number?key=payment, que es
+             *     de donde lo saca el panel. Exigirlo obligaba a un cliente de la API a
+             *     replicar el formato de numeración de la empresa, y encima a congelar el
+             *     cuerpo entre reintentos: `next-number` no reserva nada, así que pedirlo
+             *     dos veces puede dar dos números distintos y el reintento con la misma
+             *     Idempotency-Key rebotaba con 422 por «cuerpo distinto».
+             *     En PUT sigue siendo obligatorio (más abajo): el pago ya tiene uno.
+             */
+            payment_number?: string | null;
             invoice_id?: string | null;
             payment_method_id?: string | null;
             notes?: string | null;
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** PaymentResource */
         PaymentResource: {
@@ -4074,7 +4061,18 @@ export interface components {
             received_invoice_date: string;
             due_date?: string | null;
             supplier_id: string;
-            received_invoice_number: string;
+            /**
+             * @description Opcional en el alta: si no llega, lo genera el servidor con el mismo
+             *     SerialNumberFormatter que alimenta a GET /next-number?key=received_invoice,
+             *     que es de donde lo saca el panel. Es el número del LIBRO DE RECIBIDAS —el
+             *     del proveedor va en `reference_number`—, así que numerarlo es cosa nuestra,
+             *     no del cliente de la API: exigirlo le obligaba a replicar el formato de la
+             *     empresa y a congelar el cuerpo entre reintentos (`next-number` no reserva,
+             *     dos llamadas pueden dar números distintos y la misma Idempotency-Key
+             *     rebotaba con 422 por «cuerpo distinto»).
+             *     En PUT sigue siendo obligatorio (más abajo): la factura ya tiene uno.
+             */
+            received_invoice_number?: string | null;
             exchange_rate?: string | null;
             discount: number;
             discount_val: number;
@@ -4217,6 +4215,13 @@ export interface components {
              */
             tax_per_item?: string | null;
             tax_included?: boolean | null;
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** RecurringInvoiceResource */
         RecurringInvoiceResource: {
@@ -4410,6 +4415,13 @@ export interface components {
                 phone?: string | null;
                 fax?: string | null;
             };
+            /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
+            customFields?: {
+                /** @description Id de la definición del campo personalizado. */
+                id: number;
+                /** @description Valor a guardar. */
+                value: string;
+            }[];
         };
         /** SupplierResource */
         SupplierResource: {
@@ -5119,74 +5131,6 @@ export interface operations {
                         /** @constant */
                         message: "No hay un tenant en contexto para esta propuesta.";
                     };
-                };
-            };
-        };
-    };
-    "auth.login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        type: "Bearer";
-                        token: string;
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "auth.logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                    };
-                };
-            };
-        };
-    };
-    "auth.check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": boolean;
                 };
             };
         };
@@ -7175,35 +7119,6 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "forgotPassword.sendResetLinkEmail": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForgotPasswordRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Password reset email sent.";
-                        /** @constant */
-                        data: "passwords.sent";
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
     "exchangeRate.getActiveProvider": {
         parameters: {
             query?: never;
@@ -8935,9 +8850,17 @@ export interface operations {
     };
     "general.nextNumber": {
         parameters: {
-            query?: {
-                invoice_series_id?: string;
-                series_id?: string;
+            query: {
+                /** @description Tipo de documento cuyo número se calcula. Obligatorio: un valor fuera de la lista devuelve `success: false`. */
+                key: "invoice" | "credit_note" | "estimate" | "payment" | "delivery_note" | "received_invoice";
+                /** @description Serie de facturación a usar (solo `key=invoice`). Sin ella manda la serie por defecto de la empresa. `invoice_series_id` es su alias histórico y solo se mira si `series_id` no viene. */
+                series_id?: number;
+                /** @description Alias histórico de `series_id`. En clientes nuevos usa `series_id`. */
+                invoice_series_id?: number;
+                /** @description Id del documento que se está EDITANDO. Con él el cálculo reutiliza la secuencia que ese documento ya tiene en vez de proponer la siguiente; sin él siempre propone la siguiente. */
+                model_id?: number;
+                /** @description Id del cliente, para los formatos de numeración que llevan su serie o su contador (`{{CUSTOMER_SERIES}}`, `{{CUSTOMER_SEQUENCE}}`). Irrelevante en el resto de formatos. */
+                userId?: number;
             };
             header?: never;
             path?: never;
@@ -8945,12 +8868,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Siempre `200`, también cuando falla: el discriminante es `success`. `nextNumber` es el número propuesto (`null` si `success` es `false`) e `isUsed` dice si la empresa ya tiene algún documento de ese tipo — el panel lo usa para saber si el formato de numeración todavía se puede cambiar. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success: boolean;
+                        nextNumber: string | null;
+                        isUsed: boolean;
+                        message?: string;
+                    };
                 };
             };
         };
@@ -10291,39 +10220,6 @@ export interface operations {
                     };
                 };
             };
-        };
-    };
-    "resetPassword.reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    /** Format: email */
-                    email: string;
-                    password: string;
-                    password_confirmation: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Password reset successfully.";
-                    } | Record<string, never>;
-                };
-            };
-            422: components["responses"]["ValidationException"];
         };
     };
     "general.search": {
