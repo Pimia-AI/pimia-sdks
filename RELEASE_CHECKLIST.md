@@ -27,20 +27,29 @@ commands are both missing» — hay que instalarlo antes.
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
 
-> ## 🚨 BLOQUEO ACTIVO ANTES DE PUBLICAR LA 0.3.0
+> ## ✅ El bloqueo del espejo PHP está resuelto (2026-08-10)
 >
-> **`SPLIT_PUSH_TOKEN` está caducado.** El job del espejo PHP falla con `403` y
-> la v0.2.0 hubo que rescatarla empujando el subtree a mano (receta más abajo).
-> El PAT solo lo puede regenerar Pablo:
-> github.com/settings/personal-access-tokens → fine-grained, *Contents: read
-> and write* sobre `Pimia-AI/pimia-php`.
+> El job del espejo **no había funcionado nunca**, por dos causas distintas, y
+> el PAT ya no interviene.
 >
-> **No tagees hasta que el secret esté renovado.** Si se tagea con el token
-> muerto, npm publica y el espejo no, y entonces ya no se puede rehacer el tag
-> (ver el aviso de abajo): quedaría Packagist una versión por detrás de npm
-> hasta el siguiente release.
+> Lo que decía este fichero —«`SPLIT_PUSH_TOKEN` caducó»— **era un diagnóstico
+> equivocado**. La pista está en el texto del error: `remote: Permission to
+> Pimia-AI/pimia-php.git denied to galeote` con `403`. Ese mensaje significa que
+> GitHub **autenticó** el token como `galeote` y luego le **denegó la
+> autorización**; un token caducado no llega a autenticar y falla antes con otro
+> error. Y `galeote` tiene admin sobre el espejo, así que la cuenta nunca fue el
+> problema: lo era el token, por selección de repos, por permiso, o por estar
+> pendiente de aprobación de la organización.
 >
-> Comprobación rápida de que el espejo quedó bien tras publicar:
+> **Ahora se empuja con una deploy key** (`SPLIT_PUSH_KEY`), que no caduca, solo
+> abre ese repo y no depende de ninguna cuenta personal. Probada de punta a
+> punta antes de cambiar el workflow: split real, push a una rama de usar y
+> tirar en el espejo y borrado de esa rama.
+>
+> `SPLIT_PUSH_TOKEN` queda huérfano: se puede borrar en cuanto un release pase
+> en verde (`gh secret delete SPLIT_PUSH_TOKEN --repo Pimia-AI/pimia-sdks`).
+>
+> Comprobación de que el espejo quedó bien tras publicar:
 > `curl -s https://repo.packagist.org/p2/pimia/pimia-php.json | grep -o '"version":"v0.3.0"'`
 
 ## Runbook del próximo release
@@ -64,6 +73,22 @@ cuanto npm acepte el primer paquete, un fallo posterior se arregla subiendo
 de versión — nunca reescribiendo el tag. Comprobación:
 `curl -o /dev/null -w '%{http_code}' https://registry.npmjs.org/@pimia%2Fsdk`.
 
+## Cómo leer un 403 del espejo (v0.2.0)
+
+El mensaje dice **a quién** se le denegó, y eso es el diagnóstico:
+
+- `denied to github-actions[bot]` → el push está usando las credenciales del
+  checkout, no las tuyas. Es el tropiezo 3 de abajo: falta
+  `persist-credentials: false`.
+- `denied to <un usuario>` → el token **sí autenticó** y se le negó el permiso.
+  No es caducidad: un token caducado no llega a autenticar. Mira la selección de
+  repos del token, sus permisos, y si la org tiene pendiente de aprobar el PAT.
+- Fallo de autenticación (sin nombre de nadie) → ahí sí, token muerto o mal
+  copiado.
+
+Perder esto de vista costó dar por caducado un PAT que en realidad nunca tuvo
+permiso, y con ello un release entero.
+
 ## Los tres tropiezos de la v0.1.0, para no repetirlos
 
 1. **El scope `@pimia` no aparece** en el desplegable del token de npm hasta
@@ -85,10 +110,33 @@ de versión — nunca reescribiendo el tag. Comprobación:
 | Secret | Qué es | Dónde se crea |
 |---|---|---|
 | `NPM_TOKEN` | Granular token de npm, *read and write* sobre el scope `@pimia`, con bypass 2FA | npmjs.com → Access Tokens |
-| `SPLIT_PUSH_TOKEN` | PAT fine-grained con *Contents: read and write* sobre `Pimia-AI/pimia-php` — el `GITHUB_TOKEN` por defecto solo alcanza a ESTE repo | github.com/settings/personal-access-tokens |
+| `SPLIT_PUSH_KEY` | Clave **privada** de una deploy key con escritura sobre `Pimia-AI/pimia-php` — el `GITHUB_TOKEN` por defecto solo alcanza a ESTE repo | `ssh-keygen`; la pública se da de alta en el espejo → Settings → Deploy keys (*Allow write access*) |
 
-Los dos caducan. El día que lo hagan, el release falla con un 401 o un 403 que
-no dice «tu token expiró» — mirar aquí primero.
+**`NPM_TOKEN` caduca; `SPLIT_PUSH_KEY` no.** Cuando el de npm caduque, el
+release falla con un 401 o un 403 que no dice «tu token expiró» — mirar aquí
+primero.
+
+Rehacer la deploy key, si alguna vez hace falta:
+
+```bash
+ssh-keygen -t ed25519 -f /tmp/split_php -N '' -C 'split-php@pimia-sdks (deploy key, GitHub Actions)'
+gh api -X POST repos/Pimia-AI/pimia-php/keys \
+  -f title='split-php desde pimia-sdks (Actions)' \
+  -f key="$(cat /tmp/split_php.pub)" -F read_only=false
+gh secret set SPLIT_PUSH_KEY --repo Pimia-AI/pimia-sdks < /tmp/split_php
+rm -f /tmp/split_php /tmp/split_php.pub
+```
+
+Y para probarla **sin tagear** —que es como se validó esta—, un split real
+contra una rama de usar y tirar:
+
+```bash
+export GIT_SSH_COMMAND='ssh -i /tmp/split_php -o IdentitiesOnly=yes'
+git subtree split --prefix=php -b split/php-smoke
+git push git@github.com:Pimia-AI/pimia-php.git split/php-smoke:refs/heads/smoke-test
+git push git@github.com:Pimia-AI/pimia-php.git :refs/heads/smoke-test   # limpiar
+git branch -D split/php-smoke
+```
 
 ## Split manual del espejo PHP (si el job falla o no hay `SPLIT_PUSH_TOKEN`)
 

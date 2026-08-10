@@ -10,9 +10,12 @@
 #
 # Secrets que hacen falta (sin ellos el job correspondiente falla, a
 # propósito, en vez de publicar a medias):
-#   NPM_TOKEN         — granular, read+write limitado al scope @pimia.
-#   SPLIT_PUSH_TOKEN  — PAT con escritura sobre Pimia-AI/pimia-php; el
-#                       GITHUB_TOKEN por defecto solo alcanza a ESTE repo.
+#   NPM_TOKEN       — granular, read+write limitado al scope @pimia.
+#   SPLIT_PUSH_KEY  — clave PRIVADA de una deploy key con escritura sobre
+#                     Pimia-AI/pimia-php; el GITHUB_TOKEN por defecto solo
+#                     alcanza a ESTE repo. Deploy key y no PAT: no caduca, no
+#                     va atada a una persona y no la puede bloquear la política
+#                     de PATs de la org.
 #
 # El alta en packagist.org es manual y de una sola vez (apuntando al espejo,
 # no a este repo: Composer exige el composer.json en la raíz). A partir de
@@ -169,9 +172,13 @@ jobs:
   # vive en php/. Este job rehace el split en cada tag y lo empuja con su tag,
   # que es lo que Packagist lee como versión.
   #
-  # Necesita un PAT con permiso de escritura sobre pimia-php en el secret
-  # SPLIT_PUSH_TOKEN: el GITHUB_TOKEN por defecto solo alcanza a ESTE repo.
-  # Sin el secret, el job falla en el push — a propósito, para que se vea.
+  # Empuja con una DEPLOY KEY del espejo (secret SPLIT_PUSH_KEY), no con un
+  # PAT: el GITHUB_TOKEN por defecto solo alcanza a ESTE repo, y un PAT tiene
+  # tres pegas que aquí costaron dos releases —caduca, va atado a una persona,
+  # y si la org exige aprobar los fine-grained se queda sin permiso en
+  # silencio—. Una deploy key no caduca, solo abre ESE repo y no depende de
+  # ninguna cuenta. Sin el secret, el job falla en el push — a propósito, para
+  # que se vea.
   split-php:
     name: Sincronizar el espejo Pimia-AI/pimia-php
     runs-on: ubuntu-latest
@@ -181,11 +188,11 @@ jobs:
       # fetch-depth: 0 → el split necesita el histórico entero; con un clon
       # superficial sale un árbol sin ancestros y el push al espejo se rechaza.
       #
-      # persist-credentials: false → sin esto el push sale como
-      # github-actions[bot] y muere con 403 aunque el PAT sea correcto:
-      # checkout deja el GITHUB_TOKEN en la config de git como cabecera
-      # `http.https://github.com/.extraheader`, y esa cabecera PISA el token
-      # embebido en la URL del remoto. Verificado en el release v0.1.0.
+      # persist-credentials: false → deja de ser crítico desde que el push va
+      # por SSH (la cabecera `http.…extraheader` que planta checkout solo pisa
+      # a los remotos https), pero se mantiene: no hay razón para dejar el
+      # GITHUB_TOKEN escrito en la config de git del runner. Fue la causa del
+      # 403 `denied to github-actions[bot]` del release v0.1.0.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -193,16 +200,25 @@ jobs:
 
       - name: Split de php/ y push al espejo con su tag
         env:
-          TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
+          SSH_KEY: ${{ secrets.SPLIT_PUSH_KEY }}
           TAG: ${{ github.ref_name }}
         run: |
-          if [ -z "$TOKEN" ]; then
-            echo "::error::Falta el secret SPLIT_PUSH_TOKEN (PAT con escritura sobre Pimia-AI/pimia-php)."
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Falta el secret SPLIT_PUSH_KEY (deploy key con escritura sobre Pimia-AI/pimia-php)."
             exit 1
           fi
+          mkdir -p ~/.ssh
+          # printf y no echo: la clave lleva saltos de línea y `echo -e` los
+          # interpretaría de más en algunos shells.
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/split_php
+          chmod 600 ~/.ssh/split_php
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          # IdentitiesOnly: que no pruebe otras claves del agente del runner y
+          # se coma un «too many authentication failures».
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/split_php -o IdentitiesOnly=yes"
           git config user.name  "pimia-release-bot"
           git config user.email "release@pimia.es"
           git subtree split --prefix=php -b split/php
-          REMOTE="https://x-access-token:${TOKEN}@github.com/Pimia-AI/pimia-php.git"
+          REMOTE="git@github.com:Pimia-AI/pimia-php.git"
           git push --force "$REMOTE" split/php:refs/heads/main
           git push --force "$REMOTE" "split/php:refs/tags/${TAG}"
