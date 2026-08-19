@@ -4,6 +4,122 @@
  */
 
 export interface paths {
+    "/absences/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["absence.balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/team-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendario de ausencias aprobadas/pendientes del equipo para un mes.
+         *     Útil para detectar solapes antes de aprobar
+         */
+        get: operations["absence.teamCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absence}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["absence.approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absence}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["absence.reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absence}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["absence.cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["absence.index"];
+        put?: never;
+        post: operations["absence.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/absences/{absence}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["absence.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/accounting-summary": {
         parameters: {
             query?: never;
@@ -39,7 +155,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["appVersion"];
         put?: never;
         post?: never;
@@ -212,7 +331,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.bootstrap"];
         put?: never;
         post?: never;
@@ -266,7 +388,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description `rejection_reason` es el porqué del rechazo (#366) y va **opcional**:
+         *     marcar como rechazado sin explicar por qué sigue siendo válido, que es lo
+         *     que hace hoy el panel. Se guarda SOLO cuando el estado que se pide es
+         *     `REJECTED` — mandarlo con cualquier otro es un cuerpo incoherente, y
+         *     escribirlo dejaría un motivo colgando de un presupuesto que no está
+         *     rechazado. Lo contrario —salir de `REJECTED`— lo limpia el hook
+         *     `updating` de `Estimate::booted()`, porque este controlador no es el único
+         *     camino que mueve el estado (la conversión a factura marca `ACCEPTED` por
+         *     su cuenta).
+         *
+         *     El techo de 1000 es el mismo que el del motivo de rechazo del triaje de
+         *     facturas (`GestoriaController::triageReject`), que es el gemelo de esto en
+         *     `invoices`. La columna es `text` y aguanta más; el límite está para que un
+         *     cuerpo pegado por error no acabe en la base. ⚠️ Los comentarios que van
+         *     pegados a una regla de `validate()` **se publican en el contrato** —
+         *     Scramble los lee como `description`—, así que ahí arriba va lo que un
+         *     integrador necesita y aquí lo que hace falta para mantenerlo.
+         *
+         *     ⚠️ **La respuesta sigue siendo `{"success": true}` y no el presupuesto.**
+         *     Quien escriba tiene que releerlo para ver el motivo guardado; se deja como
+         *     estaba porque cambiarlo rompería a todo el que ya la consume.
+         */
         post: operations["estimate.changeEstimateStatus"];
         delete?: never;
         options?: never;
@@ -332,8 +477,115 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * La empresa activa, incluida la moneda en la que factura
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         *
+         *     `currency` y `currency_id` salen del ajuste de la empresa, y viajan aquí
+         *     porque `GET /company/settings` exige `settings:read` —que el Authorization
+         *     Server no emite— y dejaba a los integradores sin forma de saber en qué
+         *     moneda están facturando. Ver {@see CurrentCompanyResource}.
+         */
         get: operations["company.company"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrive the Admin account */
+        get: operations["company.getUser"];
+        /**
+         * Update the Admin profile.
+         *     Includes name, email and (or) password
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        put: operations["company.updateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/upload-avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload the Admin Avatar to public storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["company.uploadAvatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Admin Company Details
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        put: operations["company.updateCompany"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company/upload-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload the company logo to storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["company.uploadCompanyLogo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company/has-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["settings.companyCurrencyCheckTransactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -349,7 +601,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.config"];
         put?: never;
         post?: never;
@@ -422,7 +677,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.countries"];
         put?: never;
         post?: never;
@@ -456,7 +714,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.currencies"];
         put?: never;
         post?: never;
@@ -473,7 +734,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Display a listing of the resource */
+        /**
+         * Display a listing of the resource
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["custom-fields.index"];
         put?: never;
         /**
@@ -494,7 +758,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Display the specified resource */
+        /**
+         * Display the specified resource
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["custom-fields.show"];
         /**
          * Update the specified resource in storage
@@ -606,7 +873,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.dateFormats"];
         put?: never;
         post?: never;
@@ -699,6 +969,38 @@ export interface paths {
         post?: never;
         /** Delete a delivery note */
         delete: operations["delivery-notes.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["employees.index"];
+        put?: never;
+        post: operations["employees.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/employees/{employee}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["employees.show"];
+        put: operations["employees.update"];
+        post?: never;
+        delete: operations["employees.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -947,7 +1249,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["exchangeRate.getActiveProvider"];
         put?: never;
         post?: never;
@@ -964,10 +1269,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.getAllUsedCurrencies"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["settings.getCompanySettings"];
+        put?: never;
+        /**
+         * Handle the incoming request
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["settings.updateCompanySettings"];
         delete?: never;
         options?: never;
         head?: never;
@@ -981,10 +1310,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["exchangeRate.getExchangeRate"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["settings.getSettings"];
+        put?: never;
+        /**
+         * Handle the incoming request
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["settings.updateSettings"];
         delete?: never;
         options?: never;
         head?: never;
@@ -998,7 +1351,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["exchangeRate.getSupportedCurrencies"];
         put?: never;
         post?: never;
@@ -1015,11 +1371,83 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["exchangeRate.getUsedCurrencies"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["settings.getUserSettings"];
+        /**
+         * Handle the incoming request
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        put: operations["settings.updateUserSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidences/{incidence}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["incidence.review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["incidences.index"];
+        put?: never;
+        post: operations["incidences.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidences/{incidence}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["incidences.show"];
+        put?: never;
+        post?: never;
+        delete: operations["incidences.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1275,7 +1703,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Display a listing of the resource */
+        /**
+         * Display a listing of the resource
+         * @description El `@return` declarado se retira a propósito: decía
+         *     `\Illuminate\Http\JsonResponse` —que nunca fue el tipo real, esto
+         *     devuelve una ResourceCollection— y el generador del OpenAPI lo prefiere
+         *     a lo que infiere del cuerpo. Con dos returns (completa y ligera) eso
+         *     dejaba `GET /invoices` sin forma de respuesta en el spec en vez de con
+         *     las dos.
+         */
         get: operations["invoices.index"];
         put?: never;
         /** Store a newly created resource in storage */
@@ -1584,6 +2020,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/legal-reports/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista empleados disponibles para informes (solo para quien puede ver de todos).
+         *     Si el usuario solo puede ver lo suyo, devuelve únicamente su perfil
+         */
+        get: operations["legalReport.employees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-reports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalReport.preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-reports/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalReport.pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-reports/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalReport.csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/legal-reports/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cadena de firmas para auditoría (últimas N) */
+        get: operations["legalReport.signatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/next-number": {
         parameters: {
             query?: never;
@@ -1593,7 +2114,9 @@ export interface paths {
         };
         /**
          * Siguiente número de documento (orientativo, NO lo reserva)
-         * @description Calcula al vuelo qué número le tocaría al próximo documento del tipo pedido, con el
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         *
+         *     Calcula al vuelo qué número le tocaría al próximo documento del tipo pedido, con el
          *     formato de numeración configurado por la empresa. Es lo que el panel pinta en el
          *     formulario antes de guardar.
          *
@@ -1620,6 +2143,52 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display a listing of the resource */
+        get: operations["notes.index"];
+        put?: never;
+        /**
+         * Store a newly created resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["notes.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/{note}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display the specified resource */
+        get: operations["notes.show"];
+        /**
+         * Update the specified resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        put: operations["notes.update"];
+        post?: never;
+        /**
+         * Remove the specified resource from storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        delete: operations["notes.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1696,10 +2265,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.numberPlaceholders"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pdf/drivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pDFConfiguration.getDrivers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pdf/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pDFConfiguration.getEnvironment"];
+        put?: never;
+        /** @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame. */
+        post: operations["pDFConfiguration.saveEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2220,7 +2825,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.search"];
         put?: never;
         post?: never;
@@ -2237,7 +2845,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.searchUsers"];
         put?: never;
         post?: never;
@@ -2427,6 +3038,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/store/specializations/{slug}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/v1/store/specializations/{slug}/install
+         * @description **No disponible para integradores.** Exige `store:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         *
+         *     Idempotente: con una entrega en vuelo devuelve su estado sin encolar otra.
+         *     Sobre una instalada, re-entrega (actualizar); sobre una fallida, reintenta.
+         */
+        post: operations["specializationInstall.install"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/specializations/{slug}/install-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/store/specializations/{slug}/install-status
+         * @description Reconciliación pull: mientras la fila está en installing consulta el job
+         *     del deliverer en el marketplace y refleja delivered|failed. La vía push
+         *     (el deliverer registra el tipo delegable al terminar) suele llegar antes;
+         *     esta cubre sus huecos (p. ej. registro delegable saltado con la skill ya
+         *     entregada) y da al frontend un único sitio que sondear.
+         */
+        get: operations["specializationInstall.status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/specializations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/store/specializations
+         * @description Catálogo global con filtro opcional por vertical (?vertical=).
+         */
+        get: operations["specializations.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/specializations/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/store/specializations/{slug}
+         * @description Ficha de una especialización + hasta 3 relacionadas (misma vertical
+         *     primero), replicando el bloque "otros módulos" de la UX heredada.
+         */
+        get: operations["specializations.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/store/modules — módulos opcionales del registry con su
+         *     estado per-tenant, en el contrato de tarjeta del escaparate
+         */
+        get: operations["storeModules.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/store/modules/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/store/modules/{slug} — ficha de un módulo opcional */
+        get: operations["storeModules.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/suppliers/{supplier}/stats": {
         parameters: {
             query?: never;
@@ -2588,6 +3324,205 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tax-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display a listing of the resource */
+        get: operations["tax-types.index"];
+        put?: never;
+        /**
+         * Store a newly created resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["tax-types.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax-types/{taxType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display the specified resource */
+        get: operations["tax-types.show"];
+        /**
+         * Update the specified resource in storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        put: operations["tax-types.update"];
+        post?: never;
+        /**
+         * Remove the specified resource from storage
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        delete: operations["tax-types.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax-types/{taxType}/toggle-active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle the is_active state of a tax type
+         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         */
+        post: operations["taxTypes.toggleActive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clocks/punch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["timeClock.punch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clocks/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["timeClock.today"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clocks/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["timeClock.mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clocks/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fase F — presupuesto del día: worked vs entries vs remaining.
+         *     Útil para que el widget de fichaje muestre cuánto tiempo queda
+         *     por imputar a proyectos antes de chocar con el tramo legal
+         */
+        get: operations["timeClock.budget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clock-corrections/{correction}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["timeClockCorrection.approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clock-corrections/{correction}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["timeClockCorrection.reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clock-corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["timeClockCorrection.index"];
+        put?: never;
+        post: operations["timeClockCorrection.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/time-clock-corrections/{correction}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["timeClockCorrection.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customer}/pending-time-entries": {
         parameters: {
             query?: never;
@@ -2647,7 +3582,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.timeFormats"];
         put?: never;
         post?: never;
@@ -2696,7 +3634,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Handle the incoming request
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["general.timezones"];
         put?: never;
         post?: never;
@@ -2839,28 +3780,252 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["webhookEndpoints.index"];
+        put?: never;
+        post: operations["webhookEndpoints.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/webhooks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["webhookEndpoints.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/webhooks/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["webhookEndpoints.deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/webhooks/deliveries/{id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-encola una entrega dead|failed dentro de la ventana de replay. La
+         *     fila vuelve a pending con los contadores a cero (conserva su id → el
+         *     receptor la deduplica por X-Pimia-Delivery si ya la procesó)
+         */
+        post: operations["webhookEndpoints.replay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-calendars/{workCalendar}/import-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importa una plantilla CCAA del catálogo central a este calendario,
+         *     respetando overrides locales. Útil al crear un calendario nuevo
+         */
+        post: operations["workCalendar.importTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-calendars/{workCalendar}/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workCalendar.storeHoliday"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-calendars/{workCalendar}/holidays/{holiday}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["workCalendar.destroyHoliday"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["work-calendars.index"];
+        put?: never;
+        post: operations["work-calendars.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-calendars/{workCalendar}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["work-calendars.show"];
+        put: operations["work-calendars.update"];
+        post?: never;
+        delete: operations["work-calendars.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["work-schedules.index"];
+        put?: never;
+        post: operations["work-schedules.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-schedules/{workSchedule}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["work-schedules.show"];
+        put: operations["work-schedules.update"];
+        post?: never;
+        delete: operations["work-schedules.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AbsenceRequest */
+        AbsenceRequest: {
+            /** @enum {string} */
+            type: "vacation" | "sick" | "personal_leave" | "parental" | "paid_leave" | "unpaid" | "other";
+            /** Format: date-time */
+            start_date: string;
+            /** Format: date-time */
+            end_date: string;
+            half_day_start?: boolean;
+            half_day_end?: boolean;
+            reason?: string | null;
+        };
+        /** AbsenceResource */
+        AbsenceResource: {
+            id: string;
+            company_id: string;
+            user_id: string;
+            type: string;
+            status: string;
+            start_date: string;
+            end_date: string;
+            half_day_start: boolean;
+            half_day_end: boolean;
+            working_days: number | null;
+            reason: string;
+            approver_id: string;
+            decided_at: string;
+            decision_note: string;
+            created_at: string;
+            user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            approver?: {
+                id: number;
+                name: string;
+            } | null;
+        };
         /** AddressResource */
         AddressResource: {
-            id: string;
-            name: string;
-            address_street_1: string;
-            address_street_2: string;
-            city: string;
-            state: string;
-            country_id: string;
-            zip: string;
-            phone: string;
-            fax: string;
-            type: string;
-            user_id: string;
-            company_id: string;
-            customer_id: string;
-            country?: components["schemas"]["CountryResource"];
-            user?: components["schemas"]["UserResource"];
+            id: number;
+            name: string | null;
+            address_street_1: string | null;
+            address_street_2: string | null;
+            city: string | null;
+            state: string | null;
+            country_id: string | null;
+            zip: string | null;
+            phone: string | null;
+            fax: string | null;
+            type: string | null;
+            user_id: number | null;
+            company_id: number | null;
+            customer_id: number | null;
+            country?: components["schemas"]["CountryResource"] | null;
+            user?: components["schemas"]["UserResource"] | null;
         };
         /** Appointment */
         Appointment: string[];
@@ -2883,6 +4048,15 @@ export interface components {
             status?: "booked" | "confirmed" | "attended" | "no_show" | "cancelled" | null;
             source?: string | null;
             notes?: string | null;
+        };
+        /** AvatarRequest */
+        AvatarRequest: {
+            /**
+             * Format: binary
+             * @description Maximum file size: 20000 kilobytes.
+             */
+            admin_avatar?: string | null;
+            avatar?: string | null;
         };
         /** BankAccount */
         BankAccount: {
@@ -2982,6 +4156,21 @@ export interface components {
              */
             template_name?: string | null;
         };
+        /** CompanyLogoRequest */
+        CompanyLogoRequest: {
+            company_logo?: string | null;
+        };
+        /** CompanyRequest */
+        CompanyRequest: {
+            name: string;
+            trade_name?: string | null;
+            vat_id?: string | null;
+            tax_id?: string | null;
+            slug?: string | null;
+            address: {
+                country_id: string;
+            };
+        };
         /** CompanyResource */
         CompanyResource: {
             id: number;
@@ -2994,7 +4183,7 @@ export interface components {
             unique_hash: string | null;
             owner_id: string;
             slug: string | null;
-            address?: components["schemas"]["AddressResource"];
+            address?: components["schemas"]["AddressResource"] | null;
             roles: components["schemas"]["RoleResource"][];
         };
         /** ContactRequest */
@@ -3078,6 +4267,24 @@ export interface components {
             swap_currency_symbol: string;
             exchange_rate: string | null;
         };
+        /** CurrentCompanyResource */
+        CurrentCompanyResource: {
+            id: number;
+            name: string;
+            trade_name: string;
+            vat_id: string | null;
+            tax_id: string;
+            logo: string | null;
+            logo_path: string;
+            unique_hash: string | null;
+            owner_id: string;
+            slug: string | null;
+            address?: components["schemas"]["AddressResource"] | null;
+            roles: components["schemas"]["RoleResource"][];
+            /** @description Id de la moneda en la que factura esta empresa. */
+            currency_id: string | null;
+            currency: components["schemas"]["CurrencyResource"] | null;
+        };
         /** CustomFieldRequest */
         CustomFieldRequest: {
             name: string;
@@ -3133,8 +4340,31 @@ export interface components {
         };
         /** Customer */
         Customer: {
+            id: number;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            contact_name: string | null;
+            website: string | null;
+            prefix: string | null;
+            enable_portal: boolean;
+            company_id: number | null;
+            billing_address_id: number | null;
+            shipping_address_id: number | null;
+            currency_id: number | null;
+            creator_id: number | null;
+            nif: string | null;
+            country_code: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            iban: string | null;
+            bic: string | null;
+            sepa_mandate_id: string | null;
+            sepa_mandate_date: string | null;
             avatar: string;
-            currency?: components["schemas"]["Currency"];
+            currency?: components["schemas"]["Currency"] | null;
         };
         /** CustomerRequest */
         CustomerRequest: {
@@ -3142,7 +4372,6 @@ export interface components {
             /** Format: email */
             email?: string | null;
             phone?: string | null;
-            company_name?: string | null;
             contact_name?: string | null;
             website?: string | null;
             prefix?: string | null;
@@ -3193,28 +4422,29 @@ export interface components {
         };
         /** CustomerResource */
         CustomerResource: {
-            id: string;
+            id: number;
             name: string;
-            email: string;
-            phone: string;
-            contact_name: string;
-            company_name: string;
-            website: string;
-            enable_portal: string;
+            email: string | null;
+            phone: string | null;
+            contact_name: string | null;
+            website: string | null;
+            enable_portal: boolean;
             password_added: boolean;
-            currency_id: string;
+            currency_id: number | null;
             payment_method_id: string;
-            company_id: string;
+            company_id: number | null;
             facebook_id: string;
             google_id: string;
             github_id: string;
-            created_at: string;
+            /** Format: date-time */
+            created_at: string | null;
             formatted_created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            updated_at: string | null;
             avatar: string;
             due_amount: string;
             base_due_amount: string;
-            prefix: string;
+            prefix: string | null;
             tax_id: string;
             notes: string;
             /**
@@ -3224,16 +4454,45 @@ export interface components {
              *     presente aunque sea null, para que el tipo del SDK no alterne.
              */
             external_ref: string | null;
-            iban: string;
-            bic: string;
-            sepa_mandate_id: string;
-            sepa_mandate_date: string;
-            billing?: components["schemas"]["AddressResource"];
-            shipping?: components["schemas"]["AddressResource"];
+            iban: string | null;
+            bic: string | null;
+            sepa_mandate_id: string | null;
+            sepa_mandate_date: string | null;
+            billing?: components["schemas"]["AddressResource"] | null;
+            shipping?: components["schemas"]["AddressResource"] | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
             payment_method?: components["schemas"]["PaymentMethodResource"];
+        };
+        /** CustomerSummaryResource */
+        CustomerSummaryResource: {
+            id: string;
+            name: string;
+            email: string;
+            phone: string;
+            contact_name: string;
+            website: string;
+            tax_id: string;
+            prefix: string;
+            enable_portal: string;
+            currency_id: string;
+            payment_method_id: string;
+            company_id: string;
+            /**
+             * @description Netos de rectificativas: los calcula withNetDueAmounts() en la
+             *     propia consulta del índice, no un accessor por fila.
+             */
+            due_amount: string;
+            base_due_amount: string;
+            created_at: string;
+            formatted_created_at: string;
+            updated_at: string;
+            /**
+             * @description Referencia externa del client OAuth del token (null si no hay),
+             *     siempre presente para que el tipo del SDK no alterne.
+             */
+            external_ref: string;
         };
         /** DeleteCustomersRequest */
         DeleteCustomersRequest: {
@@ -3282,88 +4541,234 @@ export interface components {
             ids: number[];
         };
         /** DeliveryNoteItem */
-        DeliveryNoteItem: string[];
+        DeliveryNoteItem: {
+            id: number;
+            delivery_note_id: number;
+            item_id: number | null;
+            name: string;
+            description: string | null;
+            quantity: number;
+            price: number;
+            total: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            tax: number;
+            unit_name: string | null;
+            company_id: number | null;
+            exchange_rate: number | null;
+            base_total: number | null;
+            base_discount_val: number | null;
+            base_tax: number | null;
+            base_price: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** DeliveryNoteResource */
         DeliveryNoteResource: {
-            id: string;
-            delivery_note_number: string;
+            id: number;
+            delivery_note_number: string | null;
             delivery_note_date: string;
             status: string;
-            sub_total: string;
-            total: string;
-            tax: string;
-            discount: string;
-            discount_type: string;
-            discount_val: string;
-            notes: string;
-            customer_id: string;
-            company_id: string;
-            currency_id: string;
-            creator_id: string;
-            invoice_id: string;
-            template_name: string;
-            unique_hash: string;
-            sequence_number: string;
-            exchange_rate: string;
+            sub_total: number;
+            total: number;
+            tax: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            notes: string | null;
+            customer_id: number | null;
+            company_id: number | null;
+            currency_id: number | null;
+            creator_id: number | null;
+            invoice_id: number | null;
+            template_name: string | null;
+            unique_hash: string | null;
+            sequence_number: number | null;
+            exchange_rate: number | null;
             formatted_created_at: string;
             formatted_delivery_note_date: string;
-            customer?: components["schemas"]["Customer"];
+            customer?: components["schemas"]["Customer"] | null;
             items?: components["schemas"]["DeliveryNoteItem"][];
             taxes?: components["schemas"]["Tax"][];
-            currency?: components["schemas"]["Currency"];
-            invoice?: components["schemas"]["Invoice"];
+            currency?: components["schemas"]["Currency"] | null;
+            invoice?: components["schemas"]["Invoice"] | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            signature: string | null;
+        };
+        /** EmailLogResource */
+        EmailLogResource: {
+            id: number;
+            to: string | null;
+            subject: string | null;
+            /**
+             * @description ISO 8601 como el resto de instantes del contrato. Es una fecha
+             *     con hora de verdad —no un día de calendario—, así que viaja con
+             *     su zona: quien la pinte decide en qué reloj la enseña.
+             */
+            created_at: string;
+        };
+        /** EmployeeProfileRequest */
+        EmployeeProfileRequest: {
+            user_id: number;
+            national_id?: string | null;
+            social_security_no?: string | null;
+            contract_type?: string | null;
+            /** Format: date */
+            hired_at?: string | null;
+            /** Format: date */
+            terminated_at?: string | null;
+            weekly_hours?: number | null;
+            department?: string | null;
+            manager_user_id?: number | null;
+            work_schedule_id?: number | null;
+            work_calendar_id?: number | null;
+            payroll_iban?: string | null;
+            vacation_days_per_year?: number | null;
+        };
+        /** EmployeeProfileResource */
+        EmployeeProfileResource: {
+            id: string;
+            company_id: string;
+            user_id: string;
+            national_id: string;
+            social_security_no: string;
+            contract_type: string;
+            hired_at: string;
+            terminated_at: string;
+            weekly_hours: string;
+            department: string;
+            manager_user_id: string;
+            work_schedule_id: string;
+            work_calendar_id: string;
+            payroll_iban: string;
+            vacation_days_per_year: string;
+            is_active: boolean;
             created_at: string;
             updated_at: string;
-            signature: string;
+            user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            manager?: {
+                id: number;
+                name: string;
+            } | null;
+            work_schedule?: {
+                id: string;
+                name: string;
+                weekly_seconds: string;
+            } | null;
+            work_calendar?: {
+                id: string;
+                name: string;
+            } | null;
         };
         /** Estimate */
-        Estimate: string[];
+        Estimate: {
+            id: number;
+            estimate_number: string | null;
+            estimate_date: string;
+            expiry_date: string | null;
+            status: string;
+            sub_total: number;
+            total: number;
+            tax: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            notes: string | null;
+            customer_id: number | null;
+            company_id: number | null;
+            currency_id: number | null;
+            creator_id: number | null;
+            template_name: string | null;
+            unique_hash: string | null;
+            sequence_number: number | null;
+            exchange_rate: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** EstimateItemResource */
         EstimateItemResource: {
-            id: string;
+            id: number;
             name: string;
-            description: string;
-            discount_type: string;
-            quantity: string;
-            unit_name: string;
-            discount: string;
-            discount_val: string;
-            price: string;
-            tax: string;
-            total: string;
-            item_id: string;
-            estimate_id: string;
-            company_id: string;
-            exchange_rate: string;
-            base_discount_val: string;
-            base_price: string;
-            base_tax: string;
-            base_total: string;
+            description: string | null;
+            discount_type: string | null;
+            quantity: number;
+            unit_name: string | null;
+            discount: number;
+            discount_val: number;
+            price: number;
+            tax: number;
+            total: number;
+            item_id: number | null;
+            estimate_id: number;
+            company_id: number | null;
+            exchange_rate: string | null;
+            base_discount_val: string | null;
+            base_price: string | null;
+            base_tax: string | null;
+            base_total: string | null;
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
         };
         /** EstimateResource */
         EstimateResource: {
-            id: string;
+            id: number;
             estimate_date: string;
-            expiry_date: string;
-            estimate_number: string;
+            expiry_date: string | null;
+            estimate_number: string | null;
             status: string;
+            /**
+             * @description Los dos instantes del recorrido (#365). Un presupuesto no tiene
+             *     las banderas `sent`/`viewed` de una factura: su estado era lo
+             *     ÚNICO que decía por dónde iba, y no decía cuándo. `null` en todo
+             *     presupuesto anterior a la migración, que es la verdad.
+             */
+            sent_at: string;
+            viewed_at: string;
+            /**
+             * @description El porqué del rechazo (#366). `null` en todo presupuesto que no
+             *     esté rechazado —el hook `updating` del modelo lo limpia al salir
+             *     de REJECTED— y también en los rechazados antes de la migración,
+             *     que es la verdad: nadie lo anotó. ⚠️ NO viaja al PDF: es una nota interna sobre la venta, y ése es
+             *     justo el motivo de que no se guarde en `notes`, que sí sale en el
+             *     papel que ve el cliente.
+             */
+            rejection_reason: string;
             reference_number: string;
             tax_per_item: string;
             tax_included: string;
             discount_per_item: string;
             notes: unknown[] | string;
-            discount: string;
-            discount_type: string;
-            discount_val: string;
-            sub_total: string;
-            total: string;
-            tax: string;
-            unique_hash: string;
-            creator_id: string;
-            template_name: string;
-            customer_id: string;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            sub_total: number;
+            total: number;
+            tax: number;
+            unique_hash: string | null;
+            creator_id: number | null;
+            template_name: string | null;
+            customer_id: number | null;
+            /**
+             * @description Serie de numeración (#367). `null` en todo presupuesto anterior
+             *     a que existieran las series, y en toda empresa que no haya
+             *     creado ninguna: eso NO se deduce partiendo el número por el
+             *     guion. `PRE-2025-2026-0001` invita a leer `PRE` como serie, pero
+             *     en cuanto un tenant configure `2026/PRE/0001` la deducción
+             *     inventa una serie que no existe.
+             */
+            estimate_series_id: string;
             lead_id: string;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay).
@@ -3371,20 +4776,20 @@ export interface components {
              *     Pimia y no admite el cuid o el uuid de un CRM de fuera.
              */
             external_ref: string | null;
-            exchange_rate: string;
+            exchange_rate: number | null;
             base_discount_val: string;
             base_sub_total: string;
             base_total: string;
             base_tax: string;
-            sequence_number: string;
-            currency_id: string;
+            sequence_number: number | null;
+            currency_id: number | null;
             formatted_expiry_date: string;
             formatted_estimate_date: string;
             estimate_pdf_url: string;
             sales_tax_type: string;
             sales_tax_address_type: string;
             items?: components["schemas"]["EstimateItemResource"][];
-            customer?: components["schemas"]["CustomerResource"];
+            customer?: components["schemas"]["CustomerResource"] | null;
             lead?: {
                 id: string;
                 title: string;
@@ -3392,11 +4797,65 @@ export interface components {
                 person_name: string;
                 email: string;
             };
-            creator?: components["schemas"]["UserResource"];
+            creator?: components["schemas"]["UserResource"] | null;
+            /**
+             * @description Gemelo del de `InvoiceResource`: un renglón por correo enviado,
+             *     del más viejo al más nuevo, solo con la relación cargada, y sin
+             *     `token` ni `body`. Ver EmailLogResource.
+             */
+            email_logs?: components["schemas"]["EmailLogResource"][];
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
+            estimate_series?: components["schemas"]["EstimateSeriesResource"];
+        };
+        /** EstimateSeriesResource */
+        EstimateSeriesResource: {
+            id: string;
+            company_id: string;
+            code: string;
+            name: string;
+            number_format: string;
+            next_sequence: string;
+            is_default: string;
+            is_active: string;
+            estimates_count?: number;
+            created_at: string;
+            updated_at: string;
+        };
+        /** EstimateSummaryResource */
+        EstimateSummaryResource: {
+            id: string;
+            estimate_date: string;
+            expiry_date: string;
+            estimate_number: string;
+            reference_number: string;
+            status: string;
+            sub_total: string;
+            discount_val: string;
+            tax: string;
+            total: string;
+            currency_id: string;
+            customer_id: string;
+            lead_id: string;
+            /**
+             * @description Referencia externa del client OAuth del token (null si no hay),
+             *     siempre presente para que el tipo del SDK no alterne.
+             */
+            external_ref: string;
+            estimate_pdf_url: string;
+            /**
+             * @description Lo justo del cliente para la columna del listado y para
+             *     prefijar el destinatario del envío por correo; la ficha
+             *     completa vive en `GET /customers/{id}`.
+             */
+            customer?: {
+                id: string;
+                name: string;
+                email: string;
+                phone: string;
+            };
         };
         /** EstimatesRequest */
         EstimatesRequest: {
@@ -3423,6 +4882,13 @@ export interface components {
              *     En PUT sigue siendo obligatorio (más abajo): el documento ya tiene uno.
              */
             estimate_number?: string | null;
+            /**
+             * @description Serie de numeración del presupuesto (#367). Opcional: sin ella
+             *     manda la serie por defecto de la empresa y, si la empresa no
+             *     tiene ninguna, el presupuesto se queda sin serie y numera con el
+             *     ajuste global `estimate_number_format` de siempre.
+             */
+            estimate_series_id?: number | null;
             exchange_rate?: string | null;
             /**
              * @description Descuento global: opcional en el contrato y rellenado a 0 en
@@ -3498,19 +4964,25 @@ export interface components {
         };
         /** ExpenseCategoryResource */
         ExpenseCategoryResource: {
-            id: string;
+            id: number;
             name: string;
-            description: string;
-            company_id: string;
+            description: string | null;
+            company_id: number | null;
             amount: string;
             formatted_created_at: string;
-            company?: components["schemas"]["CompanyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
         };
         /** ExpenseRequest */
         ExpenseRequest: {
             expense_date: string;
             expense_number?: string | null;
             expense_category_id: string;
+            /**
+             * @description Tipo de cambio de `currency_id` a la moneda de la empresa
+             *     (`GET /company/settings?settings[]=currency`). Solo se exige cuando el
+             *     gasto va en otra divisa; si coinciden, el gasto se guarda con tipo de
+             *     cambio 1 y lo que llegue aquí se ignora.
+             */
             exchange_rate?: string | null;
             payment_method_id?: string | null;
             amount: string;
@@ -3530,111 +5002,237 @@ export interface components {
         };
         /** ExpenseResource */
         ExpenseResource: {
-            id: string;
+            id: number;
             expense_date: string;
             expense_number: string;
             amount: string;
-            notes: string;
-            customer_id: string;
-            supplier_id: string;
+            notes: string | null;
+            customer_id: number | null;
+            supplier_id: number | null;
             attachment_receipt_url: string;
             attachment_receipt: string;
             attachment_receipt_meta: string;
-            company_id: string;
-            expense_category_id: string;
-            creator_id: string;
+            company_id: number | null;
+            expense_category_id: number | null;
+            creator_id: number | null;
             formatted_expense_date: string;
             formatted_created_at: string;
-            exchange_rate: string;
-            currency_id: string;
-            base_amount: string;
-            payment_method_id: string;
-            customer?: components["schemas"]["CustomerResource"];
-            supplier?: components["schemas"]["SupplierResource"];
-            expense_category?: components["schemas"]["ExpenseCategoryResource"];
-            creator?: components["schemas"]["UserResource"];
+            exchange_rate: number | null;
+            currency_id: number | null;
+            base_amount: string | null;
+            payment_method_id: number | null;
+            customer?: components["schemas"]["CustomerResource"] | null;
+            supplier?: components["schemas"]["SupplierResource"] | null;
+            expense_category?: components["schemas"]["ExpenseCategoryResource"] | null;
+            creator?: components["schemas"]["UserResource"] | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
-            payment_method?: components["schemas"]["PaymentMethodResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
+            payment_method?: components["schemas"]["PaymentMethodResource"] | null;
+        };
+        /** HolidayResource */
+        HolidayResource: {
+            id: string;
+            work_calendar_id: string;
+            date: string;
+            name: string;
+            scope: string;
+            region_code: string;
+            catalog_id: string;
+            is_override: boolean;
+        };
+        /** IncidenceRequest */
+        IncidenceRequest: {
+            /** Format: date */
+            occurred_on: string;
+            /** @enum {string} */
+            category: "late_arrival" | "early_leave" | "technical" | "other";
+            description: string;
+        };
+        /** IncidenceResource */
+        IncidenceResource: {
+            id: string;
+            company_id: string;
+            user_id: string;
+            occurred_on: string;
+            category: string;
+            description: string;
+            status: string;
+            reviewer_id: string;
+            reviewed_at: string;
+            review_note: string;
+            created_at: string;
+            user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            reviewer?: {
+                id: number;
+                name: string;
+            } | null;
         };
         /** InvestmentAssetResource */
         InvestmentAssetResource: {
-            id: string;
-            asset_number: string;
+            id: number;
+            asset_number: string | null;
             name: string;
-            description: string;
-            category: string;
+            description: string | null;
+            category: string | null;
             purchase_date: string | null;
-            purchase_value: string;
-            residual_value: string;
-            useful_life_years: string;
+            purchase_value: number;
+            residual_value: number;
+            useful_life_years: number;
             depreciation_method: string;
             annual_depreciation: string;
             accumulated_depreciation: string;
             net_book_value: string;
             depreciation_schedule: string;
-            company_id: string;
-            created_at: string;
-            updated_at: string;
+            company_id: number;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** Invoice */
-        Invoice: string[];
+        Invoice: {
+            id: number;
+            invoice_number: string | null;
+            invoice_date: string;
+            due_date: string | null;
+            status: string;
+            paid_status: string;
+            sub_total: number;
+            total: number;
+            tax: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            due_amount: string;
+            notes: string | null;
+            customer_id: number | null;
+            company_id: number | null;
+            currency_id: number | null;
+            creator_id: number | null;
+            template_name: string | null;
+            unique_hash: string | null;
+            sent: string;
+            viewed: string;
+            overdue: string;
+            sequence_number: number | null;
+            exchange_rate: number | null;
+            base_total: string | null;
+            base_discount_val: string | null;
+            base_sub_total: string | null;
+            base_tax: string | null;
+            base_due_amount: string | null;
+            aeat_status: string;
+            aeat_csv: string | null;
+            qr_data: string | null;
+            hash: string | null;
+            invoice_type_aeat: string;
+            regime_key: string;
+            verifactu_record_id: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            triage_status: string | null;
+            triage_resolved_by: number | null;
+            triage_resolved_at: string | null;
+            triage_rejection_reason: string | null;
+            exported_at: string | null;
+            rectified_invoice_id: number | null;
+            customer_sequence_number: number | null;
+            is_credit_note: boolean;
+        };
         /** InvoiceItem */
-        InvoiceItem: string[];
+        InvoiceItem: {
+            id: number;
+            invoice_id: number;
+            item_id: number | null;
+            name: string;
+            description: string | null;
+            quantity: number;
+            price: number;
+            total: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            tax: number;
+            unit_name: string | null;
+            company_id: number | null;
+            exchange_rate: string | null;
+            base_total: string | null;
+            base_discount_val: string | null;
+            base_tax: string | null;
+            base_price: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** InvoiceItemResource */
         InvoiceItemResource: {
-            id: string;
+            id: number;
             name: string;
-            description: string;
-            discount_type: string;
-            price: string;
-            quantity: string;
-            unit_name: string;
-            discount: string;
-            discount_val: string;
-            tax: string;
-            total: string;
-            invoice_id: string;
-            item_id: string;
-            company_id: string;
-            base_price: string;
-            exchange_rate: string;
-            base_discount_val: string;
-            base_tax: string;
-            base_total: string;
+            description: string | null;
+            discount_type: string | null;
+            price: number;
+            quantity: number;
+            unit_name: string | null;
+            discount: number;
+            discount_val: number;
+            tax: number;
+            total: number;
+            invoice_id: number;
+            item_id: number | null;
+            company_id: number | null;
+            base_price: string | null;
+            exchange_rate: string | null;
+            base_discount_val: string | null;
+            base_tax: string | null;
+            base_total: string | null;
             recurring_invoice_id: string;
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
         };
         /** InvoiceResource */
         InvoiceResource: {
-            id: string;
+            id: number;
             invoice_date: string;
-            due_date: string;
-            invoice_number: string;
+            due_date: string | null;
+            invoice_number: string | null;
             reference_number: string;
             status: string;
             paid_status: string;
             tax_per_item: string;
             tax_included: string;
             discount_per_item: string;
-            notes: string;
-            discount_type: string;
-            discount: string;
-            discount_val: string;
-            sub_total: string;
-            total: string;
+            notes: string | null;
+            discount_type: string | null;
+            discount: number;
+            discount_val: number;
+            sub_total: number;
+            total: number;
             effective_total: string;
-            tax: string;
+            tax: number;
             due_amount: string;
             effective_due_amount: string;
             sent: string;
             viewed: string;
-            unique_hash: string;
-            template_name: string;
+            /**
+             * @description El instante de esas dos banderas (#365). `null` en todo documento
+             *     anterior a la migración que las añadió, y eso es la verdad
+             *     —nadie anotó la fecha—, no un hueco que rellenar con
+             *     `created_at`: quien pinte una cronología enseña el hueco.
+             */
+            sent_at: string;
+            viewed_at: string;
+            unique_hash: string | null;
+            template_name: string | null;
             invoice_series_id: string;
-            customer_id: string;
+            customer_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay):
              *     cada integrador ve la suya y solo la suya.
@@ -3642,19 +5240,19 @@ export interface components {
             external_ref: string | null;
             payment_method_id: string;
             recurring_invoice_id: string;
-            sequence_number: string;
-            exchange_rate: string;
-            base_discount_val: string;
-            base_sub_total: string;
-            base_total: string;
-            creator_id: string;
-            base_tax: string;
-            base_due_amount: string;
+            sequence_number: number | null;
+            exchange_rate: number | null;
+            base_discount_val: string | null;
+            base_sub_total: string | null;
+            base_total: string | null;
+            creator_id: number | null;
+            base_tax: string | null;
+            base_due_amount: string | null;
             effective_base_total: string;
             effective_base_due_amount: string;
             credited_total: string;
             credited_base_total: string;
-            currency_id: string;
+            currency_id: number | null;
             formatted_created_at: string;
             invoice_pdf_url: string;
             formatted_invoice_date: string;
@@ -3667,35 +5265,48 @@ export interface components {
             effective_paid_status: string;
             effective_overdue: string;
             aeat_status: string;
-            qr_data: string;
-            hash: string;
-            aeat_csv: string;
-            is_credit_note: string | boolean;
-            rectified_invoice_id: string;
+            qr_data: string | null;
+            hash: string | null;
+            aeat_csv: string | null;
+            is_credit_note: boolean;
+            rectified_invoice_id: number | null;
             rectified_invoice_number?: string | null;
             rectified_invoice?: {
-                id: string;
-                invoice_number: string;
+                id: number;
+                invoice_number: string | null;
                 tax_per_item: string;
                 tax_included: string;
-                sub_total: string;
-                discount_val: string;
-                tax: string;
-                total: string;
+                sub_total: number;
+                discount_val: number;
+                tax: number;
+                total: number;
                 items: components["schemas"]["InvoiceItemResource"][];
                 taxes: components["schemas"]["TaxResource"][];
             };
-            credit_notes_count: number;
+            /**
+             * @description `credit_notes_count` lo precarga el índice con withCount; sin
+             *     él (detalle, escrituras) se cuenta al vuelo, como siempre.
+             */
+            credit_notes_count: string | number;
             items?: components["schemas"]["InvoiceItemResource"][];
             payments?: components["schemas"]["PaymentResource"][];
-            customer?: components["schemas"]["CustomerResource"];
+            /**
+             * @description Un renglón por correo enviado, del más viejo al más nuevo: es lo
+             *     que distingue «enviada» de «enviada el 3 de junio y reenviada dos
+             *     veces». Solo con la relación cargada —lo hace el detalle— para
+             *     que el índice no pague una consulta por fila. Sin `token` ni
+             *     `body`: ver EmailLogResource, que explica por qué el primero es
+             *     una credencial.
+             */
+            email_logs?: components["schemas"]["EmailLogResource"][];
+            customer?: components["schemas"]["CustomerResource"] | null;
             invoice_series?: components["schemas"]["InvoiceSeriesResource"];
             payment_method?: components["schemas"]["PaymentMethodResource"];
-            creator?: components["schemas"]["UserResource"];
+            creator?: components["schemas"]["UserResource"] | null;
             taxes: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /**
          * InvoiceSeriesRequest
@@ -3730,6 +5341,62 @@ export interface components {
             invoices_count?: number;
             created_at: string;
             updated_at: string;
+        };
+        /** InvoiceSummaryResource */
+        InvoiceSummaryResource: {
+            id: string;
+            invoice_date: string;
+            due_date: string;
+            /** @description `null` en un borrador: el número oficial se asigna al publicar. */
+            invoice_number: string;
+            reference_number: string;
+            status: string;
+            paid_status: string;
+            overdue: string;
+            is_credit_note: string | boolean;
+            rectified_invoice_id: string;
+            sub_total: string;
+            discount_val: string;
+            tax: string;
+            total: string;
+            due_amount: string;
+            /**
+             * @description Netos de rectificativas, leídos igual que en InvoiceResource
+             *     para que las dos vistas digan lo mismo del mismo documento.
+             *     Ojo: en camelCase el accessor NO lee la columna `effective_*`
+             *     de la consulta, sino que rehace la suma con `credited_total` —
+             *     que `withCreditNoteAdjustments()` también precalcula. De ahí
+             *     que esto no cueste ni una consulta, y que el scope sea
+             *     obligatorio en cualquier índice que sirva este recurso.
+             */
+            effective_total: string;
+            effective_due_amount: string;
+            effective_paid_status: string;
+            effective_overdue: string;
+            currency_id: string;
+            customer_id: string;
+            /**
+             * @description Referencia externa del client OAuth del token (null si no hay),
+             *     siempre presente para que el tipo del SDK no alterne.
+             */
+            external_ref: string;
+            invoice_pdf_url: string;
+            /**
+             * @description El tercer eje. Las pruebas del registro (qr_data, hash,
+             *     aeat_csv) son de la ficha, no del listado.
+             */
+            aeat_status: string;
+            /**
+             * @description Lo justo del cliente para la columna del listado y para
+             *     prefijar el destinatario del envío por correo; la ficha
+             *     completa vive en `GET /customers/{id}`.
+             */
+            customer?: {
+                id: string;
+                name: string;
+                email: string;
+                phone: string;
+            };
         };
         /**
          * InvoiceTemplatePreviewRequest
@@ -3876,42 +5543,53 @@ export interface components {
             }[];
         };
         /** ItemCategory */
-        ItemCategory: string[];
+        ItemCategory: {
+            id: number;
+            name: string;
+            parent_id: number | null;
+            company_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** ItemResource */
         ItemResource: {
-            id: string;
+            id: number;
             name: string;
-            item_type: string | "product";
-            sku: string;
-            supplier_reference: string;
-            category_id: string;
-            description: string;
-            notes: string;
-            price: string;
-            purchase_price: string;
-            default_discount: string | 0;
-            unit_id: string;
-            company_id: string;
-            creator_id: string;
-            currency_id: string;
-            created_at: string;
-            updated_at: string;
+            item_type: string;
+            sku: string | null;
+            supplier_reference: string | null;
+            category_id: number | null;
+            description: string | null;
+            notes: string | null;
+            price: number;
+            purchase_price: number | null;
+            default_discount: number;
+            unit_id: number | null;
+            company_id: number | null;
+            creator_id: number | null;
+            currency_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             tax_per_item: string;
-            is_active: string | boolean;
+            is_active: boolean;
             is_time_trackable: boolean;
             opening_stock: string | 0;
-            stock_alert_qty: string;
-            allow_sale_without_stock: string | boolean;
-            purchase_tax_type_id: string;
+            stock_alert_qty: number | null;
+            allow_sale_without_stock: boolean;
+            purchase_tax_type_id: number | null;
             formatted_created_at: string;
             category?: {
-                id: string;
+                id: number;
                 name: string;
             } | null;
-            unit?: components["schemas"]["UnitResource"];
-            company?: components["schemas"]["CompanyResource"];
+            unit?: components["schemas"]["UnitResource"] | null;
+            company?: components["schemas"]["CompanyResource"] | null;
             taxes?: components["schemas"]["TaxResource"][];
-            currency?: components["schemas"]["CurrencyResource"];
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /** ItemsRequest */
         ItemsRequest: {
@@ -3993,7 +5671,7 @@ export interface components {
             notes_count?: number;
             activities_count?: number;
             customer?: {
-                id: string;
+                id: number;
                 name: string;
             } | null;
             assigned_user?: {
@@ -4002,13 +5680,13 @@ export interface components {
                 email: string;
             } | null;
             closing_estimate?: {
-                id: string;
-                estimate_number: string;
-                total: string;
+                id: number;
+                estimate_number: string | null;
+                total: number;
                 status: string;
             } | null;
             converted_to_customer?: {
-                id: string;
+                id: number;
                 name: string;
             } | null;
         };
@@ -4026,22 +5704,51 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
         };
+        /** NoteResource */
+        NoteResource: {
+            id: number;
+            type: string;
+            name: string | null;
+            notes: string | null;
+            is_default: string;
+            company?: components["schemas"]["CompanyResource"] | null;
+        };
+        /** NotesRequest */
+        NotesRequest: {
+            type: string;
+            name: string;
+            notes: string;
+            is_default: string;
+        };
+        /** PDFConfigurationRequest */
+        PDFConfigurationRequest: {
+            pdf_driver: string;
+        };
         /** PaymentMethodRequest */
         PaymentMethodRequest: {
             name: string;
         };
         /** PaymentMethodResource */
         PaymentMethodResource: {
-            id: string;
+            id: number;
             name: string;
-            company_id: string;
+            company_id: number | null;
             type: string;
-            company?: components["schemas"]["CompanyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
         };
         /** PaymentRequest */
         PaymentRequest: {
             payment_date: string;
             customer_id: string;
+            /**
+             * @description Tipo de cambio de la divisa del CLIENTE a la de la empresa. Solo se
+             *     exige cuando el cliente factura en otra divisa; si su moneda coincide
+             *     con la de la empresa o está sin fijar —que es como nacen los clientes—
+             *     el pago se guarda con tipo de cambio 1 y lo que llegue aquí se ignora.
+             *     La condición depende del cliente referenciado, no de este cuerpo: su
+             *     `currency_id` se consulta en `GET /customers/{id}` y la moneda de la
+             *     empresa en `GET /company/settings?settings[]=currency`.
+             */
             exchange_rate?: string | null;
             amount: number;
             /**
@@ -4068,32 +5775,39 @@ export interface components {
         };
         /** PaymentResource */
         PaymentResource: {
-            id: string;
-            payment_number: string;
+            id: number;
+            payment_number: string | null;
             payment_date: string;
             notes: unknown[] | string;
             amount: string;
-            unique_hash: string;
-            invoice_id: string;
-            company_id: string;
-            payment_method_id: string;
-            creator_id: string;
-            customer_id: string;
-            exchange_rate: string;
-            base_amount: string;
+            unique_hash: string | null;
+            invoice_id: number | null;
+            company_id: number | null;
+            payment_method_id: number | null;
+            creator_id: number | null;
+            customer_id: number | null;
+            exchange_rate: number | null;
+            base_amount: string | null;
             currency_id: string;
             transaction_id: string;
-            sequence_number: string;
+            sequence_number: number | null;
             formatted_created_at: string;
             formatted_payment_date: string;
             payment_pdf_url: string;
-            customer?: components["schemas"]["CustomerResource"];
-            invoice?: components["schemas"]["InvoiceResource"];
-            payment_method?: components["schemas"]["PaymentMethodResource"];
+            customer?: components["schemas"]["CustomerResource"] | null;
+            invoice?: components["schemas"]["InvoiceResource"] | null;
+            payment_method?: components["schemas"]["PaymentMethodResource"] | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
             currency?: components["schemas"]["CurrencyResource"];
             transaction?: components["schemas"]["TransactionResource"];
+        };
+        /** ProfileRequest */
+        ProfileRequest: {
+            name: string;
+            password?: string | null;
+            /** Format: email */
+            email: string;
         };
         /** ProjectRequest */
         ProjectRequest: {
@@ -4139,7 +5853,7 @@ export interface components {
             created_at: string;
             updated_at: string;
             customer?: {
-                id: string;
+                id: number;
                 name: string;
             } | null;
             manager?: {
@@ -4148,27 +5862,51 @@ export interface components {
             } | null;
         };
         /** ReceivedInvoiceItem */
-        ReceivedInvoiceItem: string[];
+        ReceivedInvoiceItem: {
+            id: number;
+            received_invoice_id: number;
+            item_id: number | null;
+            name: string;
+            description: string | null;
+            quantity: number;
+            price: number;
+            total: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            tax: number;
+            unit_name: string | null;
+            company_id: number | null;
+            exchange_rate: string | null;
+            base_total: string | null;
+            base_discount_val: string | null;
+            base_tax: string | null;
+            base_price: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** ReceivedInvoiceItemResource */
         ReceivedInvoiceItemResource: {
-            id: string;
-            received_invoice_id: string;
-            item_id: string;
+            id: number;
+            received_invoice_id: number;
+            item_id: number | null;
             name: string;
-            description: string;
-            quantity: string;
-            price: string;
-            total: string;
-            discount: string;
-            discount_type: string;
-            discount_val: string;
-            tax: string;
-            unit_name: string;
-            exchange_rate: string;
-            base_price: string;
-            base_discount_val: string;
-            base_tax: string;
-            base_total: string;
+            description: string | null;
+            quantity: number;
+            price: number;
+            total: number;
+            discount: number;
+            discount_type: string | null;
+            discount_val: number;
+            tax: number;
+            unit_name: string | null;
+            exchange_rate: string | null;
+            base_price: string | null;
+            base_discount_val: string | null;
+            base_tax: string | null;
+            base_total: string | null;
             taxes?: components["schemas"]["TaxResource"][];
         };
         /** ReceivedInvoiceRequest */
@@ -4188,6 +5926,15 @@ export interface components {
              *     En PUT sigue siendo obligatorio (más abajo): la factura ya tiene uno.
              */
             received_invoice_number?: string | null;
+            /**
+             * @description Tipo de cambio de la divisa del PROVEEDOR a la de la empresa. Solo se
+             *     exige cuando el proveedor factura en otra divisa; si su moneda coincide
+             *     con la de la empresa o está sin fijar —que es como nacen los
+             *     proveedores— la factura se guarda con tipo de cambio 1 y lo que llegue
+             *     aquí se ignora. La condición depende del proveedor referenciado, no de
+             *     este cuerpo: su `currency_id` se consulta en `GET /suppliers/{id}` y la
+             *     moneda de la empresa en `GET /company/settings?settings[]=currency`.
+             */
             exchange_rate?: string | null;
             discount: number;
             discount_val: number;
@@ -4210,34 +5957,34 @@ export interface components {
         };
         /** ReceivedInvoiceResource */
         ReceivedInvoiceResource: {
-            id: string;
+            id: number;
             received_invoice_date: string;
-            due_date: string;
-            received_invoice_number: string;
-            reference_number: string;
+            due_date: string | null;
+            received_invoice_number: string | null;
+            reference_number: string | null;
             status: string;
             paid_status: string;
-            tax_per_item: string;
-            discount_per_item: string;
-            notes: string;
-            discount_type: string;
-            discount: string;
-            discount_val: string;
-            sub_total: string;
-            total: string;
-            tax: string;
+            tax_per_item: string | null;
+            discount_per_item: string | null;
+            notes: string | null;
+            discount_type: string | null;
+            discount: number;
+            discount_val: number;
+            sub_total: number;
+            total: number;
+            tax: number;
             due_amount: string;
-            irpf_amount: string;
-            supplier_id: string;
-            sequence_number: string;
-            exchange_rate: string;
-            base_discount_val: string;
-            base_sub_total: string;
-            base_total: string;
-            creator_id: string;
-            base_tax: string;
-            base_due_amount: string;
-            currency_id: string;
+            irpf_amount: number;
+            supplier_id: number | null;
+            sequence_number: number | null;
+            exchange_rate: number | null;
+            base_discount_val: string | null;
+            base_sub_total: string | null;
+            base_total: string | null;
+            creator_id: number | null;
+            base_tax: string | null;
+            base_due_amount: string | null;
+            currency_id: number | null;
             formatted_created_at: string;
             formatted_received_invoice_date: string;
             formatted_due_date: string;
@@ -4248,10 +5995,10 @@ export interface components {
              */
             document_meta?: string;
             items?: components["schemas"]["ReceivedInvoiceItemResource"][];
-            supplier?: components["schemas"]["SupplierResource"];
+            supplier?: components["schemas"]["SupplierResource"] | null;
             taxes?: components["schemas"]["TaxResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /** RecurringInvoiceRequest */
         RecurringInvoiceRequest: {
@@ -4444,9 +6191,28 @@ export interface components {
         };
         /** SepaRemittance */
         SepaRemittance: {
+            id: number;
+            company_id: number;
+            creator_id: number | null;
+            number: string;
+            /** Format: date-time */
+            execution_date: string;
+            sequence_type: string;
+            total_amount: number;
+            transaction_count: number;
+            status: string;
+            notes: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             formatted_created_at: string;
             formatted_execution_date: string;
             formatted_total: string;
+        };
+        /** SettingRequest */
+        SettingRequest: {
+            settings: string;
         };
         /**
          * StoreApprovalRequest
@@ -4540,25 +6306,27 @@ export interface components {
         };
         /** SupplierResource */
         SupplierResource: {
-            id: string;
+            id: number;
             name: string;
-            email: string;
-            phone: string;
-            contact_name: string;
-            website: string;
-            currency_id: string;
-            company_id: string;
-            tax_id: string;
-            prefix: string;
-            notes: string;
-            created_at: string;
+            email: string | null;
+            phone: string | null;
+            contact_name: string | null;
+            website: string | null;
+            currency_id: number | null;
+            company_id: number | null;
+            tax_id: string | null;
+            prefix: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            created_at: string | null;
             formatted_created_at: string;
-            updated_at: string;
-            billing?: components["schemas"]["AddressResource"];
-            shipping?: components["schemas"]["AddressResource"];
+            /** Format: date-time */
+            updated_at: string | null;
+            billing?: components["schemas"]["AddressResource"] | null;
+            shipping?: components["schemas"]["AddressResource"] | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
-            company?: components["schemas"]["CompanyResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            company?: components["schemas"]["CompanyResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /** TaskRequest */
         TaskRequest: {
@@ -4592,6 +6360,13 @@ export interface components {
             due_at: string;
             completed_at: string;
             estimated_minutes: number | null;
+            /**
+             * @description Lo IMPUTADO frente a lo estimado: la suma de `duration_minutes`
+             *     de los partes de esta tarea. Lo pone el controlador (agregado en
+             *     la consulta del índice, relación en el detalle); nunca se calcula
+             *     aquí, que se pintaría una consulta por fila.
+             */
+            tracked_minutes: number;
             assigned_user_id: string;
             creator_id: string;
             created_at: string;
@@ -4637,52 +6412,145 @@ export interface components {
             };
         };
         /** Tax */
-        Tax: string[];
+        Tax: {
+            id: number;
+            tax_type_id: number | null;
+            invoice_id: number | null;
+            estimate_id: number | null;
+            invoice_item_id: number | null;
+            estimate_item_id: number | null;
+            item_id: number | null;
+            company_id: number | null;
+            name: string;
+            amount: number;
+            percent: number;
+            base_amount: string | null;
+            currency_id: number | null;
+            exchange_rate: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            delivery_note_id: number | null;
+            delivery_note_item_id: number | null;
+            received_invoice_id: number | null;
+            received_invoice_item_id: number | null;
+            expense_id: number | null;
+        };
         /** TaxResource */
         TaxResource: {
-            id: string;
-            tax_type_id: string;
-            invoice_id: string;
-            estimate_id: string;
-            invoice_item_id: string;
-            estimate_item_id: string;
-            item_id: string;
-            company_id: string;
+            id: number;
+            tax_type_id: number | null;
+            invoice_id: number | null;
+            estimate_id: number | null;
+            invoice_item_id: number | null;
+            estimate_item_id: number | null;
+            item_id: number | null;
+            company_id: number | null;
             name: string;
-            amount: string;
-            percent: string;
+            amount: number;
+            percent: number;
             calculation_type: string;
             fixed_amount: string;
             compound_tax: string;
-            base_amount: string;
-            currency_id: string;
+            base_amount: string | null;
+            currency_id: number | null;
             type: string;
             recurring_invoice_id: string;
-            tax_type?: components["schemas"]["TaxTypeResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            tax_type?: components["schemas"]["TaxTypeResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /** TaxType */
-        TaxType: string[];
+        TaxType: {
+            id: number;
+            name: string;
+            percent: number;
+            compound_tax: boolean;
+            collective_tax: string;
+            type: string;
+            description: string | null;
+            company_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            tax_category: string;
+            aeat_model: string | null;
+            tax_scope: string;
+            is_default: boolean;
+            is_system: boolean;
+            is_active: boolean;
+        };
+        /** TaxTypeRequest */
+        TaxTypeRequest: {
+            name: string;
+            /** @enum {string} */
+            calculation_type: "percentage" | "fixed";
+            percent?: number | null;
+            fixed_amount?: number | null;
+            description?: string | null;
+            compound_tax?: string | null;
+            collective_tax?: string | null;
+        };
         /** TaxTypeResource */
         TaxTypeResource: {
-            id: string;
+            id: number;
             name: string;
-            percent: string;
+            percent: number;
             fixed_amount: string;
             calculation_type: string;
             type: string;
-            compound_tax: string;
+            compound_tax: boolean;
             collective_tax: string;
-            description: string;
-            company_id: string;
+            description: string | null;
+            company_id: number | null;
             /** @description Spanish AEAT tax fields */
-            tax_category: string | "IVA";
-            aeat_model: string;
-            tax_scope: string | "both";
-            is_default: string | boolean;
-            is_system: string | boolean;
-            is_active: string | boolean;
-            company?: components["schemas"]["CompanyResource"];
+            tax_category: string;
+            aeat_model: string | null;
+            tax_scope: string;
+            is_default: boolean;
+            is_system: boolean;
+            is_active: boolean;
+            company?: components["schemas"]["CompanyResource"] | null;
+        };
+        /** TimeClockCorrectionRequest */
+        TimeClockCorrectionRequest: {
+            time_clock_id?: number | null;
+            /** @enum {string} */
+            proposed_kind: "in" | "out" | "break_start" | "break_end";
+            /** Format: date-time */
+            proposed_punched_at: string;
+            reason: string;
+        };
+        /** TimeClockCorrectionResource */
+        TimeClockCorrectionResource: {
+            id: string;
+            company_id: string;
+            user_id: string;
+            time_clock_id: string;
+            proposed_kind: string;
+            proposed_punched_at: string;
+            status: string;
+            reason: string;
+            approver_id: string;
+            decided_at: string;
+            decision_note: string;
+            created_at: string;
+            user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            approver?: {
+                id: number;
+                name: string;
+            } | null;
+            time_clock?: {
+                id: string;
+                kind: string;
+                punched_at: string | null;
+                local_date: string | null;
+            } | null;
         };
         /** TimeEntryRequest */
         TimeEntryRequest: {
@@ -4733,7 +6601,7 @@ export interface components {
                 hourly_rate_cents: number;
             };
             item?: {
-                id: string;
+                id: number;
                 name: string;
                 price: number;
             };
@@ -4763,10 +6631,14 @@ export interface components {
         };
         /** UnitResource */
         UnitResource: {
-            id: string;
+            id: number;
             name: string;
-            company_id: string;
-            company?: components["schemas"]["CompanyResource"];
+            company_id: number | null;
+            company?: components["schemas"]["CompanyResource"] | null;
+        };
+        /** UpdateSettingsRequest */
+        UpdateSettingsRequest: {
+            settings: string;
         };
         /** UploadExpenseReceiptRequest */
         UploadExpenseReceiptRequest: {
@@ -4801,14 +6673,6 @@ export interface components {
             email: string;
             phone: string;
             role: string;
-            contact_name: string;
-            company_name: string;
-            website: string;
-            enable_portal: string;
-            currency_id: string;
-            facebook_id: string;
-            google_id: string;
-            github_id: string;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
@@ -4817,7 +6681,6 @@ export interface components {
             is_owner: boolean;
             roles: components["schemas"]["Role"][];
             formatted_created_at: string;
-            currency?: components["schemas"]["CurrencyResource"];
             companies?: {
                 id: number;
                 name: string;
@@ -4829,10 +6692,55 @@ export interface components {
                 unique_hash: string | null;
                 owner_id: string;
                 slug: string | null;
-                address?: components["schemas"]["AddressResource"];
+                address?: components["schemas"]["AddressResource"] | null;
                 roles: components["schemas"]["RoleResource"][];
                 role: string | null;
             }[];
+        };
+        /** WorkCalendarRequest */
+        WorkCalendarRequest: {
+            name: string;
+            region_code?: string | null;
+            locality?: string | null;
+            is_default?: boolean | null;
+        };
+        /** WorkCalendarResource */
+        WorkCalendarResource: {
+            id: string;
+            company_id: string;
+            name: string;
+            region_code: string;
+            locality: string;
+            is_default: boolean;
+            holidays_count?: number;
+            employees_count?: number;
+            holidays?: components["schemas"]["HolidayResource"][];
+            created_at: string;
+            updated_at: string;
+        };
+        /** WorkScheduleRequest */
+        WorkScheduleRequest: {
+            name: string;
+            description?: string | null;
+            is_default?: boolean | null;
+            weekly_pattern: {
+                start?: string;
+                end?: string;
+            }[][];
+        };
+        /** WorkScheduleResource */
+        WorkScheduleResource: {
+            id: string;
+            company_id: string;
+            name: string;
+            description: string;
+            weekly_pattern: string | Record<string, never>;
+            weekly_seconds: number;
+            weekly_hours: number;
+            is_default: boolean;
+            employees_count?: number;
+            created_at: string;
+            updated_at: string;
         };
     };
     responses: {
@@ -4884,6 +6792,258 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "absence.balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            quota: number;
+                            used: number;
+                            pending: number;
+                            remaining: number;
+                            employee: {
+                                id: string;
+                                user_id: string;
+                                vacation_days_per_year_override: string;
+                            };
+                        };
+                    } | {
+                        data: {
+                            year: number;
+                            quota: number;
+                            used: number;
+                            pending: number;
+                            remaining: number;
+                            employee: null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "absence.teamCalendar": {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"][];
+                        meta: {
+                            month: string;
+                            from: string;
+                            to: string;
+                            can_view_team: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "absence.approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The absence ID */
+                absence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    decision_note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "absence.reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The absence ID */
+                absence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    decision_note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "absence.cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The absence ID */
+                absence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "absence.index": {
+        parameters: {
+            query?: {
+                scope?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"][];
+                        meta: {
+                            pending_team_count: number;
+                            can_decide: boolean;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "absence.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "absence.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The absence ID */
+                absence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `AbsenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AbsenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "accountingSummary.index": {
         parameters: {
             query?: {
@@ -5571,6 +7731,15 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     status: "DRAFT" | "SENT" | "VIEWED" | "EXPIRED" | "ACCEPTED" | "REJECTED";
+                    /**
+                     * @description Por qué se rechaza el presupuesto (precio, plazos, se lo llevó
+                     *     otro, cambió el alcance). Opcional, y solo se guarda cuando
+                     *     `status` es `REJECTED`; el servidor lo borra en cuanto el
+                     *     presupuesto deja de estar rechazado. Es una nota INTERNA: no
+                     *     viaja al PDF que ve el cliente, al revés que `notes`. Se relee en
+                     *     `rejection_reason` del recurso.
+                     */
+                    rejection_reason?: string | null;
                 };
             };
         };
@@ -5613,15 +7782,13 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         invoice: {
-                            id: string;
-                            /** @constant */
-                            status: "COMPLETED";
-                            invoice_number: string;
-                            sequence_number: string;
-                            unique_hash: string;
-                            template_name: string;
-                            /** @constant */
-                            paid_status: "PAID";
+                            id: number;
+                            status: string;
+                            invoice_number: string | null;
+                            sequence_number: number | null;
+                            unique_hash: string | null;
+                            template_name: string | null;
+                            paid_status: string;
                         };
                     };
                 };
@@ -5693,6 +7860,108 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description `CurrentCompanyResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CurrentCompanyResource"];
+                    };
+                };
+            };
+        };
+    };
+    "company.getUser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+        };
+    };
+    "company.updateProfile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "company.uploadAvatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["AvatarRequest"];
+            };
+        };
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "company.updateCompany": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyRequest"];
+            };
+        };
+        responses: {
             /** @description `CompanyResource` */
             200: {
                 headers: {
@@ -5704,6 +7973,57 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "company.uploadCompanyLogo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompanyLogoRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "settings.companyCurrencyCheckTransactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        has_transactions: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "general.config": {
@@ -5937,6 +8257,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "general.currencies": {
@@ -6148,16 +8469,16 @@ export interface operations {
                                 rectified_invoice_id: string;
                             }[];
                             recentEstimates: {
-                                id: string;
-                                estimate_number: string;
+                                id: number;
+                                estimate_number: string | null;
                                 estimate_date: string;
                                 formatted_estimate_date: string;
                                 status: string;
-                                total: string;
+                                total: number;
                                 base_total: string;
                             }[];
                             estimatesActiveCount: number;
-                            totalDueAmount: string | 0;
+                            totalDueAmount: number | null;
                             topItems: components["schemas"]["InvoiceItem"][];
                         };
                     };
@@ -6197,6 +8518,8 @@ export interface operations {
     "customers.index": {
         parameters: {
             query?: {
+                /** @description Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en céntimos y fechas — sin direcciones, campos personalizados, empresa, moneda ni método de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para índices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el índice sin este parámetro. */
+                view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
@@ -6206,7 +8529,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `CustomerResource` */
+            /**
+             * @description Array of `CustomerResource`
+             *
+             *     Array of `CustomerSummaryResource`
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6214,6 +8541,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CustomerResource"][];
+                        meta: {
+                            customer_total_count: number;
+                        };
+                    } | {
+                        data: components["schemas"]["CustomerSummaryResource"][];
                         meta: {
                             customer_total_count: number;
                         };
@@ -6333,7 +8665,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        total_amount_due: string;
+                        total_amount_due: string | null;
                         total_customer_count: number;
                         total_invoice_count: number;
                         total_estimate_count: number;
@@ -6507,7 +8839,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         success: boolean;
-                        invoice_id: string;
+                        invoice_id: number;
                         delivery_note: components["schemas"]["DeliveryNoteResource"];
                     };
                 };
@@ -6706,6 +9038,148 @@ export interface operations {
             };
         };
     };
+    "employees.index": {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `EmployeeProfileResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EmployeeProfileResource"][];
+                        meta: {
+                            employee_total_count: number;
+                            active_count: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "employees.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description `EmployeeProfileResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EmployeeProfileResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "employees.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The employee ID */
+                employee: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `EmployeeProfileResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EmployeeProfileResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "employees.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The employee ID */
+                employee: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmployeeProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description `EmployeeProfileResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EmployeeProfileResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "employees.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The employee ID */
+                employee: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "estimate.estimateTemplates": {
         parameters: {
             query?: never;
@@ -6758,6 +9232,8 @@ export interface operations {
     "estimates.index": {
         parameters: {
             query?: {
+                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, estado, importes en céntimos, el cliente reducido a `{id, name, email, phone}` y la URL del PDF — sin líneas, impuestos, empresa ni moneda. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
+                view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
@@ -6767,7 +9243,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `EstimateResource` */
+            /**
+             * @description Array of `EstimateResource`
+             *
+             *     Array of `EstimateSummaryResource`
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6775,6 +9255,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["EstimateResource"][];
+                        meta: {
+                            estimate_total_count: number;
+                        };
+                    } | {
+                        data: components["schemas"]["EstimateSummaryResource"][];
                         meta: {
                             estimate_total_count: number;
                         };
@@ -6831,7 +9316,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["EstimateResource"];
+                        data: components["schemas"]["EstimateResource"] & Record<string, never>;
                     };
                 };
             };
@@ -7198,10 +9683,10 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            id: string;
-                            year: string;
-                            quarter: string;
-                            is_locked: string;
+                            id: number;
+                            year: number;
+                            quarter: number;
+                            is_locked: boolean;
                             locked_at: string | null;
                             locked_by: string | null;
                         }[];
@@ -7234,9 +9719,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            id: string;
-                            year: string;
-                            quarter: string;
+                            id: number;
+                            year: number;
+                            quarter: number;
                             is_locked: boolean;
                             locked_at: string | null;
                         };
@@ -7292,6 +9777,59 @@ export interface operations {
             };
         };
     };
+    "settings.getCompanySettings": {
+        parameters: {
+            query: {
+                "settings[]": string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "settings.updateCompanySettings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    } | {
+                        success: boolean;
+                        /** @constant */
+                        message: "Cannot update company currency after transactions are created.";
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "exchangeRate.getExchangeRate": {
         parameters: {
             query?: never;
@@ -7313,6 +9851,59 @@ export interface operations {
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "settings.getSettings": {
+        parameters: {
+            query: {
+                key: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": [
+                        null
+                    ];
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "settings.updateSettings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        ""?: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "exchangeRate.getSupportedCurrencies": {
@@ -7356,6 +9947,214 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "settings.getUserSettings": {
+        parameters: {
+            query: {
+                "settings[]": string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "settings.updateUserSettings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "incidence.review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The incidence ID */
+                incidence: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "acknowledged" | "resolved" | "dismissed";
+                    review_note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `IncidenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["IncidenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "incidences.index": {
+        parameters: {
+            query?: {
+                scope?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `IncidenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["IncidenceResource"][];
+                        meta: {
+                            can_review: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "incidences.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description `IncidenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["IncidenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "incidences.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The incidence ID */
+                incidence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `IncidenceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["IncidenceResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "incidences.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The incidence ID */
+                incidence: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "investmentAssets.delete": {
@@ -8143,6 +10942,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: string;
+                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, los tres ejes de estado (documento, cobro y AEAT), importes en céntimos —incluidos los netos de rectificativas—, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin líneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
+                view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
@@ -8152,7 +10953,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `InvoiceResource` */
+            /**
+             * @description Array of `InvoiceResource`
+             *
+             *     Array of `InvoiceSummaryResource`
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8160,6 +10965,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["InvoiceResource"][];
+                        meta: {
+                            invoice_total_count: number;
+                        };
+                    } | {
+                        data: components["schemas"]["InvoiceSummaryResource"][];
                         meta: {
                             invoice_total_count: number;
                         };
@@ -8979,12 +11789,203 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "legalReport.employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            user_id: string;
+                            name: string;
+                            email: string;
+                            contract_type: string;
+                            department: string;
+                            terminated_at: string | null;
+                        }[];
+                        meta: {
+                            can_view_all: boolean;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "legalReport.preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            employee: {
+                                user_id: string;
+                                name: string;
+                                email: string;
+                                national_id: string;
+                                contract_type: string;
+                                department: string;
+                                hired_at: string | null;
+                                weekly_hours: string;
+                            };
+                            period: {
+                                from: string;
+                                to: string;
+                            };
+                            days: {
+                                date: string;
+                                dow: string;
+                                is_working: boolean;
+                                holiday: {
+                                    name: string;
+                                    scope: string | null;
+                                } | null;
+                                absence: unknown[] | null;
+                                expected_seconds: number;
+                                worked_seconds: number;
+                                break_seconds: number;
+                                diff_seconds: string;
+                                has_correction: boolean;
+                                punches: {
+                                    id: string;
+                                    kind: string;
+                                    punched_at: string;
+                                    source: string;
+                                    hash: string;
+                                    /**
+                                     * @description Rectificado por corrección aprobada: sigue en el informe
+                                     *     —es registro, y hubo dos versiones— pero no computa.
+                                     */
+                                    superseded: boolean;
+                                }[];
+                            }[];
+                            totals: {
+                                worked_seconds: number;
+                                break_seconds: number;
+                                expected_seconds: number;
+                                diff_seconds: string;
+                                days_with_punches: number;
+                            };
+                            absences: unknown[];
+                            corrections: {
+                                id: string;
+                                kind: string;
+                                proposed_at: string;
+                                reason: string;
+                                approved_by: string;
+                                decided_at: string | null;
+                            }[];
+                            last_punch_hash: string | null;
+                            /**
+                             * @description El material vive en UN sitio — SelloDeFichaje — y sella la cara UTC
+                             *     del instante. El porqué de las dos cosas está allí.
+                             */
+                            content_sha256: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "legalReport.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                    "application/pdf": Record<string, never>;
+                };
+            };
+        };
+    };
+    "legalReport.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Transfer-Encoding": "chunked";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=UTF-8": string;
+                };
+            };
+        };
+    };
+    "legalReport.signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            subject: string;
+                            subject_user_id: string;
+                            period_from: string;
+                            period_to: string;
+                            kind: string;
+                            hash: string;
+                            hash_prev: string;
+                            content_sha256: string;
+                            generated_by: string;
+                            generated_at: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
     "general.nextNumber": {
         parameters: {
             query: {
+                estimate_series_id?: string;
                 /** @description Tipo de documento cuyo número se calcula. Obligatorio: un valor fuera de la lista devuelve `success: false`. */
                 key: "invoice" | "credit_note" | "estimate" | "payment" | "delivery_note" | "received_invoice";
-                /** @description Serie de facturación a usar (solo `key=invoice`). Sin ella manda la serie por defecto de la empresa. `invoice_series_id` es su alias histórico y solo se mira si `series_id` no viene. */
+                /** @description Serie de numeración a usar, con `key=invoice` o con `key=estimate`. Sin ella manda la serie por defecto de la empresa para ese tipo de documento, y si la empresa no tiene ninguna, el ajuste global de numeración. `invoice_series_id` es su alias histórico y solo se mira si `series_id` no viene. */
                 series_id?: number;
                 /** @description Alias histórico de `series_id`. En clientes nuevos usa `series_id`. */
                 invoice_series_id?: number;
@@ -9013,6 +12014,167 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "notes.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated set of `NoteResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoteResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            /** @description Generated paginator links. */
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            /** @description Base path for paginator generated URLs. */
+                            path: string | null;
+                            /** @description Number of items shown per page. */
+                            per_page: number;
+                            /** @description Number of the last item in the slice. */
+                            to: number | null;
+                            /** @description Total number of items being paginated. */
+                            total: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "notes.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotesRequest"];
+            };
+        };
+        responses: {
+            /** @description `NoteResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoteResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "notes.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The note ID */
+                note: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `NoteResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoteResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "notes.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The note ID */
+                note: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotesRequest"];
+            };
+        };
+        responses: {
+            /** @description `NoteResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoteResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "notes.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The note ID */
+                note: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "notifications.index": {
@@ -9132,6 +12294,82 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "pDFConfiguration.getDrivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": [
+                        "dompdf",
+                        "gotenberg"
+                    ];
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "pDFConfiguration.getEnvironment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pdf_driver: string;
+                        gotenberg_host: string;
+                        gotenberg_margins: string;
+                        gotenberg_papersize: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "pDFConfiguration.saveEnvironment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PDFConfigurationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        success: "pdf_variables_save_successfully";
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "payment-methods.index": {
@@ -9486,10 +12724,10 @@ export interface operations {
                     "application/json": {
                         has_certificate: boolean;
                         data: {
-                            subject: null;
-                            issuer: null;
-                            valid_from: null;
-                            valid_to: null;
+                            subject: string;
+                            issuer: string;
+                            valid_from: string;
+                            valid_to: string;
                         } | null;
                     };
                 };
@@ -10792,6 +14030,319 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "specializationInstall.install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string | {
+                        data: {
+                            slug: string;
+                            status: string;
+                            version: string;
+                            origin: string;
+                            last_error: string;
+                            installed_at: string | null;
+                        };
+                    };
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            slug: string;
+                            status: string;
+                            version: string;
+                            origin: string;
+                            last_error: string;
+                            installed_at: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "specialization_not_found";
+                    };
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Esta cuenta no tiene una instancia de Pim (Hermes) configurada, así que no hay dónde entregar la especialización.";
+                    };
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No se pudo iniciar la instalación. Inténtalo de nuevo en unos minutos.";
+                    } | {
+                        /** @constant */
+                        message: "La instalación desde la tienda aún no está configurada en esta plataforma.";
+                    };
+                };
+            };
+        };
+    };
+    "specializationInstall.status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            slug: string;
+                            status: string;
+                            version: string;
+                            origin: string;
+                            last_error: string;
+                            installed_at: string | null;
+                        };
+                    } | {
+                        data: null;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "specializations.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: string[];
+                        meta: {
+                            source: string;
+                            verticals: unknown[];
+                        };
+                    };
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "specializations_catalog_unavailable";
+                    };
+                };
+            };
+        };
+    };
+    "specializations.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: string | null;
+                        meta: {
+                            source: string;
+                            others: string[];
+                        };
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "specialization_not_found";
+                    };
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "specializations_catalog_unavailable";
+                    };
+                };
+            };
+        };
+    };
+    "storeModules.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @constant */
+                            type: "module";
+                            slug: string;
+                            name: string;
+                            vertical: null;
+                            short_description: string;
+                            long_description: string;
+                            cover: null;
+                            screenshots: string[];
+                            icon: string | null;
+                            /** @description Los módulos in-core van con el plan: sin precio propio. */
+                            monthly_price: null;
+                            yearly_price: null;
+                            included_in_plan: boolean;
+                            latest_version: string | null;
+                            installed: boolean;
+                            /** @enum {string} */
+                            install_status: "installed" | "disabled";
+                            update_available: boolean;
+                            depends_on: unknown[];
+                            depends_on_names: unknown[];
+                            /** @description Instalados que dependen de este (bloquean el desactivar). */
+                            dependents: string[];
+                        }[];
+                        meta: {
+                            /** @constant */
+                            source: "in-core";
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "storeModules.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @constant */
+                            type: "module";
+                            slug: string;
+                            name: string;
+                            vertical: null;
+                            short_description: string;
+                            long_description: string;
+                            cover: null;
+                            screenshots: string[];
+                            icon: string;
+                            /** @description Los módulos in-core van con el plan: sin precio propio. */
+                            monthly_price: null;
+                            yearly_price: null;
+                            included_in_plan: boolean;
+                            latest_version: string;
+                            installed: boolean;
+                            /** @enum {string} */
+                            install_status: "installed" | "disabled";
+                            update_available: boolean;
+                            depends_on: unknown[];
+                            depends_on_names: unknown[];
+                            /** @description Instalados que dependen de este (bloquean el desactivar). */
+                            dependents: string[];
+                        } | null;
+                        meta: {
+                            /** @constant */
+                            source: "in-core";
+                        };
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "module_not_found";
+                    };
+                };
+            };
+        };
+    };
     "supplier.supplierStats": {
         parameters: {
             query?: never;
@@ -10817,18 +14368,18 @@ export interface operations {
                             totalDueAmount: unknown;
                             receivedInvoicesCount: number;
                             recentInvoices: {
-                                id: string;
-                                invoice_number: string | "—";
-                                reference_number: string;
+                                id: number;
+                                invoice_number: string | null;
+                                reference_number: string | null;
                                 invoice_date: string;
                                 formatted_invoice_date: string;
-                                due_date: string;
+                                due_date: string | null;
                                 status: string;
                                 paid_status: string;
-                                total: string;
+                                total: number;
                                 due_amount: string;
-                                base_total: string;
-                                base_due_amount: string;
+                                base_total: string | null;
+                                base_due_amount: string | null;
                             }[];
                             topItems: components["schemas"]["ReceivedInvoiceItem"][];
                         };
@@ -11304,6 +14855,476 @@ export interface operations {
                 content: {
                     "application/json": {
                         success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "tax-types.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `TaxTypeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaxTypeResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "tax-types.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description `TaxTypeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaxTypeResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "tax-types.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tax type ID */
+                taxType: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `TaxTypeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaxTypeResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "tax-types.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tax type ID */
+                taxType: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description `TaxTypeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaxTypeResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "tax-types.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tax type ID */
+                taxType: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "taxTypes.toggleActive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The tax type ID */
+                taxType: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `TaxTypeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaxTypeResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "timeClock.punch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    client_uuid: string;
+                    /** @enum {string} */
+                    kind: "in" | "out" | "break_start" | "break_end";
+                    /** Format: date-time */
+                    punched_at?: string;
+                    source?: string;
+                    geo_lat?: number | null;
+                    geo_lng?: number | null;
+                    geo_accuracy_m?: number | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            kind: string;
+                            punched_at: string;
+                            local_date: string;
+                            source: string;
+                            hash: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClock.today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: string;
+                            /** @constant */
+                            status: "in";
+                            open_since: string;
+                            break_since: null;
+                            worked_seconds: number;
+                            worked_seconds_live: number;
+                            break_seconds: number;
+                            punches: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "timeClock.mine": {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                period?: "day" | "week" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            days: {
+                                date: string;
+                                /** @constant */
+                                status: "in";
+                                open_since: string;
+                                break_since: null;
+                                worked_seconds: number;
+                                worked_seconds_live: number;
+                                break_seconds: number;
+                                punches: string;
+                                has_correction: boolean;
+                            }[];
+                            totals: {
+                                worked_seconds: number;
+                                break_seconds: number;
+                            };
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClock.budget": {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: unknown;
+                            has_employee_profile: boolean;
+                            is_clocked_in: boolean;
+                            worked_seconds: number;
+                            worked_seconds_live: number;
+                            entries_seconds: number;
+                            remaining_seconds: Record<string, never> | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClockCorrection.approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The correction ID */
+                correction: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    decision_note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `TimeClockCorrectionResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimeClockCorrectionResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClockCorrection.reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The correction ID */
+                correction: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    decision_note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `TimeClockCorrectionResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimeClockCorrectionResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClockCorrection.index": {
+        parameters: {
+            query?: {
+                scope?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `TimeClockCorrectionResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimeClockCorrectionResource"][];
+                        meta: {
+                            pending_team_count: number;
+                            can_decide: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "timeClockCorrection.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimeClockCorrectionRequest"];
+            };
+        };
+        responses: {
+            /** @description `TimeClockCorrectionResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimeClockCorrectionResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "timeClockCorrection.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The correction ID */
+                correction: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `TimeClockCorrectionResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimeClockCorrectionResource"] & Record<string, never>;
                     };
                 };
             };
@@ -14417,12 +18438,12 @@ export interface operations {
                         /** @constant */
                         message: "Status synced successfully";
                         data: {
-                            id: string;
-                            invoice_number: string;
+                            id: number;
+                            invoice_number: string | null;
                             aeat_status: string;
-                            hash: string;
-                            qr_data: string;
-                            verifactu_record_id: string;
+                            hash: string | null;
+                            qr_data: string | null;
+                            verifactu_record_id: string | null;
                         };
                     };
                 };
@@ -14494,6 +18515,597 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "webhookEndpoints.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            client_id: string;
+                            url: string;
+                            events: string;
+                            /** Format: date-time */
+                            disabled_at: string | null;
+                            consecutive_failures: number;
+                            /** Format: date-time */
+                            created_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "webhookEndpoints.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    url: string;
+                    events: string[];
+                    client_id: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            client_id: string;
+                            url: string;
+                            events: string;
+                            /** Format: date-time */
+                            disabled_at: string | null;
+                            consecutive_failures: number;
+                            /** Format: date-time */
+                            created_at: string | null;
+                        };
+                        /** @description ÚNICA vez que el secret sale del servidor. */
+                        secret: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "webhookEndpoints.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Webhook eliminado.";
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Webhook no encontrado.";
+                    };
+                };
+            };
+        };
+    };
+    "webhookEndpoints.deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            event: string;
+                            payload: unknown[] | null;
+                            status: string;
+                            attempts: number;
+                            response_status: number | null;
+                            last_error: string | null;
+                            /** Format: date-time */
+                            next_attempt_at: string | null;
+                            /** Format: date-time */
+                            delivered_at: string | null;
+                            /** Format: date-time */
+                            created_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Webhook no encontrado.";
+                    };
+                };
+            };
+        };
+    };
+    "webhookEndpoints.replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Entrega re-encolada.";
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Webhook no encontrado.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Este webhook está desactivado por fallos consecutivos. Bórralo y créalo de nuevo para reactivarlo.";
+                    } | {
+                        /** @constant */
+                        message: "Esta entrega es demasiado antigua para reenviarla. Reconcilia por API.";
+                    } | {
+                        /** @constant */
+                        message: "Solo se pueden reenviar entregas fallidas o muertas.";
+                    };
+                };
+            };
+        };
+    };
+    "workCalendar.importTemplate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    year: number;
+                    region_code?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        synced: number;
+                        year: number;
+                        region_code: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "workCalendar.storeHoliday": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    date: string;
+                    name: string;
+                    /** @enum {string|null} */
+                    scope?: "national" | "autonomous" | "local" | "custom" | null;
+                    region_code?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `HolidayResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HolidayResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "workCalendar.destroyHoliday": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+                /** @description The holiday ID */
+                holiday: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "work-calendars.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `WorkCalendarResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkCalendarResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "work-calendars.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkCalendarRequest"];
+            };
+        };
+        responses: {
+            /** @description `WorkCalendarResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkCalendarResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "work-calendars.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `WorkCalendarResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkCalendarResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "work-calendars.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkCalendarRequest"];
+            };
+        };
+        responses: {
+            /** @description `WorkCalendarResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkCalendarResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "work-calendars.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work calendar ID */
+                workCalendar: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "work-schedules.index": {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `WorkScheduleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkScheduleResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "work-schedules.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description `WorkScheduleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkScheduleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "work-schedules.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work schedule ID */
+                workSchedule: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `WorkScheduleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkScheduleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "work-schedules.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work schedule ID */
+                workSchedule: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description `WorkScheduleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WorkScheduleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "work-schedules.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The work schedule ID */
+                workSchedule: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
 }

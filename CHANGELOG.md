@@ -8,6 +8,36 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [No publicado]
+
+### Cambiado
+
+- **El spec y los tipos de TypeScript, regenerados desde el core.** La copia de
+  `spec/pimia-api-v1.json` se había quedado **82 operaciones por detrás** —230
+  contra 312—, así que `api.ts` no tipaba familias enteras: ausencias,
+  empleados, calendarios y horarios de trabajo, fichajes y sus correcciones,
+  incidencias, notas, tipos de impuesto, informes legales, ajustes de empresa,
+  webhooks de `settings`, la tienda, `/me` y los PDF. Ninguna operación
+  desaparece y ningún schema se va (93 → 122): es **aditivo**.
+- **Y los tipos que ya había estaban mal**, por un defecto del generador del
+  core que se arregló allí el mismo día
+  ([factSaas#376](https://github.com/galeote/factSaas/pull/376)): Scramble lee
+  las columnas del modelo con `Schema::getColumns()`, y el artefacto anterior se
+  exportó **sin base de datos alcanzable**, así que cayó a `string` para todo y
+  no marcó nada nullable. En este spec eso se traduce en `id: string` donde la
+  API manda enteros, propiedades opcionales sin `| null` y schemas de modelo
+  vacíos. Ahora los tipos dicen lo que la API devuelve.
+- **Campos nuevos del contrato** que entran con la regeneración: `sent_at`,
+  `viewed_at` y `email_logs` en factura y presupuesto (con su
+  `EmailLogResource`, sin `token` ni `body`), `rejection_reason` en el
+  presupuesto y en el cuerpo de `POST /estimates/{estimate}/status`, y la serie
+  del presupuesto.
+
+⚠️ **Quien actualice desde la 0.5.0 verá cambiar tipos que ya usaba** —un `id`
+que pasa de `string` a `number`, campos que ganan `| null`—. No es una firma que
+cambie: es el contrato dejando de mentir. Conviene mirar el `tsc` antes de subir
+la dependencia.
+
 ## [0.5.0] — 2026-08-10
 
 Dos huecos que destapó el primer integrador real al reconstruir su puente sobre
