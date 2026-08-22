@@ -285,6 +285,10 @@ e `invoice.paid`. Detalle por lenguaje en los README de
 
 ## El contrato
 
+Las decisiones que gobiernan este contrato y su relación con el resto del
+ecosistema (núcleo cerrado, anfitriones abiertos, qué va antes que qué) están
+en [`docs/DECISIONES.md`](docs/DECISIONES.md), idéntico en todos los repos.
+
 [`spec/pimia-api-v1.json`](spec/pimia-api-v1.json) es el OpenAPI 3.1 de la
 superficie pública (facturación, presupuestos, clientes, gastos, pagos,
 artículos, banca, CRM, agenda, informes y catálogos). Es una copia del
