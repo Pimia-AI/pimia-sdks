@@ -73,6 +73,16 @@ tres rutas muertas de monedas, y `SCOPES` gana los cinco que faltaban
 (`settings:read`, `store:read`, `hr:read`, `hr:write`, `webhooks:write`) en los
 dos SDKs.
 
+**Publicada el 2026-08-22**: los 9 jobs en verde a la primera —`@pimia/sdk`
+y `@pimia/design-tokens` en npm, espejo `pimia/pimia-php` con su tag y
+Packagist al día—. Verificada antes de tagear: TS 55/55 y build estricto, la
+matriz entera de la CI sobre los PR #22 y #23, y la guarda de deriva
+spec↔`api.ts`. Y **el paso 0 se repitió justo antes del tag**, como manda:
+`origin/main` del núcleo había avanzado 5 commits (PR #426, el saneado de las
+lecturas de `settings`) pero el artefacto del OpenAPI era **idéntico byte a
+byte**, así que el contrato publicado seguía siendo el vigente. Esa
+comprobación es barata y es justo la que faltó en la 0.5.0.
+
 **La lección que deja, y que es el paso 0 de abajo:** la 0.5.0 se publicó
 **84 operaciones por detrás del núcleo** y nadie lo vio, porque
 `scripts/sync-spec.sh` copiaba del *working tree* del checkout del core en vez
