@@ -307,7 +307,7 @@ operaciones** que el que ya está aquí.
 Antes de escribir código contra los tipos, lee
 [`spec/README.md`](spec/README.md): hay campos monetarios y de `id` que llegan
 como `string` porque la API los devuelve así (columnas `decimal(15,2)` sin
-cast), y 25 operaciones cuyo `200` el spec todavía no describe. Los dos huecos
+cast), y 16 operaciones cuyo `200` el spec todavía no describe. Los dos huecos
 están abiertos como incidencias de este repo.
 
 Fuera del contrato quedan la administración (usuarios, roles, correo, tokens),
