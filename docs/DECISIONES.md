@@ -1,9 +1,10 @@
-# Decisiones de arquitectura — 2026-08-22 (rev. 2, misma tarde)
+# Decisiones de arquitectura — 2026-08-22 (rev. 3, mismo día)
 
-Documento **idéntico en los repos del ecosistema Pimia** (núcleo, pimia-sdks,
+Documento **idéntico en los cuatro repos** (factSaas, pimia-sdks,
 pimia-web-shadcn, pimia-workspace), para que cualquier agente o persona que
 trabaje en uno tenga las mismas decisiones delante. Si cambia una decisión, se
-cambia en todos el mismo día.
+cambia aquí en los cuatro el mismo día. El mapa gráfico que lo acompaña:
+https://claude.ai/code/artifact/4f04896d-2bd4-4c9b-b3d8-f2018119c72c
 
 ## El reparto: qué repo es qué
 
@@ -83,10 +84,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
    `reports:write` y `store:write`; **reservados a la primera parte**, `admin`
    y `delegation`. Fuera del mapa para todos, ni siquiera con `admin`, queda
    **acuñar credenciales — y son dos rutas, no una**: el minting de tokens que
-   la rev. 2 ya nombraba y el del puente de un canal de mensajería, porque el
-   criterio es *fabricar una credencial*, no la ruta concreta. Un token
-   acotado que puede fabricar otro token se ha acotado a sí mismo y a nadie
-   más.
+   la rev. 2 ya nombraba y el puente del canal de wab-ai, porque el criterio
+   es *fabricar una credencial*, no la ruta concreta. Un token acotado que
+   puede fabricar otro token se ha acotado a sí mismo y a nadie más.
    ⛔ Tres cosas que parecían configuración resultaron ser tomas de cuenta y
    hubo que cerrarlas en el mismo cambio: **cambiar la contraseña o el correo
    del propio usuario** (no pedía la contraseña actual), **las escrituras de
@@ -105,11 +105,36 @@ obtiene en el registro de Pimia o en el panel de integrador).
    1. ✅ **hecho (2026-08-22)** — sanear las lecturas de `settings` (núcleo);
    2. ✅ **hecho (2026-08-22)** — abrir el catálogo OAuth con el client de
       primera parte (núcleo);
-   3. **← aquí estamos.** Publicar las rutas de `admin` (usuarios, roles,
-      módulos, SMTP) en `/api/v1` y en el spec, con un export reproducible
-      (núcleo). El export es el bloqueo real: hoy no se regenera en limpio;
-   4. release del SDK con el spec nuevo — la 0.6.0 puede salir YA con lo que
-      `main` ya tiene (`/me`, plantillas, series, RRHH, tienda, empresa);
+   3. ✅ **hecho (2026-08-22)** — publicar las rutas de `admin` en `/api/v1` y
+      en el spec, con un export reproducible (núcleo). Lo que era el bloqueo
+      —que el spec no se regeneraba en limpio— está cerrado: `spec:export` crea
+      un esquema temporal, lo migra con las migraciones de INSTANCIA y exporta
+      contra él, y un test compara el artefacto commiteado con el regenerado
+      byte a byte (#433, cierra #372). La causa era doble y la segunda mitad no
+      estaba diagnosticada: el artefacto se generaba introspeccionando el plano
+      CENTRAL, donde `public` conserva copias legacy de 49 tablas de negocio,
+      así que el contrato describía un plano que la API no sirve.
+      Sobre eso entraron las cuatro familias de `admin` —usuarios (#434), roles
+      y permisos (#436), módulos de la instancia (#437) y correo (#438)—, más
+      `GET /crm/assignable-users` (#439, cierra pimia-sdks#32), las descargas
+      (#440) y los importes (#441).
+      **La costura que lo hace posible: la superficie de PRIMERA PARTE.** El
+      documento gana una tercera marca —`first-party-only`, junto a `any-token`
+      y `owner-only`— para lo que existe en el contrato y solo puede llamar el
+      client del panel de Pimia, con su requisito de seguridad de verdad
+      (`admin:*`) y el scope publicado en el flow con «(solo el panel de Pimia)»
+      delante. ⛔ Se abre por **lista blanca de segmentos**, no por dominio:
+      `admin` son 57 rutas de `/api/v1` y entre ellas están las credenciales del
+      proveedor de IA, la revocación de grants OAuth ajenos, los discos,
+      transferir o borrar la empresa y la instalación de módulos subiendo un
+      paquete. Un dominio no se abre por su nombre, se abre mirando sus rutas
+      una a una — la lección del #426, aplicada.
+   4. **← aquí estamos.** Release del SDK con el spec nuevo. ⚠️ Ya no es la
+      0.6.0 aditiva: el contrato trae un **cambio de tipo**. Los importes dejan
+      de viajar como texto (`"55370.00"` → `55370`, céntimos) en 78
+      propiedades, y las descargas dejan de anunciarse como `application/json`.
+      La nota de migración está escrita en `docs/changelog-desarrollador.md`;
+      pimia-sdks#24 y #25 avisadas.
    5. portar en la web;
    6. **«100 %»** = la web puede sustituir al panel Vue de la pyme, medido
       contra las **22 maquetas + los 8 módulos de Vue sin maqueta que son
@@ -152,14 +177,55 @@ obtiene en el registro de Pimia o en el panel de integrador).
    tiene que hablar con ese, no con el del ápice.
    **Despliegue: una sola instancia del panel** (el refresh token rota; dos
    procesos refrescando = reuse = revocación en cascada), con su almacén de
-   grants y candado locales. Todas las pruebas contra un tenant de pruebas.
+   grants y candado locales. Todas las pruebas contra `reformas-vera` (dev).
 
-## Cómo se aplica en este repo (SDK)
+## Cómo se aplica en este repo (núcleo)
 
-- Este repo es la cara pública del núcleo. Cuando pimia-web-shadcn se abra,
-  el README apunta a ella como «el ERP entero para personalizar».
-- `examples/starter-vertical` se queda pequeño a propósito (OAuth + pocas
-  pantallas) para no competir con la web.
-- `spec/pimia-api-v1.json` y `api.d.ts` son EL contrato: se regeneran en cada
-  release. Un hueco que encuentre un anfitrión se registra aquí como deuda del
-  contrato; no se rodea en el anfitrión.
+- Una mejora pedida «en el panel» de la pyme se hace en la API y en la web,
+  no en `resources/scripts/admin`. Si alguien pide tocar Vue-pyme, recordar
+  la decisión 1 antes de hacerlo.
+- Toda ruta o campo nuevo entra el mismo día en el OpenAPI y, si hace falta,
+  en el catálogo de scopes. Lo que no está en el spec no existe para los
+  anfitriones. **Desde el eslabón 3 esto tiene guardarraíl**: el artefacto se
+  regenera con `scripts/spec-export.sh` y la suite se pone roja si el fichero
+  commiteado no es el que produce el comando.
+- Publicar una ruta de `admin` es añadir su segmento a
+  `partner_surface.first_party_segments`, y eso se hace **mirando sus rutas una
+  a una**. La lista blanca es fail-closed a propósito: una ruta nueva de `admin`
+  no entra sola en el contrato.
+- La ampliación del catálogo **ya está hecha** (2026-08-22), y con ella el
+  saneado que era su condición. Lo que queda vigente de aquella regla es su
+  motivo: un dominio no se abre por su nombre, se abre mirando sus rutas una a
+  una — así aparecieron las tres tomas de cuenta que vivían dentro de
+  «ajustes». La exclusión del acuñado de credenciales se escribe como
+  `domain_override` a `null` (fail-closed), no como una entrada del mapa, y
+  cubre **dos** rutas: `mcp/tokens*` —que no es `admin/tokens`, como decían
+  las revisiones anteriores— y `settings/wabai/bridge-token`.
+- `admin` y `delegation` se emiten con `first_party_only`. Antes de quitarle
+  ese flag a ninguno de los dos, releer lo que abren: entre las escrituras de
+  `admin` están transferir la empresa a otro usuario, borrar empresas y
+  usuarios, e instalar módulos subiendo un paquete. Está anotado junto al
+  scope, en el catálogo.
+- El panel central (`resources/scripts/central`) se queda en Vue; el
+  `dashboard/` React es un arranque huérfano sin ruta y no se retoma por
+  iniciativa propia.
+
+## Referencias (repos privados)
+
+- Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
+  galeote/factSaas#422, en cinco PRs (#427 `settings:write`, #428
+  `reports:write` y `store:write`, #429 el client de primera parte, #430
+  `admin`, #431 `delegation`). El saneado que era su condición, en #426. Los
+  seis en `main` y en dev desde el 2026-08-22; ninguno en prod.
+- El spec **ya se regenera en limpio**: `scripts/spec-export.sh` →
+  `php artisan spec:export`, con `ElSpecEsReproducibleTest` vigilando que el
+  artefacto commiteado sea el que produce el comando (galeote/factSaas#433,
+  cerró #372). Se regenera **al final de cada PR que toque el contrato**, no
+  cuando alguien se acuerda.
+- Lo que queda del eslabón 3, con issue y medido: 17 operaciones publican su
+  `200` como objeto opaco (#443, entre ellas `POST /invoices`); la facturación
+  cuenta en céntimos y la banca en euros (#442); cuatro rutas de
+  `Route::resource` que el controlador no implementa dan 500, más cuatro huecos
+  de CRUD (#444, desde pimia-sdks#34).
+- Dirección fiscal de empresa, bloquea «ajustes → empresa»: galeote/factSaas#414.
+- Plan y bitácora del porte web: `pimia-web-shadcn/docs/PLAN-BITACORA.md`.
