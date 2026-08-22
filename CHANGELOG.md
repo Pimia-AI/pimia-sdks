@@ -8,35 +8,94 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [No publicado]
+## [0.6.0] — 2026-08-22
+
+El contrato al día. Se sincroniza el spec con `origin/main` del núcleo
+—**factSaas@8552f60a**, 2026-08-22, **314 operaciones**— y se regeneran los
+tipos. La 0.5.0 se publicó con un spec de **230**: 84 operaciones por detrás.
+Tres SÍ hay que quitarlas del contrato (rutas de monedas que el núcleo ya no
+sirve), así que hay un cambio incompatible pequeño y acotado.
+
+### Añadido
+
+- **Cinco scopes que el contrato ya exige y el SDK no nombraba**:
+  `settings:read`, `store:read`, `hr:read`, `hr:write` y `webhooks:write`.
+  Sin ellos, 66 de las 314 operaciones del spec pedían un permiso que no
+  estaba en `SCOPES` / `Pimia\Scopes`, y había que escribir la cadena a mano.
+  De paso, el SDK de PHP recupera `APPROVALS_WRITE` / `APPROVALS_SUBMIT`, que
+  TypeScript tenía desde la 0.2.0 y allí faltaban: **las dos listas vuelven a
+  ser la misma**.
+- **Series de presupuesto** (`/estimate-series`, las cinco operaciones REST y
+  el schema `EstimateSeriesRequest`): el equivalente de las series de factura,
+  que el spec ya traía.
+- **`sent_at`, `viewed_at` y `email_logs`** en factura y presupuesto (con su
+  `EmailLogResource`, sin `token` ni `body`), `rejection_reason` en el
+  presupuesto y en el cuerpo de `POST /estimates/{estimate}/status`, y la
+  serie del presupuesto.
 
 ### Cambiado
 
-- **El spec y los tipos de TypeScript, regenerados desde el core.** La copia de
-  `spec/pimia-api-v1.json` se había quedado **82 operaciones por detrás** —230
-  contra 312—, así que `api.ts` no tipaba familias enteras: ausencias,
-  empleados, calendarios y horarios de trabajo, fichajes y sus correcciones,
-  incidencias, notas, tipos de impuesto, informes legales, ajustes de empresa,
-  webhooks de `settings`, la tienda, `/me` y los PDF. Ninguna operación
-  desaparece y ningún schema se va (93 → 122): es **aditivo**.
-- **Y los tipos que ya había estaban mal**, por un defecto del generador del
-  core que se arregló allí el mismo día
+- **El spec y los tipos de TypeScript, regenerados desde el núcleo.** La copia
+  de `spec/pimia-api-v1.json` se había quedado muy atrás, así que `api.ts` no
+  tipaba familias enteras: ausencias, empleados, calendarios y horarios de
+  trabajo, fichajes y sus correcciones, incidencias, notas, tipos de impuesto,
+  informes legales, ajustes de empresa, webhooks de `settings`, la tienda,
+  `/me` y los PDF. Los schemas pasan de 93 a 123.
+- **`GET /invoices/templates` y `GET /estimates/templates` tipan por fin su
+  elemento**: `{ name, path, custom }` en lugar de un array de `unknown`.
+  `name` es lo que aceptan `template_name` al crear o editar; `path`, la URL
+  absoluta de la miniatura (cadena vacía si no tiene); `custom` marca el
+  diseño subido a la instancia, cuya miniatura viaja como data-URI.
+- **Los tipos que ya había estaban mal**, por un defecto del generador del
+  núcleo que se arregló allí
   ([factSaas#376](https://github.com/galeote/factSaas/pull/376)): Scramble lee
-  las columnas del modelo con `Schema::getColumns()`, y el artefacto anterior se
-  exportó **sin base de datos alcanzable**, así que cayó a `string` para todo y
-  no marcó nada nullable. En este spec eso se traduce en `id: string` donde la
-  API manda enteros, propiedades opcionales sin `| null` y schemas de modelo
-  vacíos. Ahora los tipos dicen lo que la API devuelve.
-- **Campos nuevos del contrato** que entran con la regeneración: `sent_at`,
-  `viewed_at` y `email_logs` en factura y presupuesto (con su
-  `EmailLogResource`, sin `token` ni `body`), `rejection_reason` en el
-  presupuesto y en el cuerpo de `POST /estimates/{estimate}/status`, y la serie
-  del presupuesto.
+  las columnas del modelo con `Schema::getColumns()`, y el artefacto anterior
+  se exportó **sin base de datos alcanzable**, así que cayó a `string` para
+  todo y no marcó nada nullable. Ahora 192 propiedades `id`/`*_id` van como
+  entero y muchas ganan su `| null`.
 
-⚠️ **Quien actualice desde la 0.5.0 verá cambiar tipos que ya usaba** —un `id`
-que pasa de `string` a `number`, campos que ganan `| null`—. No es una firma que
-cambie: es el contrato dejando de mentir. Conviene mirar el `tsc` antes de subir
-la dependencia.
+### Quitado
+
+- **Tres rutas de monedas que el núcleo ya no sirve**:
+  `GET /currencies/{currency}/active-provider`, `GET /supported-currencies` y
+  `GET /used-currencies`. **El núcleo las retiró** porque las tres
+  consultaban una tabla que ninguna migración crea y devolvían un 500
+  ([factSaas#377](https://github.com/galeote/factSaas/issues/377)); hoy
+  responden 404. Nunca llegaron a funcionar, así que quitarlas del contrato no
+  rompe nada que funcionara — pero el tipo desaparece de `api.ts`, y por eso
+  cuenta como el único cambio incompatible de esta versión.
+
+### Corregido
+
+- **`scripts/sync-spec.sh` leía el working tree del checkout del núcleo**, no
+  `origin/main`. Con varios worktrees de factSaas a la vez ese checkout suele
+  estar en otra rama —hoy, 148 commits por detrás—, y el script **retrocedía
+  el contrato sin avisar**: así salió la 0.5.0, 84 operaciones vieja. Ahora
+  hace `git fetch` y lee de `git show origin/main:docs/openapi/…` (`--ref`
+  para otra rama), **aborta si el spec nuevo tiene menos operaciones** que el
+  que ya está en el repo (`--force` para saltárselo, a propósito y
+  explicándolo aquí) e imprime el commit del núcleo para anotarlo en este
+  fichero.
+
+### Nota para quien actualice desde la 0.5.0
+
+Van a cambiar tipos que ya usaba —un `id` que pasa de `string` a `number`,
+campos que ganan `| null`—. No es que cambie una firma del SDK: es el
+artefacto del contrato midiendo bien lo que ya devolvía la API. Conviene mirar
+el `tsc` antes de subir la dependencia.
+
+**Lo que este spec todavía NO arregla, porque no es cosa del generador:**
+siguen tipadas como `string` **124 propiedades `id`/`*_id`** (en 31
+`*Resource`) y **89 propiedades monetarias**. Ahí el spec no miente, la API es
+la inconsistente: esos Resources devuelven columnas `decimal(15,2)` sin cast y
+PDO las entrega como cadena. Solo `InvoiceResource`, `EstimateResource` y
+`ReceivedInvoiceResource` castean sus `total`/`sub_total`/`tax` a entero —y ni
+esos castean `due_amount`—. Hasta que el núcleo ponga los casts, **un
+monetario `string` es un decimal con dos cifras** (ver `spec/README.md`) y hay
+que hacerle `Number(...)` al leerlo. Quedan además **25 operaciones con el
+`200` vacío** (`POST /invoices`, `PUT /invoices/{invoice}`,
+`PUT /customers/{customer}`, `convert-to-invoice`…): el cuerpo llega, pero el
+spec no lo describe. Las dos cosas están abiertas como issues de este repo.
 
 ## [0.5.0] — 2026-08-10
 

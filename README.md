@@ -34,7 +34,9 @@ npm install @pimia/sdk
 composer require pimia/pimia-php
 ```
 
-Los dos publicados en **v0.1.0** (2026-08-01). El paquete de npm lleva
+Los tres paquetes versionan **en bloque**: un tag `vX.Y.Z` publica
+`@pimia/sdk`, `@pimia/design-tokens` y el espejo `pimia/pimia-php` a la vez.
+El paquete de npm lleva
 [provenance SLSA](https://docs.npmjs.com/generating-provenance-statements)
 firmada por el workflow de release: el tarball es verificablemente este repo.
 
@@ -298,6 +300,16 @@ artefacto que genera el core; para refrescarlo y regenerar los tipos:
 ./scripts/sync-spec.sh /ruta/al/checkout/de/factSaas
 ```
 
+El script lee el artefacto de `origin/main` del núcleo (tras un `git fetch`),
+no del working tree del checkout, y **aborta si el spec nuevo tiene menos
+operaciones** que el que ya está aquí.
+
+Antes de escribir código contra los tipos, lee
+[`spec/README.md`](spec/README.md): hay campos monetarios y de `id` que llegan
+como `string` porque la API los devuelve así (columnas `decimal(15,2)` sin
+cast), y 25 operaciones cuyo `200` el spec todavía no describe. Los dos huecos
+están abiertos como incidencias de este repo.
+
 Fuera del contrato quedan la administración (usuarios, roles, correo, tokens),
 la configuración y los endpoints internos: responden, pero pueden cambiar sin
 aviso.
@@ -314,16 +326,25 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**v0.2.0, publicada el 2026-08-09** en npm (`@pimia/sdk`,
+**Última publicada: v0.5.0 (2026-08-10)** en npm (`@pimia/sdk`,
 `@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). El núcleo OAuth, el
 cliente, la idempotencia y los tipos están completos y con tests; los helpers
 de dominio cubren facturas, clientes y presupuestos — para el resto,
 `client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
 workflow de release, que publica los tres artefactos.
 
-**v0.4.0**: `external_ref` —tu identificador colgado del recurso y consultable
-por él— en el contrato, en los webhooks y con el 422 duplicado tipado, sobre el
-verificador de webhooks y los tipos de los ocho eventos que trajo la 0.3.0.
+**v0.6.0, preparada**: el contrato al día con el núcleo — el spec pasa de 230
+a **314 operaciones**, entran las series de presupuesto, `/invoices/templates`
+y `/estimates/templates` tipan su elemento, salen tres rutas de monedas que el
+núcleo ya retiró, y `SCOPES` gana los cinco que faltaban (`settings:read`,
+`store:read`, `hr:read`, `hr:write`, `webhooks:write`) en los dos SDKs. El
+detalle, en el [CHANGELOG](CHANGELOG.md).
+
+Lo anterior, en resumen: **0.5.0** `externalRef` en `convertToInvoice` y
+`ReadOptions` en las lecturas TS; **0.4.0** `external_ref`, la referencia
+externa consultable, en el contrato, en los webhooks y con el 422 duplicado
+tipado; **0.3.0** el verificador de webhooks y los tipos de los ocho eventos.
+
 Pendiente de código: ampliar helpers al resto del dominio y DTOs de PHP
 generados del spec.
 

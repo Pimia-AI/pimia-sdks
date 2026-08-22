@@ -1006,6 +1006,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/estimate-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["estimate-series.index"];
+        put?: never;
+        post: operations["estimate-series.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/estimate-series/{estimateSeries}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["estimate-series.show"];
+        put: operations["estimate-series.update"];
+        post?: never;
+        /**
+         * Baja lógica, nunca borrado: los presupuestos ya numerados con la serie
+         *     siguen apuntándola y su `estimates_count` es lo que explica por qué el
+         *     contador va por donde va
+         */
+        delete: operations["estimate-series.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/estimates/templates": {
         parameters: {
             query?: never;
@@ -1013,7 +1050,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Galería de diseños base de presupuesto
+         * @description Un elemento por diseño. `path` es la URL pública de su miniatura (un
+         *     recurso estático del producto, igual para todas las instancias y
+         *     cacheable), o `''` si el diseño no tiene miniatura. Hasta el #415 venía
+         *     incrustada en base64 y la respuesta pesaba más de un megabyte.
+         */
         get: operations["estimate.estimateTemplates"];
         put?: never;
         post?: never;
@@ -1242,26 +1285,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/currencies/{currency}/active-provider": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Handle the incoming request
-         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
-         */
-        get: operations["exchangeRate.getActiveProvider"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/currencies/used": {
         parameters: {
             query?: never;
@@ -1338,46 +1361,6 @@ export interface paths {
          * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
          */
         post: operations["settings.updateSettings"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/supported-currencies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Handle the incoming request
-         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
-         */
-        get: operations["exchangeRate.getSupportedCurrencies"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/used-currencies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Handle the incoming request
-         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
-         */
-        get: operations["exchangeRate.getUsedCurrencies"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1669,7 +1652,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Galería de diseños base de factura
+         * @description Un elemento por diseño. `path` es la URL pública de su miniatura (un
+         *     recurso estático del producto, igual para todas las instancias y
+         *     cacheable), o `''` si el diseño no tiene miniatura. Hasta el #415 venía
+         *     incrustada en base64 y la respuesta pesaba más de un megabyte.
+         */
         get: operations["invoice.invoiceTemplates"];
         put?: never;
         post?: never;
@@ -4165,7 +4154,6 @@ export interface components {
             name: string;
             trade_name?: string | null;
             vat_id?: string | null;
-            tax_id?: string | null;
             slug?: string | null;
             address: {
                 country_id: string;
@@ -4177,11 +4165,13 @@ export interface components {
             name: string;
             trade_name: string;
             vat_id: string | null;
-            tax_id: string;
+            /**
+             * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
+             *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+             */
             logo: string | null;
             logo_path: string;
             unique_hash: string | null;
-            owner_id: string;
             slug: string | null;
             address?: components["schemas"]["AddressResource"] | null;
             roles: components["schemas"]["RoleResource"][];
@@ -4237,7 +4227,12 @@ export interface components {
             id: number;
             code: string;
             name: string;
-            phone_code: string;
+            /**
+             * @description La columna se llama `phonecode`, sin guion bajo: publicarla como
+             *     `$this->phone_code` daba null desde siempre (#386). El nombre del
+             *     contrato se respeta y se aliasa, como `vat_id` → `vat_number`.
+             */
+            phone_code: number;
         };
         /** Currency */
         Currency: {
@@ -4273,11 +4268,13 @@ export interface components {
             name: string;
             trade_name: string;
             vat_id: string | null;
-            tax_id: string;
+            /**
+             * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
+             *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+             */
             logo: string | null;
             logo_path: string;
             unique_hash: string | null;
-            owner_id: string;
             slug: string | null;
             address?: components["schemas"]["AddressResource"] | null;
             roles: components["schemas"]["RoleResource"][];
@@ -4306,17 +4303,16 @@ export interface components {
             type: string;
             placeholder: string | null;
             options: string | null;
-            boolean_answer: string;
-            date_answer: string;
-            time_answer: string;
-            string_answer: string;
-            number_answer: string;
-            date_time_answer: string;
+            /**
+             * @description Sin los seis `*_answer` ni `default_answer`: son columnas de
+             *     `custom_field_values` —de la RESPUESTA, no de la definición— y
+             *     aquí se publicaban a null (#386). `CustomFieldValueResource` sí
+             *     los sirve, y ahí sí existen.
+             */
             is_required: string;
             in_use: string;
             order: number;
             company_id: number | null;
-            default_answer: string;
             company?: components["schemas"]["CompanyResource"] | null;
         };
         /** CustomFieldValueResource */
@@ -4433,10 +4429,12 @@ export interface components {
             currency_id: number | null;
             payment_method_id: string;
             company_id: number | null;
-            facebook_id: string;
-            google_id: string;
-            github_id: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Sin `facebook_id`, `google_id` ni `github_id`: son del login
+             *     social del upstream y no son columnas de `customers`, así que el
+             *     contrato las publicaba a null (#377).
+             */
             created_at: string | null;
             formatted_created_at: string;
             /** Format: date-time */
@@ -4786,8 +4784,13 @@ export interface components {
             formatted_expiry_date: string;
             formatted_estimate_date: string;
             estimate_pdf_url: string;
-            sales_tax_type: string;
-            sales_tax_address_type: string;
+            /**
+             * @description Sin `sales_tax_type` ni `sales_tax_address_type`: son del módulo de
+             *     impuestos de EE.UU. del upstream y no existen en NINGUNA tabla de
+             *     documento —2026_08_06_140000 decidió por escrito no crearlas—, así
+             *     que el contrato las publicaba a null. El #378 retiró las
+             *     escrituras; esto retira la lectura (#377).
+             */
             items?: components["schemas"]["EstimateItemResource"][];
             customer?: components["schemas"]["CustomerResource"] | null;
             lead?: {
@@ -4809,6 +4812,25 @@ export interface components {
             company?: components["schemas"]["CompanyResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
             estimate_series?: components["schemas"]["EstimateSeriesResource"];
+        };
+        /**
+         * EstimateSeriesRequest
+         * @description Serie de numeración de presupuestos (#367). Gemela de InvoiceSeriesRequest,
+         *     con las mismas dos precauciones:
+         *
+         *      - el código se normaliza a mayúsculas ANTES de validar, o el `unique`
+         *        escopeado por compañía compararía `a1` contra el `A1` ya guardado y
+         *        dejaría pasar un duplicado;
+         *      - en edición basta con mandar lo que cambia, así que `code` y `name` solo
+         *        son obligatorios en el alta.
+         */
+        EstimateSeriesRequest: {
+            code: string;
+            name: string;
+            number_format?: string | null;
+            next_sequence?: number;
+            is_default?: boolean;
+            is_active?: boolean;
         };
         /** EstimateSeriesResource */
         EstimateSeriesResource: {
@@ -4907,8 +4929,43 @@ export interface components {
             total?: number | null;
             tax?: string | null;
             template_name?: string | null;
+            /**
+             * @description Los tres de abajo los manda el panel y hasta ahora se persistían SIN
+             *     regla, porque el payload era una lista negra: cualquier clave que
+             *     coincidiera con una columna entraba. Desde el #393 la lista blanca es
+             *     este contrato, así que un campo que no se declare aquí deja de
+             *     guardarse. Los `max` son los de la columna.
+             */
+            notes?: string | null;
+            discount_type?: string | null;
+            /**
+             * @description Referencia libre del documento («Su pedido 4711»), distinta de
+             *     `external_ref`: esta sale en el PDF y aquella es el asidero del
+             *     integrador.
+             */
+            reference_number?: string | null;
             items: {
                 description?: string | null;
+                /**
+                 * @description Dos campos de línea que el contrato no declaraba y que sí se
+                 *     persisten: sin regla, uno más largo que su columna era un 500 (#392).
+                 */
+                unit_name?: string | null;
+                discount_type?: string | null;
+                /**
+                 * @description El `max` no es decorativo: la columna es varchar(255) y sin regla un
+                 *     nombre más largo pasaba la validación y reventaba en el insert con un
+                 *     500 (#389). En el UPDATE, además, reventaba DESPUÉS de haber borrado
+                 *     las líneas y los impuestos, que es lo que dejaba el documento vacío.
+                 *     El enlace de la línea con el artículo del catálogo. No estaba declarado
+                 *     y llegaba a la fila igual —las líneas no pasan por la lista blanca del
+                 *     #394, porque createItems escribe el array tal cual—, así que una línea
+                 *     podía quedar apuntando al artículo de OTRA empresa del mismo tenant y
+                 *     ensuciar el informe de ventas por artículo. Medido el 2026-08-20 (#395).
+                 *     El `exists` acotado por empresa es además lo que hace falta para que el
+                 *     campo sea utilizable de verdad.
+                 */
+                item_id?: number | null;
                 name: string;
                 quantity: number;
                 price: number;
@@ -4928,6 +4985,17 @@ export interface components {
                     tax_type_id?: number | null;
                     percent?: number | null;
                     amount?: number | null;
+                    /**
+                     * @description `taxes.name` es NOT NULL y este contrato nunca lo pidió: un tramo con
+                     *     su tipo y su porcentaje pero sin nombre se estrellaba contra la base de
+                     *     datos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload
+                     *     contra el catálogo de la empresa, y lo que no haya podido resolver
+                     *     —un `tax_type_id` que no existe, un porcentaje que la empresa no tiene
+                     *     dado de alta— sale por aquí con un 422 que dice qué falta. La condición
+                     *     es el importe porque el importe es lo que decide que el tramo se
+                     *     persista: sin él no hay nada que nombrar.
+                     */
+                    name?: string | null;
                 }[] | null;
                 /** @description Valores de campo personalizado DE LA LÍNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta también la clave `custom_fields`, la forma histórica del panel. */
                 customFields?: {
@@ -4941,6 +5009,7 @@ export interface components {
                 tax_type_id?: number | null;
                 percent?: number | null;
                 amount?: number | null;
+                name?: string | null;
             }[] | null;
             /**
              * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
@@ -4948,6 +5017,11 @@ export interface components {
              *     al editar lo que leyó. Se normaliza al leerlo, no se rechaza.
              */
             tax_per_item?: string | null;
+            /**
+             * @description Su pareja, que tampoco estaba declarada y llegaba a la fila por el
+             *     `merge()` del payload, saltándose incluso la lista blanca del #394.
+             */
+            discount_per_item?: string | null;
             tax_included?: boolean | null;
             /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
             customFields?: {
@@ -5259,8 +5333,13 @@ export interface components {
             formatted_due_date: string;
             allow_edit: string;
             payment_module_enabled: string;
-            sales_tax_type: string;
-            sales_tax_address_type: string;
+            /**
+             * @description Sin `sales_tax_type` ni `sales_tax_address_type`: son del módulo de
+             *     impuestos de EE.UU. del upstream y no existen en NINGUNA tabla de
+             *     documento —2026_08_06_140000 decidió por escrito no crearlas—, así
+             *     que el contrato las publicaba a null. El #378 retiró las
+             *     escrituras; esto retira la lectura (#377).
+             */
             overdue: string;
             effective_paid_status: string;
             effective_overdue: string;
@@ -5492,8 +5571,43 @@ export interface components {
             template_name?: string | null;
             invoice_series_id?: number | null;
             payment_method_id?: number | null;
+            /**
+             * @description Los tres de abajo los manda el panel y hasta ahora se persistían SIN
+             *     regla, porque el payload era una lista negra: cualquier clave que
+             *     coincidiera con una columna entraba. Desde el #393 la lista blanca es
+             *     este contrato, así que un campo que no se declare aquí deja de
+             *     guardarse. Los `max` son los de la columna.
+             */
+            notes?: string | null;
+            discount_type?: string | null;
+            /**
+             * @description Referencia libre del documento («Su pedido 4711»), distinta de
+             *     `external_ref`: esta sale en el PDF y aquella es el asidero del
+             *     integrador.
+             */
+            reference_number?: string | null;
             items: {
                 description?: string | null;
+                /**
+                 * @description Dos campos de línea que el contrato no declaraba y que sí se
+                 *     persisten: sin regla, uno más largo que su columna era un 500 (#392).
+                 */
+                unit_name?: string | null;
+                discount_type?: string | null;
+                /**
+                 * @description El `max` no es decorativo: la columna es varchar(255) y sin regla un
+                 *     nombre más largo pasaba la validación y reventaba en el insert con un
+                 *     500 (#389). En el UPDATE, además, reventaba DESPUÉS de haber borrado
+                 *     las líneas y los impuestos, que es lo que dejaba el documento vacío.
+                 *     El enlace de la línea con el artículo del catálogo. No estaba declarado
+                 *     y llegaba a la fila igual —las líneas no pasan por la lista blanca del
+                 *     #394, porque createItems escribe el array tal cual—, así que una línea
+                 *     podía quedar apuntando al artículo de OTRA empresa del mismo tenant y
+                 *     ensuciar el informe de ventas por artículo. Medido el 2026-08-20 (#395).
+                 *     El `exists` acotado por empresa es además lo que hace falta para que el
+                 *     campo sea utilizable de verdad.
+                 */
+                item_id?: number | null;
                 name: string;
                 quantity: number;
                 price: number;
@@ -5513,6 +5627,17 @@ export interface components {
                     tax_type_id?: number | null;
                     percent?: number | null;
                     amount?: number | null;
+                    /**
+                     * @description `taxes.name` es NOT NULL y este contrato nunca lo pidió: un tramo con
+                     *     su tipo y su porcentaje pero sin nombre se estrellaba contra la base de
+                     *     datos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload
+                     *     contra el catálogo de la empresa, y lo que no haya podido resolver
+                     *     —un `tax_type_id` que no existe, un porcentaje que la empresa no tiene
+                     *     dado de alta— sale por aquí con un 422 que dice qué falta. La condición
+                     *     es el importe porque el importe es lo que decide que el tramo se
+                     *     persista: sin él no hay nada que nombrar.
+                     */
+                    name?: string | null;
                 }[] | null;
                 /** @description Valores de campo personalizado DE LA LÍNEA (definiciones con `model_type` `InvoiceItem` o `EstimateItem`). Se acepta también la clave `custom_fields`, la forma histórica del panel. */
                 customFields?: {
@@ -5526,6 +5651,7 @@ export interface components {
                 tax_type_id?: number | null;
                 percent?: number | null;
                 amount?: number | null;
+                name?: string | null;
             }[] | null;
             /**
              * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
@@ -5533,6 +5659,11 @@ export interface components {
              *     editar lo que leyó. Se normaliza al leerlo, no se rechaza.
              */
             tax_per_item?: string | null;
+            /**
+             * @description Su pareja, que tampoco estaba declarada y llegaba a la fila por el
+             *     `merge()` del payload, saltándose incluso la lista blanca del #394.
+             */
+            discount_per_item?: string | null;
             tax_included?: boolean | null;
             /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
             customFields?: {
@@ -5941,7 +6072,30 @@ export interface components {
             sub_total: number;
             total: number;
             tax: string;
+            /**
+             * @description Los cuatro de abajo los manda el panel (stub/received-invoice.js) y se
+             *     persistían SIN regla: el payload era una lista NEGRA y cualquier clave
+             *     que coincidiera con una columna entraba. Desde el #395 la lista blanca
+             *     es este contrato, así que lo que no se declare aquí deja de guardarse.
+             *     Los `max` son los de su columna (#392).
+             */
+            notes?: string | null;
+            reference_number?: string | null;
+            discount_type?: string | null;
+            irpf_amount?: number | null;
             items: {
+                unit_name?: string | null;
+                discount_type?: string | null;
+                /**
+                 * @description El enlace de la línea con el artículo del catálogo. No estaba declarado
+                 *     y llegaba a la fila igual —las líneas no pasan por la lista blanca del
+                 *     #394, porque createItems escribe el array tal cual—, así que una línea
+                 *     podía quedar apuntando al artículo de OTRA empresa del mismo tenant y
+                 *     ensuciar el informe de ventas por artículo. Medido el 2026-08-20 (#395).
+                 *     El `exists` acotado por empresa es además lo que hace falta para que el
+                 *     campo sea utilizable de verdad.
+                 */
+                item_id?: number | null;
                 name: string;
                 quantity: number;
                 price: number;
@@ -6041,11 +6195,40 @@ export interface components {
             frequency: string;
             limit_count?: string;
             limit_date?: string;
+            /**
+             * @description Los tres de abajo los manda el panel y hasta ahora se persistían SIN
+             *     regla, porque el payload era una lista negra: cualquier clave que
+             *     coincidiera con una columna entraba. Desde el #393 la lista blanca es
+             *     este contrato, así que un campo que no se declare aquí deja de
+             *     guardarse. Los `max` son los de la columna.
+             */
+            notes?: string | null;
+            discount_type?: string | null;
             items: {
+                /**
+                 * @description El `max` no es decorativo: la columna es varchar(255) y sin regla un
+                 *     nombre más largo pasaba la validación y reventaba en el insert con un
+                 *     500 (#389). En el UPDATE, además, reventaba DESPUÉS de haber borrado
+                 *     las líneas y los impuestos, que es lo que dejaba el documento vacío.
+                 *     El enlace de la línea con el artículo del catálogo. No estaba declarado
+                 *     y llegaba a la fila igual —las líneas no pasan por la lista blanca del
+                 *     #394, porque createItems escribe el array tal cual—, así que una línea
+                 *     podía quedar apuntando al artículo de OTRA empresa del mismo tenant y
+                 *     ensuciar el informe de ventas por artículo. Medido el 2026-08-20 (#395).
+                 *     El `exists` acotado por empresa es además lo que hace falta para que el
+                 *     campo sea utilizable de verdad.
+                 */
+                item_id?: number | null;
                 name: string;
                 quantity: number;
                 price: number;
                 description?: string | null;
+                /**
+                 * @description Dos campos de línea que el contrato no declaraba y que sí se
+                 *     persisten: sin regla, uno más largo que su columna era un 500 (#392).
+                 */
+                unit_name?: string | null;
+                discount_type?: string | null;
                 /**
                  * @description Derivables: opcionales en el contrato y rellenados en prepareForValidation
                  *     (el panel los manda siempre; un cliente de la API no tiene por qué).
@@ -6063,12 +6246,24 @@ export interface components {
                     tax_type_id?: number | null;
                     percent?: number | null;
                     amount?: number | null;
+                    /**
+                     * @description `taxes.name` es NOT NULL y este contrato nunca lo pidió: un tramo con
+                     *     su tipo y su porcentaje pero sin nombre se estrellaba contra la base de
+                     *     datos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload
+                     *     contra el catálogo de la empresa, y lo que no haya podido resolver
+                     *     —un `tax_type_id` que no existe, un porcentaje que la empresa no tiene
+                     *     dado de alta— sale por aquí con un 422 que dice qué falta. La condición
+                     *     es el importe porque el importe es lo que decide que el tramo se
+                     *     persista: sin él no hay nada que nombrar.
+                     */
+                    name?: string | null;
                 }[] | null;
             }[];
             taxes?: {
                 tax_type_id?: number | null;
                 percent?: number | null;
                 amount?: number | null;
+                name?: string | null;
             }[] | null;
             /**
              * @description Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el
@@ -6076,6 +6271,11 @@ export interface components {
              *     al editar lo que leyó. Se normaliza al leerlo, no se rechaza.
              */
             tax_per_item?: string | null;
+            /**
+             * @description Su pareja, que tampoco estaba declarada y llegaba a la fila por el
+             *     `merge()` del payload, saltándose incluso la lista blanca del #394.
+             */
+            discount_per_item?: string | null;
             tax_included?: boolean | null;
             /** @description Valores de campo personalizado del recurso. `id` es el de la definición, que se descubre en `GET /custom-fields` (catálogo `meta`, legible con cualquier token); las definiciones las crea el dueño del tenant desde su panel. Se devuelven en la clave `fields` del recurso. */
             customFields?: {
@@ -6116,8 +6316,13 @@ export interface components {
             tax: string;
             due_amount: string;
             template_name: string;
-            sales_tax_type: string;
-            sales_tax_address_type: string;
+            /**
+             * @description Sin `sales_tax_type` ni `sales_tax_address_type`: son del módulo de
+             *     impuestos de EE.UU. del upstream y no existen en NINGUNA tabla de
+             *     documento —2026_08_06_140000 decidió por escrito no crearlas—, así
+             *     que el contrato las publicaba a null. El #378 retiró las
+             *     escrituras; esto retira la lectura (#377).
+             */
             fields?: components["schemas"]["CustomFieldValueResource"][];
             items?: components["schemas"]["InvoiceItemResource"][];
             customer?: components["schemas"]["CustomerResource"];
@@ -6450,9 +6655,12 @@ export interface components {
             name: string;
             amount: number;
             percent: number;
-            calculation_type: string;
-            fixed_amount: string;
-            compound_tax: string;
+            /**
+             * @description Sin `calculation_type`, `fixed_amount` ni `compound_tax`: ninguna
+             *     de las tres es columna de `taxes`, así que se publicaban a null
+             *     en cada documento desde siempre (#377). `compound_tax` sí existe
+             *     en `tax_types` y sigue publicándose ahí, que es donde se define.
+             */
             base_amount: string | null;
             currency_id: number | null;
             type: string;
@@ -6484,10 +6692,14 @@ export interface components {
         /** TaxTypeRequest */
         TaxTypeRequest: {
             name: string;
-            /** @enum {string} */
-            calculation_type: "percentage" | "fixed";
+            /**
+             * @description `calculation_type` y `fixed_amount` estaban aquí y NO son columnas
+             *     de `tax_types`: se validaban, se metían en el payload y Eloquent
+             *     las descartaba en silencio (#377). El primero además era
+             *     `required`, así que un cliente de la API que no se inventara el
+             *     campo se comía un 422 por un dato que no se guardaba.
+             */
             percent?: number | null;
-            fixed_amount?: number | null;
             description?: string | null;
             compound_tax?: string | null;
             collective_tax?: string | null;
@@ -6497,8 +6709,11 @@ export interface components {
             id: number;
             name: string;
             percent: number;
-            fixed_amount: string;
-            calculation_type: string;
+            /**
+             * @description Sin `fixed_amount` ni `calculation_type`: no son columnas de
+             *     `tax_types` y se publicaban a null (#377). Todo tipo de impuesto
+             *     es porcentual.
+             */
             type: string;
             compound_tax: boolean;
             collective_tax: string;
@@ -6686,11 +6901,13 @@ export interface components {
                 name: string;
                 trade_name: string;
                 vat_id: string | null;
-                tax_id: string;
+                /**
+                 * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
+                 *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+                 */
                 logo: string | null;
                 logo_path: string;
                 unique_hash: string | null;
-                owner_id: string;
                 slug: string | null;
                 address?: components["schemas"]["AddressResource"] | null;
                 roles: components["schemas"]["RoleResource"][];
@@ -9180,11 +9397,124 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "estimate.estimateTemplates": {
+    "estimate-series.index": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `EstimateSeriesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EstimateSeriesResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "estimate-series.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateSeriesRequest"];
+            };
+        };
+        responses: {
+            /** @description `EstimateSeriesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EstimateSeriesResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "estimate-series.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The estimate series ID */
+                estimateSeries: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `EstimateSeriesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EstimateSeriesResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "estimate-series.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The estimate series ID */
+                estimateSeries: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateSeriesRequest"];
+            };
+        };
+        responses: {
+            /** @description `EstimateSeriesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EstimateSeriesResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "estimate-series.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The estimate series ID */
+                estimateSeries: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -9195,7 +9525,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        estimateTemplates: unknown[];
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "estimate.estimateTemplates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Un elemento por diseño base. `name` es el identificador que aceptan `template_name` al crear o editar; `path` la URL absoluta de la miniatura (cadena vacía si no tiene); `custom` es `true` solo para un diseño personalizado subido a la instancia, que sustituye al nativo del mismo nombre y cuya miniatura, al no ser pública, viaja como data-URI. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        estimateTemplates: {
+                            name: string;
+                            path: string;
+                            custom: boolean;
+                        }[];
                     };
                 };
             };
@@ -9733,29 +10091,6 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "exchangeRate.getActiveProvider": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The currency ID */
-                currency: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-            404: components["responses"]["ModelNotFoundException"];
-        };
-    };
     "general.getAllUsedCurrencies": {
         parameters: {
             query?: never;
@@ -9904,49 +10239,6 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
-        };
-    };
-    "exchangeRate.getSupportedCurrencies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-            403: components["responses"]["AuthorizationException"];
-        };
-    };
-    "exchangeRate.getUsedCurrencies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        allUsedCurrencies: string[];
-                        activeUsedCurrencies: string[];
-                    };
-                };
-            };
-            403: components["responses"]["AuthorizationException"];
         };
     };
     "settings.getUserSettings": {
@@ -10898,13 +11190,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Un elemento por diseño base. `name` es el identificador que aceptan `template_name` al crear o editar; `path` la URL absoluta de la miniatura (cadena vacía si no tiene); `custom` es `true` solo para un diseño personalizado subido a la instancia, que sustituye al nativo del mismo nombre y cuya miniatura, al no ser pública, viaja como data-URI. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        invoiceTemplates: unknown[];
+                        invoiceTemplates: {
+                            name: string;
+                            path: string;
+                            custom: boolean;
+                        }[];
                     };
                 };
             };

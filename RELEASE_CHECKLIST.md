@@ -38,6 +38,9 @@ repiten:
   de `origin/main`. Si ese checkout está en otra rama —lo normal con varios
   worktrees a la vez—, se sincroniza un spec viejo sin que nada avise. Sacarlo
   a mano con `git show origin/main:docs/openapi/pimia-api-v1.json` y comparar.
+  *(Arreglado en la 0.6.0: el script ya lee de `origin/main` y aborta si el
+  spec encoge. Este aviso se queda como registro de lo que costó: se ignoró
+  aquí y la 0.5.0 salió igualmente 84 operaciones por detrás.)*
 - **`origin/main` del core se mueve durante la sesión.** Comprobar el estado de
   los PRs de los que dependa la release justo antes de tagear, no al empezar.
 
@@ -62,6 +65,20 @@ guarda de deriva spec↔`api.ts`) — desde esta versión la CI de PR cubre lo q
 antes se hacía a mano en el contenedor de Hetzner. El paso 4 del runbook (bump
 del starter) se hizo tras publicar; la nota de abajo sobre `^0.1.0` quedó
 vieja: la 0.4.0 ya lo subió.
+
+**v0.6.0 — 2026-08-22**: el contrato al día. El spec pasa de 230 a **314
+operaciones** (núcleo `factSaas@8552f60a`), entran las series de presupuesto,
+`/invoices/templates` y `/estimates/templates` tipan su elemento, salen las
+tres rutas muertas de monedas, y `SCOPES` gana los cinco que faltaban
+(`settings:read`, `store:read`, `hr:read`, `hr:write`, `webhooks:write`) en los
+dos SDKs.
+
+**La lección que deja, y que es el paso 0 de abajo:** la 0.5.0 se publicó
+**84 operaciones por detrás del núcleo** y nadie lo vio, porque
+`scripts/sync-spec.sh` copiaba del *working tree* del checkout del core en vez
+de `origin/main`. Ese checkout llevaba 148 commits de retraso en otra rama. El
+script ya no acepta esa entrada: hace `git fetch`, lee de
+`git show origin/main:docs/openapi/…` y **aborta si el spec encoge**.
 
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
@@ -95,6 +112,29 @@ que salió mal la primera vez.
 
 ## Runbook del próximo release
 
+0. **Sincronizar el spec desde `origin/main` del núcleo, regenerar los tipos y
+   anotar el commit.** Es el paso que le faltó a la 0.5.0, que salió con un
+   contrato 84 operaciones viejo:
+
+   ```bash
+   ./scripts/sync-spec.sh /ruta/al/checkout/de/factSaas
+   ```
+
+   El script hace `git fetch` en el checkout, lee el artefacto de
+   `git show origin/main:docs/openapi/pimia-api-v1.json` —**nunca** del working
+   tree, que suele estar en otra rama—, **aborta si el spec nuevo tiene menos
+   operaciones** que el que ya está en el repo (`--force` solo si la reducción
+   es intencionada, y entonces se explica en el CHANGELOG) y regenera
+   `typescript/src/api.ts`. Al terminar imprime el commit del núcleo:
+   **cópialo al CHANGELOG de esta versión** (`factSaas@<sha> (<fecha>) — <n>
+   operaciones`), que es lo que permite reconstruir después contra qué se
+   publicó.
+
+   Luego mira el diff del spec antes de seguir: si **desaparece** alguna
+   operación, es un cambio incompatible y va en la sección «Quitado». Y
+   `origin/main` del núcleo se mueve durante la sesión — repite este paso
+   justo antes de tagear si la release depende de un PR que estaba abierto.
+
 1. Subir la versión en los tres manifiestos —`typescript/package.json`,
    `design-tokens/package.json` y el `CHANGELOG.md`—; el workflow **aborta**
    si el tag y el `package.json` no coinciden.
@@ -105,9 +145,8 @@ que salió mal la primera vez.
    `examples/starter-vertical/package.json` a la versión recién publicada, en
    un commit aparte. Van una detrás a propósito: el job `starter` de la CI
    instala **desde npm** antes de compilar, así que declarar una versión que
-   todavía no existe pondría la CI en rojo justo en la PR del release. Hoy
-   siguen en `^0.1.0` —se olvidó en la 0.2.0— y eso significa que un partner
-   que copie el starter se lleva un SDK que no compila con su código.
+   todavía no existe pondría la CI en rojo justo en la PR del release. Tras
+   publicar la 0.6.0, subirlas a `^0.6.0`.
 
 **⚠️ Un tag solo se puede mover mientras no se haya publicado NADA.** En
 cuanto npm acepte el primer paquete, un fallo posterior se arregla subiendo
