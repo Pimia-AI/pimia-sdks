@@ -50,6 +50,30 @@ final class Scopes
     /** Solo lectura: el dominio incluye escrituras que no son de partner. */
     public const REPORTS_READ = 'reports:read';
 
+    /** Leer la configuración de la empresa (impuestos, preferencias, series). */
+    public const SETTINGS_READ = 'settings:read';
+
+    /** Ver la tienda de módulos y qué tiene contratado el tenant. */
+    public const STORE_READ = 'store:read';
+
+    /** Leer la gestión de personal: empleados, ausencias, fichajes, calendarios. */
+    public const HR_READ = 'hr:read';
+
+    /** Gestionar el personal: altas, ausencias, correcciones de fichaje, horarios. */
+    public const HR_WRITE = 'hr:write';
+
+    /** Gestionar los avisos (webhooks) que recibe tu app. */
+    public const WEBHOOKS_WRITE = 'webhooks:write';
+
+    /**
+     * Proponer cambios que el dueño del tenant aprueba antes de aplicarse.
+     * `APPROVALS_SUBMIT` es un alias del mismo permiso, aceptado por el
+     * Authorization Server.
+     */
+    public const APPROVALS_WRITE = 'approvals:write';
+
+    public const APPROVALS_SUBMIT = 'approvals:submit';
+
     private function __construct()
     {
     }

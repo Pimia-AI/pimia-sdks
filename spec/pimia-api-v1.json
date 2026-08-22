@@ -5754,12 +5754,226 @@
                 ]
             }
         },
-        "/estimates/templates": {
+        "/estimate-series": {
             "get": {
-                "operationId": "estimate.estimateTemplates",
-                "summary": "Handle the incoming request",
+                "operationId": "estimate-series.index",
                 "tags": [
-                    "EstimateTemplates"
+                    "EstimateSeries"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `EstimateSeriesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/EstimateSeriesResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:read"
+                        ]
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "estimate-series.store",
+                "tags": [
+                    "EstimateSeries"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EstimateSeriesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`EstimateSeriesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/EstimateSeriesResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/estimate-series/{estimateSeries}": {
+            "get": {
+                "operationId": "estimate-series.show",
+                "tags": [
+                    "EstimateSeries"
+                ],
+                "parameters": [
+                    {
+                        "name": "estimateSeries",
+                        "in": "path",
+                        "required": true,
+                        "description": "The estimate series ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`EstimateSeriesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/EstimateSeriesResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:read"
+                        ]
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "estimate-series.update",
+                "tags": [
+                    "EstimateSeries"
+                ],
+                "parameters": [
+                    {
+                        "name": "estimateSeries",
+                        "in": "path",
+                        "required": true,
+                        "description": "The estimate series ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EstimateSeriesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`EstimateSeriesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/EstimateSeriesResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:write"
+                        ]
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "estimate-series.destroy",
+                "summary": "Baja l\u00f3gica, nunca borrado: los presupuestos ya numerados con la serie\nsiguen apunt\u00e1ndola y su `estimates_count` es lo que explica por qu\u00e9 el\ncontador va por donde va",
+                "tags": [
+                    "EstimateSeries"
+                ],
+                "parameters": [
+                    {
+                        "name": "estimateSeries",
+                        "in": "path",
+                        "required": true,
+                        "description": "The estimate series ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -5769,9 +5983,70 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/estimates/templates": {
+            "get": {
+                "operationId": "estimate.estimateTemplates",
+                "description": "Un elemento por dise\u00f1o. `path` es la URL p\u00fablica de su miniatura (un\nrecurso est\u00e1tico del producto, igual para todas las instancias y\ncacheable), o `''` si el dise\u00f1o no tiene miniatura. Hasta el #415 ven\u00eda\nincrustada en base64 y la respuesta pesaba m\u00e1s de un megabyte.",
+                "summary": "Galer\u00eda de dise\u00f1os base de presupuesto",
+                "tags": [
+                    "EstimateTemplates"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Un elemento por dise\u00f1o base. `name` es el identificador que aceptan `template_name` al crear o editar; `path` la URL absoluta de la miniatura (cadena vac\u00eda si no tiene); `custom` es `true` solo para un dise\u00f1o personalizado subido a la instancia, que sustituye al nativo del mismo nombre y cuya miniatura, al no ser p\u00fablica, viaja como data-URI.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
                                         "estimateTemplates": {
                                             "type": "array",
-                                            "items": {}
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "path": {
+                                                        "type": "string"
+                                                    },
+                                                    "custom": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name",
+                                                    "path",
+                                                    "custom"
+                                                ]
+                                            }
                                         }
                                     },
                                     "required": [
@@ -6902,43 +7177,6 @@
                 ]
             }
         },
-        "/currencies/{currency}/active-provider": {
-            "get": {
-                "operationId": "exchangeRate.getActiveProvider",
-                "description": "**Cat\u00e1logo `meta`.** Lectura libre: la alcanza cualquier token v\u00e1lido, sin scope y sin consentimiento adicional del due\u00f1o del tenant.",
-                "summary": "Handle the incoming request",
-                "tags": [
-                    "GetActiveProvider"
-                ],
-                "parameters": [
-                    {
-                        "name": "currency",
-                        "in": "path",
-                        "required": true,
-                        "description": "The currency ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    }
-                },
-                "x-pimia-partner-availability": "any-token"
-            }
-        },
         "/currencies/used": {
             "get": {
                 "operationId": "general.getAllUsedCurrencies",
@@ -7227,76 +7465,6 @@
                 "x-pimia-required-scopes": [
                     "settings:write"
                 ]
-            }
-        },
-        "/supported-currencies": {
-            "get": {
-                "operationId": "exchangeRate.getSupportedCurrencies",
-                "description": "**Cat\u00e1logo `meta`.** Lectura libre: la alcanza cualquier token v\u00e1lido, sin scope y sin consentimiento adicional del due\u00f1o del tenant.",
-                "summary": "Handle the incoming request",
-                "tags": [
-                    "GetSupportedCurrencies"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    }
-                },
-                "x-pimia-partner-availability": "any-token"
-            }
-        },
-        "/used-currencies": {
-            "get": {
-                "operationId": "exchangeRate.getUsedCurrencies",
-                "description": "**Cat\u00e1logo `meta`.** Lectura libre: la alcanza cualquier token v\u00e1lido, sin scope y sin consentimiento adicional del due\u00f1o del tenant.",
-                "summary": "Handle the incoming request",
-                "tags": [
-                    "GetUsedCurrencies"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "allUsedCurrencies": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "activeUsedCurrencies": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    },
-                                    "required": [
-                                        "allUsedCurrencies",
-                                        "activeUsedCurrencies"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    }
-                },
-                "x-pimia-partner-availability": "any-token"
             }
         },
         "/me/settings": {
@@ -9371,13 +9539,14 @@
         "/invoices/templates": {
             "get": {
                 "operationId": "invoice.invoiceTemplates",
-                "summary": "Handle the incoming request",
+                "description": "Un elemento por dise\u00f1o. `path` es la URL p\u00fablica de su miniatura (un\nrecurso est\u00e1tico del producto, igual para todas las instancias y\ncacheable), o `''` si el dise\u00f1o no tiene miniatura. Hasta el #415 ven\u00eda\nincrustada en base64 y la respuesta pesaba m\u00e1s de un megabyte.",
+                "summary": "Galer\u00eda de dise\u00f1os base de factura",
                 "tags": [
                     "InvoiceTemplates"
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Un elemento por dise\u00f1o base. `name` es el identificador que aceptan `template_name` al crear o editar; `path` la URL absoluta de la miniatura (cadena vac\u00eda si no tiene); `custom` es `true` solo para un dise\u00f1o personalizado subido a la instancia, que sustituye al nativo del mismo nombre y cuya miniatura, al no ser p\u00fablica, viaja como data-URI.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9385,7 +9554,25 @@
                                     "properties": {
                                         "invoiceTemplates": {
                                             "type": "array",
-                                            "items": {}
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "path": {
+                                                        "type": "string"
+                                                    },
+                                                    "custom": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name",
+                                                    "path",
+                                                    "custom"
+                                                ]
+                                            }
                                         }
                                     },
                                     "required": [
@@ -30186,12 +30373,6 @@
                             "null"
                         ]
                     },
-                    "tax_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
                     "slug": {
                         "type": [
                             "string",
@@ -30234,14 +30415,12 @@
                             "null"
                         ]
                     },
-                    "tax_id": {
-                        "type": "string"
-                    },
                     "logo": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
                     },
                     "logo_path": {
                         "type": "string"
@@ -30251,9 +30430,6 @@
                             "string",
                             "null"
                         ]
-                    },
-                    "owner_id": {
-                        "type": "string"
                     },
                     "slug": {
                         "type": [
@@ -30283,11 +30459,9 @@
                     "name",
                     "trade_name",
                     "vat_id",
-                    "tax_id",
                     "logo",
                     "logo_path",
                     "unique_hash",
-                    "owner_id",
                     "slug",
                     "roles"
                 ],
@@ -30447,7 +30621,8 @@
                         "type": "string"
                     },
                     "phone_code": {
-                        "type": "string"
+                        "type": "integer",
+                        "description": "La columna se llama `phonecode`, sin guion bajo: publicarla como\n`$this->phone_code` daba null desde siempre (#386). El nombre del\ncontrato se respeta y se aliasa, como `vat_id` \u2192 `vat_number`."
                     }
                 },
                 "required": [
@@ -30592,14 +30767,12 @@
                             "null"
                         ]
                     },
-                    "tax_id": {
-                        "type": "string"
-                    },
                     "logo": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
                     },
                     "logo_path": {
                         "type": "string"
@@ -30609,9 +30782,6 @@
                             "string",
                             "null"
                         ]
-                    },
-                    "owner_id": {
-                        "type": "string"
                     },
                     "slug": {
                         "type": [
@@ -30659,11 +30829,9 @@
                     "name",
                     "trade_name",
                     "vat_id",
-                    "tax_id",
                     "logo",
                     "logo_path",
                     "unique_hash",
-                    "owner_id",
                     "slug",
                     "roles",
                     "currency_id",
@@ -30748,26 +30916,9 @@
                             "null"
                         ]
                     },
-                    "boolean_answer": {
-                        "type": "string"
-                    },
-                    "date_answer": {
-                        "type": "string"
-                    },
-                    "time_answer": {
-                        "type": "string"
-                    },
-                    "string_answer": {
-                        "type": "string"
-                    },
-                    "number_answer": {
-                        "type": "string"
-                    },
-                    "date_time_answer": {
-                        "type": "string"
-                    },
                     "is_required": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Sin los seis `*_answer` ni `default_answer`: son columnas de\n`custom_field_values` \u2014de la RESPUESTA, no de la definici\u00f3n\u2014 y\naqu\u00ed se publicaban a null (#386). `CustomFieldValueResource` s\u00ed\nlos sirve, y ah\u00ed s\u00ed existen."
                     },
                     "in_use": {
                         "type": "string"
@@ -30780,9 +30931,6 @@
                             "integer",
                             "null"
                         ]
-                    },
-                    "default_answer": {
-                        "type": "string"
                     },
                     "company": {
                         "anyOf": [
@@ -30804,17 +30952,10 @@
                     "type",
                     "placeholder",
                     "options",
-                    "boolean_answer",
-                    "date_answer",
-                    "time_answer",
-                    "string_answer",
-                    "number_answer",
-                    "date_time_answer",
                     "is_required",
                     "in_use",
                     "order",
-                    "company_id",
-                    "default_answer"
+                    "company_id"
                 ],
                 "title": "CustomFieldResource"
             },
@@ -31082,38 +31223,44 @@
                 "type": "object",
                 "properties": {
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 255
                     },
                     "email": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "phone": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 20
                     },
                     "contact_name": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "website": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "prefix": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "tax_id": {
                         "type": [
@@ -31346,21 +31493,13 @@
                             "null"
                         ]
                     },
-                    "facebook_id": {
-                        "type": "string"
-                    },
-                    "google_id": {
-                        "type": "string"
-                    },
-                    "github_id": {
-                        "type": "string"
-                    },
                     "created_at": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "Sin `facebook_id`, `google_id` ni `github_id`: son del login\nsocial del upstream y no son columnas de `customers`, as\u00ed que el\ncontrato las publicaba a null (#377)."
                     },
                     "formatted_created_at": {
                         "type": "string"
@@ -31486,9 +31625,6 @@
                     "currency_id",
                     "payment_method_id",
                     "company_id",
-                    "facebook_id",
-                    "google_id",
-                    "github_id",
                     "created_at",
                     "formatted_created_at",
                     "updated_at",
@@ -32756,14 +32892,9 @@
                     "estimate_pdf_url": {
                         "type": "string"
                     },
-                    "sales_tax_type": {
-                        "type": "string"
-                    },
-                    "sales_tax_address_type": {
-                        "type": "string"
-                    },
                     "items": {
                         "type": "array",
+                        "description": "Sin `sales_tax_type` ni `sales_tax_address_type`: son del m\u00f3dulo de\nimpuestos de EE.UU. del upstream y no existen en NINGUNA tabla de\ndocumento \u20142026_08_06_140000 decidi\u00f3 por escrito no crearlas\u2014, as\u00ed\nque el contrato las publicaba a null. El #378 retir\u00f3 las\nescrituras; esto retira la lectura (#377).",
                         "items": {
                             "$ref": "#/components/schemas/EstimateItemResource"
                         }
@@ -32894,11 +33025,45 @@
                     "currency_id",
                     "formatted_expiry_date",
                     "formatted_estimate_date",
-                    "estimate_pdf_url",
-                    "sales_tax_type",
-                    "sales_tax_address_type"
+                    "estimate_pdf_url"
                 ],
                 "title": "EstimateResource"
+            },
+            "EstimateSeriesRequest": {
+                "type": "object",
+                "description": "Serie de numeraci\u00f3n de presupuestos (#367). Gemela de InvoiceSeriesRequest,\ncon las mismas dos precauciones:\n\n - el c\u00f3digo se normaliza a may\u00fasculas ANTES de validar, o el `unique`\n   escopeado por compa\u00f1\u00eda comparar\u00eda `a1` contra el `A1` ya guardado y\n   dejar\u00eda pasar un duplicado;\n - en edici\u00f3n basta con mandar lo que cambia, as\u00ed que `code` y `name` solo\n   son obligatorios en el alta.",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]+$",
+                        "maxLength": 10
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "number_format": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "next_sequence": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "is_default": {
+                        "type": "boolean"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "code",
+                    "name"
+                ],
+                "title": "EstimateSeriesRequest"
             },
             "EstimateSeriesResource": {
                 "type": "object",
@@ -33081,7 +33246,8 @@
                             "string",
                             "null"
                         ],
-                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number, que es de donde\nlo saca el panel. Exigirlo obligaba a un cliente de la API a replicar el\nformato de numeraci\u00f3n de la empresa para poder crear un presupuesto.\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): el documento ya tiene uno."
+                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number, que es de donde\nlo saca el panel. Exigirlo obligaba a un cliente de la API a replicar el\nformato de numeraci\u00f3n de la empresa para poder crear un presupuesto.\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): el documento ya tiene uno.",
+                        "maxLength": 255
                     },
                     "estimate_series_id": {
                         "type": [
@@ -33133,7 +33299,30 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Los tres de abajo los manda el panel y hasta ahora se persist\u00edan SIN\nregla, porque el payload era una lista negra: cualquier clave que\ncoincidiera con una columna entraba. Desde el #393 la lista blanca es\neste contrato, as\u00ed que un campo que no se declare aqu\u00ed deja de\nguardarse. Los `max` son los de la columna."
+                    },
+                    "discount_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 15
+                    },
+                    "reference_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia libre del documento (\u00abSu pedido 4711\u00bb), distinta de\n`external_ref`: esta sale en el PDF y aquella es el asidero del\nintegrador.",
+                        "maxLength": 255
                     },
                     "items": {
                         "type": "array",
@@ -33146,8 +33335,31 @@
                                         "null"
                                     ]
                                 },
+                                "unit_name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Dos campos de l\u00ednea que el contrato no declaraba y que s\u00ed se\npersisten: sin regla, uno m\u00e1s largo que su columna era un 500 (#392).",
+                                    "maxLength": 255
+                                },
+                                "discount_type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 15
+                                },
+                                "item_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "El `max` no es decorativo: la columna es varchar(255) y sin regla un\nnombre m\u00e1s largo pasaba la validaci\u00f3n y reventaba en el insert con un\n500 (#389). En el UPDATE, adem\u00e1s, reventaba DESPU\u00c9S de haber borrado\nlas l\u00edneas y los impuestos, que es lo que dejaba el documento vac\u00edo.\nEl enlace de la l\u00ednea con el art\u00edculo del cat\u00e1logo. No estaba declarado\ny llegaba a la fila igual \u2014las l\u00edneas no pasan por la lista blanca del\n#394, porque createItems escribe el array tal cual\u2014, as\u00ed que una l\u00ednea\npod\u00eda quedar apuntando al art\u00edculo de OTRA empresa del mismo tenant y\nensuciar el informe de ventas por art\u00edculo. Medido el 2026-08-20 (#395).\nEl `exists` acotado por empresa es adem\u00e1s lo que hace falta para que el\ncampo sea utilizable de verdad."
+                                },
                                 "name": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 },
                                 "quantity": {
                                     "type": "number"
@@ -33200,6 +33412,13 @@
                                                     "number",
                                                     "null"
                                                 ]
+                                            },
+                                            "name": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "`taxes.name` es NOT NULL y este contrato nunca lo pidi\u00f3: un tramo con\nsu tipo y su porcentaje pero sin nombre se estrellaba contra la base de\ndatos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload\ncontra el cat\u00e1logo de la empresa, y lo que no haya podido resolver\n\u2014un `tax_type_id` que no existe, un porcentaje que la empresa no tiene\ndado de alta\u2014 sale por aqu\u00ed con un 422 que dice qu\u00e9 falta. La condici\u00f3n\nes el importe porque el importe es lo que decide que el tramo se\npersista: sin \u00e9l no hay nada que nombrar."
                                             }
                                         }
                                     }
@@ -33259,6 +33478,12 @@
                                         "number",
                                         "null"
                                     ]
+                                },
+                                "name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
                                 }
                             }
                         }
@@ -33268,7 +33493,16 @@
                             "string",
                             "null"
                         ],
-                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastraba el payload de aqu\u00ed), y el panel reenv\u00eda\nal editar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza."
+                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastraba el payload de aqu\u00ed), y el panel reenv\u00eda\nal editar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza.",
+                        "maxLength": 5
+                    },
+                    "discount_per_item": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Su pareja, que tampoco estaba declarada y llegaba a la fila por el\n`merge()` del payload, salt\u00e1ndose incluso la lista blanca del #394.",
+                        "maxLength": 5
                     },
                     "tax_included": {
                         "type": [
@@ -34653,14 +34887,9 @@
                     "payment_module_enabled": {
                         "type": "string"
                     },
-                    "sales_tax_type": {
-                        "type": "string"
-                    },
-                    "sales_tax_address_type": {
-                        "type": "string"
-                    },
                     "overdue": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Sin `sales_tax_type` ni `sales_tax_address_type`: son del m\u00f3dulo de\nimpuestos de EE.UU. del upstream y no existen en NINGUNA tabla de\ndocumento \u20142026_08_06_140000 decidi\u00f3 por escrito no crearlas\u2014, as\u00ed\nque el contrato las publicaba a null. El #378 retir\u00f3 las\nescrituras; esto retira la lectura (#377)."
                     },
                     "effective_paid_status": {
                         "type": "string"
@@ -34901,8 +35130,6 @@
                     "formatted_due_date",
                     "allow_edit",
                     "payment_module_enabled",
-                    "sales_tax_type",
-                    "sales_tax_address_type",
                     "overdue",
                     "effective_paid_status",
                     "effective_overdue",
@@ -35300,7 +35527,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "external_ref": {
                         "type": [
@@ -35354,7 +35582,8 @@
                             "string",
                             "null"
                         ],
-                        "description": "Opcional como en EstimatesRequest: getInvoicePayload cae a 'invoice1'.\nExigirlo obligaba a un cliente de la API a conocer el nombre interno de\nuna plantilla para poder emitir una factura."
+                        "description": "Opcional como en EstimatesRequest: getInvoicePayload cae a 'invoice1'.\nExigirlo obligaba a un cliente de la API a conocer el nombre interno de\nuna plantilla para poder emitir una factura.",
+                        "maxLength": 255
                     },
                     "invoice_series_id": {
                         "type": [
@@ -35368,6 +35597,28 @@
                             "null"
                         ]
                     },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Los tres de abajo los manda el panel y hasta ahora se persist\u00edan SIN\nregla, porque el payload era una lista negra: cualquier clave que\ncoincidiera con una columna entraba. Desde el #393 la lista blanca es\neste contrato, as\u00ed que un campo que no se declare aqu\u00ed deja de\nguardarse. Los `max` son los de la columna."
+                    },
+                    "discount_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 15
+                    },
+                    "reference_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Referencia libre del documento (\u00abSu pedido 4711\u00bb), distinta de\n`external_ref`: esta sale en el PDF y aquella es el asidero del\nintegrador.",
+                        "maxLength": 255
+                    },
                     "items": {
                         "type": "array",
                         "items": {
@@ -35379,8 +35630,31 @@
                                         "null"
                                     ]
                                 },
+                                "unit_name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Dos campos de l\u00ednea que el contrato no declaraba y que s\u00ed se\npersisten: sin regla, uno m\u00e1s largo que su columna era un 500 (#392).",
+                                    "maxLength": 255
+                                },
+                                "discount_type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 15
+                                },
+                                "item_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "El `max` no es decorativo: la columna es varchar(255) y sin regla un\nnombre m\u00e1s largo pasaba la validaci\u00f3n y reventaba en el insert con un\n500 (#389). En el UPDATE, adem\u00e1s, reventaba DESPU\u00c9S de haber borrado\nlas l\u00edneas y los impuestos, que es lo que dejaba el documento vac\u00edo.\nEl enlace de la l\u00ednea con el art\u00edculo del cat\u00e1logo. No estaba declarado\ny llegaba a la fila igual \u2014las l\u00edneas no pasan por la lista blanca del\n#394, porque createItems escribe el array tal cual\u2014, as\u00ed que una l\u00ednea\npod\u00eda quedar apuntando al art\u00edculo de OTRA empresa del mismo tenant y\nensuciar el informe de ventas por art\u00edculo. Medido el 2026-08-20 (#395).\nEl `exists` acotado por empresa es adem\u00e1s lo que hace falta para que el\ncampo sea utilizable de verdad."
+                                },
                                 "name": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 },
                                 "quantity": {
                                     "type": "number"
@@ -35433,6 +35707,13 @@
                                                     "number",
                                                     "null"
                                                 ]
+                                            },
+                                            "name": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "`taxes.name` es NOT NULL y este contrato nunca lo pidi\u00f3: un tramo con\nsu tipo y su porcentaje pero sin nombre se estrellaba contra la base de\ndatos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload\ncontra el cat\u00e1logo de la empresa, y lo que no haya podido resolver\n\u2014un `tax_type_id` que no existe, un porcentaje que la empresa no tiene\ndado de alta\u2014 sale por aqu\u00ed con un 422 que dice qu\u00e9 falta. La condici\u00f3n\nes el importe porque el importe es lo que decide que el tramo se\npersista: sin \u00e9l no hay nada que nombrar."
                                             }
                                         }
                                     }
@@ -35492,6 +35773,12 @@
                                         "number",
                                         "null"
                                     ]
+                                },
+                                "name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
                                 }
                             }
                         }
@@ -35501,7 +35788,16 @@
                             "string",
                             "null"
                         ],
-                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastra EstimatesRequest), y el panel reenv\u00eda al\neditar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza."
+                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastra EstimatesRequest), y el panel reenv\u00eda al\neditar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza.",
+                        "maxLength": 5
+                    },
+                    "discount_per_item": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Su pareja, que tampoco estaba declarada y llegaba a la fila por el\n`merge()` del payload, salt\u00e1ndose incluso la lista blanca del #394.",
+                        "maxLength": 5
                     },
                     "tax_included": {
                         "type": [
@@ -35804,7 +36100,8 @@
                 "type": "object",
                 "properties": {
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 255
                     },
                     "price": {
                         "type": "string"
@@ -36497,7 +36794,8 @@
                             "string",
                             "null"
                         ],
-                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=payment, que es\nde donde lo saca el panel. Exigirlo obligaba a un cliente de la API a\nreplicar el formato de numeraci\u00f3n de la empresa, y encima a congelar el\ncuerpo entre reintentos: `next-number` no reserva nada, as\u00ed que pedirlo\ndos veces puede dar dos n\u00fameros distintos y el reintento con la misma\nIdempotency-Key rebotaba con 422 por \u00abcuerpo distinto\u00bb.\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): el pago ya tiene uno."
+                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=payment, que es\nde donde lo saca el panel. Exigirlo obligaba a un cliente de la API a\nreplicar el formato de numeraci\u00f3n de la empresa, y encima a congelar el\ncuerpo entre reintentos: `next-number` no reserva nada, as\u00ed que pedirlo\ndos veces puede dar dos n\u00fameros distintos y el reintento con la misma\nIdempotency-Key rebotaba con 422 por \u00abcuerpo distinto\u00bb.\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): el pago ya tiene uno.",
+                        "maxLength": 255
                     },
                     "invoice_id": {
                         "type": [
@@ -37246,7 +37544,8 @@
                             "string",
                             "null"
                         ],
-                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=received_invoice,\nque es de donde lo saca el panel. Es el n\u00famero del LIBRO DE RECIBIDAS \u2014el\ndel proveedor va en `reference_number`\u2014, as\u00ed que numerarlo es cosa nuestra,\nno del cliente de la API: exigirlo le obligaba a replicar el formato de la\nempresa y a congelar el cuerpo entre reintentos (`next-number` no reserva,\ndos llamadas pueden dar n\u00fameros distintos y la misma Idempotency-Key\nrebotaba con 422 por \u00abcuerpo distinto\u00bb).\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): la factura ya tiene uno."
+                        "description": "Opcional en el alta: si no llega, lo genera el servidor con el mismo\nSerialNumberFormatter que alimenta a GET /next-number?key=received_invoice,\nque es de donde lo saca el panel. Es el n\u00famero del LIBRO DE RECIBIDAS \u2014el\ndel proveedor va en `reference_number`\u2014, as\u00ed que numerarlo es cosa nuestra,\nno del cliente de la API: exigirlo le obligaba a replicar el formato de la\nempresa y a congelar el cuerpo entre reintentos (`next-number` no reserva,\ndos llamadas pueden dar n\u00fameros distintos y la misma Idempotency-Key\nrebotaba con 422 por \u00abcuerpo distinto\u00bb).\nEn PUT sigue siendo obligatorio (m\u00e1s abajo): la factura ya tiene uno.",
+                        "maxLength": 255
                     },
                     "exchange_rate": {
                         "type": [
@@ -37271,13 +37570,62 @@
                     "tax": {
                         "type": "string"
                     },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Los cuatro de abajo los manda el panel (stub/received-invoice.js) y se\npersist\u00edan SIN regla: el payload era una lista NEGRA y cualquier clave\nque coincidiera con una columna entraba. Desde el #395 la lista blanca\nes este contrato, as\u00ed que lo que no se declare aqu\u00ed deja de guardarse.\nLos `max` son los de su columna (#392)."
+                    },
+                    "reference_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "discount_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 15
+                    },
+                    "irpf_amount": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
                     "items": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
+                                "unit_name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 255
+                                },
+                                "discount_type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 15
+                                },
+                                "item_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "El enlace de la l\u00ednea con el art\u00edculo del cat\u00e1logo. No estaba declarado\ny llegaba a la fila igual \u2014las l\u00edneas no pasan por la lista blanca del\n#394, porque createItems escribe el array tal cual\u2014, as\u00ed que una l\u00ednea\npod\u00eda quedar apuntando al art\u00edculo de OTRA empresa del mismo tenant y\nensuciar el informe de ventas por art\u00edculo. Medido el 2026-08-20 (#395).\nEl `exists` acotado por empresa es adem\u00e1s lo que hace falta para que el\ncampo sea utilizable de verdad."
+                                },
                                 "name": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 },
                                 "quantity": {
                                     "type": "number"
@@ -37582,13 +37930,15 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 20
                     },
                     "limit_by": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 20
                     },
                     "customer_id": {
                         "type": "integer"
@@ -37637,10 +37987,12 @@
                             "string",
                             "null"
                         ],
-                        "description": "Igual que en facturas y presupuestos desde el #296: si no llega, la pone\nel payload. Un cliente de la API no tiene por qu\u00e9 conocer el nombre\ninterno de una plantilla."
+                        "description": "Igual que en facturas y presupuestos desde el #296: si no llega, la pone\nel payload. Un cliente de la API no tiene por qu\u00e9 conocer el nombre\ninterno de una plantilla.",
+                        "maxLength": 255
                     },
                     "frequency": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 20
                     },
                     "limit_count": {
                         "type": "string"
@@ -37648,13 +38000,35 @@
                     "limit_date": {
                         "type": "string"
                     },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Los tres de abajo los manda el panel y hasta ahora se persist\u00edan SIN\nregla, porque el payload era una lista negra: cualquier clave que\ncoincidiera con una columna entraba. Desde el #393 la lista blanca es\neste contrato, as\u00ed que un campo que no se declare aqu\u00ed deja de\nguardarse. Los `max` son los de la columna."
+                    },
+                    "discount_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 15
+                    },
                     "items": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
+                                "item_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "El `max` no es decorativo: la columna es varchar(255) y sin regla un\nnombre m\u00e1s largo pasaba la validaci\u00f3n y reventaba en el insert con un\n500 (#389). En el UPDATE, adem\u00e1s, reventaba DESPU\u00c9S de haber borrado\nlas l\u00edneas y los impuestos, que es lo que dejaba el documento vac\u00edo.\nEl enlace de la l\u00ednea con el art\u00edculo del cat\u00e1logo. No estaba declarado\ny llegaba a la fila igual \u2014las l\u00edneas no pasan por la lista blanca del\n#394, porque createItems escribe el array tal cual\u2014, as\u00ed que una l\u00ednea\npod\u00eda quedar apuntando al art\u00edculo de OTRA empresa del mismo tenant y\nensuciar el informe de ventas por art\u00edculo. Medido el 2026-08-20 (#395).\nEl `exists` acotado por empresa es adem\u00e1s lo que hace falta para que el\ncampo sea utilizable de verdad."
+                                },
                                 "name": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 },
                                 "quantity": {
                                     "type": "number"
@@ -37667,6 +38041,21 @@
                                         "string",
                                         "null"
                                     ]
+                                },
+                                "unit_name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Dos campos de l\u00ednea que el contrato no declaraba y que s\u00ed se\npersisten: sin regla, uno m\u00e1s largo que su columna era un 500 (#392).",
+                                    "maxLength": 255
+                                },
+                                "discount_type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 15
                                 },
                                 "discount_val": {
                                     "type": [
@@ -37713,6 +38102,13 @@
                                                     "number",
                                                     "null"
                                                 ]
+                                            },
+                                            "name": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "`taxes.name` es NOT NULL y este contrato nunca lo pidi\u00f3: un tramo con\nsu tipo y su porcentaje pero sin nombre se estrellaba contra la base de\ndatos con un 500 (#380, #381). Lo resuelve ahora DocumentTaxPayload\ncontra el cat\u00e1logo de la empresa, y lo que no haya podido resolver\n\u2014un `tax_type_id` que no existe, un porcentaje que la empresa no tiene\ndado de alta\u2014 sale por aqu\u00ed con un 422 que dice qu\u00e9 falta. La condici\u00f3n\nes el importe porque el importe es lo que decide que el tramo se\npersista: sin \u00e9l no hay nada que nombrar."
                                             }
                                         }
                                     }
@@ -37751,6 +38147,12 @@
                                         "number",
                                         "null"
                                     ]
+                                },
+                                "name": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
                                 }
                             }
                         }
@@ -37760,7 +38162,16 @@
                             "string",
                             "null"
                         ],
-                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastraba este mismo request), y el panel reenv\u00eda\nal editar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza."
+                        "description": "Sin `in:YES,NO`: hay documentos antiguos persistidos con 'NO ' (el\nespacio de m\u00e1s que arrastraba este mismo request), y el panel reenv\u00eda\nal editar lo que ley\u00f3. Se normaliza al leerlo, no se rechaza.",
+                        "maxLength": 5
+                    },
+                    "discount_per_item": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Su pareja, que tampoco estaba declarada y llegaba a la fila por el\n`merge()` del payload, salt\u00e1ndose incluso la lista blanca del #394.",
+                        "maxLength": 5
                     },
                     "tax_included": {
                         "type": [
@@ -37888,14 +38299,9 @@
                     "template_name": {
                         "type": "string"
                     },
-                    "sales_tax_type": {
-                        "type": "string"
-                    },
-                    "sales_tax_address_type": {
-                        "type": "string"
-                    },
                     "fields": {
                         "type": "array",
+                        "description": "Sin `sales_tax_type` ni `sales_tax_address_type`: son del m\u00f3dulo de\nimpuestos de EE.UU. del upstream y no existen en NINGUNA tabla de\ndocumento \u20142026_08_06_140000 decidi\u00f3 por escrito no crearlas\u2014, as\u00ed\nque el contrato las publicaba a null. El #378 retir\u00f3 las\nescrituras; esto retira la lectura (#377).",
                         "items": {
                             "$ref": "#/components/schemas/CustomFieldValueResource"
                         }
@@ -37960,9 +38366,7 @@
                     "total",
                     "tax",
                     "due_amount",
-                    "template_name",
-                    "sales_tax_type",
-                    "sales_tax_address_type"
+                    "template_name"
                 ],
                 "title": "RecurringInvoiceResource"
             },
@@ -38472,44 +38876,51 @@
                 "type": "object",
                 "properties": {
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 255
                     },
                     "email": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "phone": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "contact_name": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "website": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "prefix": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "tax_id": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 255
                     },
                     "currency_id": {
                         "type": [
@@ -39374,20 +39785,12 @@
                     "percent": {
                         "type": "number"
                     },
-                    "calculation_type": {
-                        "type": "string"
-                    },
-                    "fixed_amount": {
-                        "type": "string"
-                    },
-                    "compound_tax": {
-                        "type": "string"
-                    },
                     "base_amount": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Sin `calculation_type`, `fixed_amount` ni `compound_tax`: ninguna\nde las tres es columna de `taxes`, as\u00ed que se publicaban a null\nen cada documento desde siempre (#377). `compound_tax` s\u00ed existe\nen `tax_types` y sigue public\u00e1ndose ah\u00ed, que es donde se define."
                     },
                     "currency_id": {
                         "type": [
@@ -39434,9 +39837,6 @@
                     "name",
                     "amount",
                     "percent",
-                    "calculation_type",
-                    "fixed_amount",
-                    "compound_tax",
                     "base_amount",
                     "currency_id",
                     "type",
@@ -39540,24 +39940,12 @@
                         "type": "string",
                         "maxLength": 50
                     },
-                    "calculation_type": {
-                        "type": "string",
-                        "enum": [
-                            "percentage",
-                            "fixed"
-                        ]
-                    },
                     "percent": {
                         "type": [
                             "number",
                             "null"
-                        ]
-                    },
-                    "fixed_amount": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
+                        ],
+                        "description": "`calculation_type` y `fixed_amount` estaban aqu\u00ed y NO son columnas\nde `tax_types`: se validaban, se met\u00edan en el payload y Eloquent\nlas descartaba en silencio (#377). El primero adem\u00e1s era\n`required`, as\u00ed que un cliente de la API que no se inventara el\ncampo se com\u00eda un 422 por un dato que no se guardaba."
                     },
                     "description": {
                         "type": [
@@ -39580,8 +39968,7 @@
                     }
                 },
                 "required": [
-                    "name",
-                    "calculation_type"
+                    "name"
                 ],
                 "title": "TaxTypeRequest"
             },
@@ -39597,14 +39984,9 @@
                     "percent": {
                         "type": "number"
                     },
-                    "fixed_amount": {
-                        "type": "string"
-                    },
-                    "calculation_type": {
-                        "type": "string"
-                    },
                     "type": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Sin `fixed_amount` ni `calculation_type`: no son columnas de\n`tax_types` y se publicaban a null (#377). Todo tipo de impuesto\nes porcentual."
                     },
                     "compound_tax": {
                         "type": "boolean"
@@ -39661,8 +40043,6 @@
                     "id",
                     "name",
                     "percent",
-                    "fixed_amount",
-                    "calculation_type",
                     "type",
                     "compound_tax",
                     "collective_tax",
@@ -40380,14 +40760,12 @@
                                         "null"
                                     ]
                                 },
-                                "tax_id": {
-                                    "type": "string"
-                                },
                                 "logo": {
                                     "type": [
                                         "string",
                                         "null"
-                                    ]
+                                    ],
+                                    "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
                                 },
                                 "logo_path": {
                                     "type": "string"
@@ -40397,9 +40775,6 @@
                                         "string",
                                         "null"
                                     ]
-                                },
-                                "owner_id": {
-                                    "type": "string"
                                 },
                                 "slug": {
                                     "type": [
@@ -40435,11 +40810,9 @@
                                 "name",
                                 "trade_name",
                                 "vat_id",
-                                "tax_id",
                                 "logo",
                                 "logo_path",
                                 "unique_hash",
-                                "owner_id",
                                 "slug",
                                 "roles",
                                 "role"

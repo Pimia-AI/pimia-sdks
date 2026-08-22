@@ -102,6 +102,16 @@ export const SCOPES = {
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',
+  /** Leer la configuración de la empresa (impuestos, preferencias, series). */
+  settingsRead: 'settings:read',
+  /** Ver la tienda de módulos y qué tiene contratado el tenant. */
+  storeRead: 'store:read',
+  /** Leer la gestión de personal: empleados, ausencias, fichajes, calendarios. */
+  hrRead: 'hr:read',
+  /** Gestionar el personal: altas, ausencias, correcciones de fichaje, horarios. */
+  hrWrite: 'hr:write',
+  /** Gestionar los avisos (webhooks) que recibe tu app. */
+  webhooksWrite: 'webhooks:write',
   /**
    * Proponer cambios que el dueño del tenant aprueba antes de aplicarse.
    * `approvalsSubmit` es un alias del mismo permiso, aceptado por el
