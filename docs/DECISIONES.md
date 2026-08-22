@@ -1,4 +1,4 @@
-# Decisiones de arquitectura — 2026-08-22
+# Decisiones de arquitectura — 2026-08-22 (rev. 2, misma tarde)
 
 Documento **idéntico en los repos del ecosistema Pimia** (núcleo, pimia-sdks,
 pimia-web-shadcn, pimia-workspace), para que cualquier agente o persona que
@@ -33,6 +33,13 @@ obtiene en el registro de Pimia o en el panel de integrador).
    integrador. La diferencia entre primera parte y partner no es de derechos,
    es de **quién responde del código que guarda el token**. El techo de cada
    app lo pone su lista blanca; el techo común, el Authorization Server.
+   **Rev. 2:** el Authorization Server distingue **un client de primera
+   parte** (el del panel web de Pimia, único, creado por seeder/comando y
+   nunca por el registro dinámico) con un flag `first_party`: puede pedir
+   todos los dominios y **no enseña la pantalla de consentimiento**. Los
+   clients de integrador piden lo que el catálogo emita para partners,
+   siempre con consentimiento. Dar `admin` a partners es una decisión
+   aparte, posterior.
 
 4. **El catálogo OAuth es el cuello de botella, no las pantallas.** Hoy no
    emite `admin`, `settings:write`, `verifactu` ni `delegation`, y por eso la
@@ -40,26 +47,48 @@ obtiene en el registro de Pimia o en el panel de integrador).
    que una pyme necesita para administrarse sin el panel viejo). **«El
    catálogo no lo emite» deja de ser respuesta final** y pasa a ser deuda del
    contrato. La dirección: emitir todos los dominios que el guard mapea
-   **menos acuñar tokens** (`admin/tokens`, escalada pura); que la pyme decida
-   en la pantalla de consentimiento, con palabras de pyme.
-   ⚠️ Condición: las lecturas del dominio `settings` exponen hoy credenciales
-   (claves de proveedores, ajustes por clave arbitraria). Abrir dominios sin
-   sanear eso primero abre también eso.
+   **menos acuñar tokens**; que la pyme decida en la pantalla de
+   consentimiento, con palabras de pyme. **Rev. 2:** la ruta de acuñado es
+   `/mcp/tokens` (segmento `mcp → admin`), no `admin/tokens`; la exclusión se
+   escribe como `domain_override` (`mcp/tokens* → null`). Y el editor de
+   plantillas NO necesita `settings:write`: plantillas y series cuelgan de
+   `invoices`, que ya se escribe; `settings:write` hace falta para impuestos,
+   preferencias, empresa y campos personalizados.
+   ⚠️ Condición: sanear antes las lecturas de `settings`. **Rev. 2, medido:**
+   lo de las claves de proveedor y el ajuste por clave arbitraria ya está
+   cerrado; siguen abiertos la clave SES sin cifrar y fuera de los patrones,
+   el patrón `*_password` que no casa con `_pass`, dos GET con efectos
+   (verifactu crea el taxpayer; estado OAuth del LLM), `default_scope`
+   desconocido → acceso total con registro dinámico abierto, y el modo del
+   guard por defecto en «observar». Eslabón 1 antes del 2.
 
 5. **Toda funcionalidad nueva del núcleo nace con ruta en `/api/v1` y tipo en
    el spec**, o no existe para nadie. Regenerar el OpenAPI y los tipos es un
    paso del release del SDK, no un acto manual.
 
-6. **Orden de trabajo:**
-   1. abrir el catálogo OAuth;
-   2. portar a la web los módulos que faltan;
-   3. «100 %» = la web puede sustituir al panel Vue de la pyme;
-   4. barrido de lo privado en web y escritorio;
-   5. abrir los dos repos;
-   6. subir `features/pimia/` al escritorio en bloque;
-   7. panel central a React + shadcn, cuando sobre tiempo.
+6. **Orden de trabajo (rev. 2: la cadena tiene cinco eslabones, no dos):**
+   1. sanear las lecturas de `settings` (núcleo);
+   2. abrir el catálogo OAuth con el client de primera parte (núcleo);
+   3. publicar las rutas de `admin` (usuarios, roles, módulos, SMTP) en
+      `/api/v1` y en el spec, con un export reproducible (núcleo);
+   4. release del SDK con el spec nuevo — la 0.6.0 puede salir YA con lo que
+      `main` ya tiene (`/me`, plantillas, series, RRHH, tienda, empresa);
+   5. portar en la web;
+   6. **«100 %»** = la web puede sustituir al panel Vue de la pyme, medido
+      contra las **22 maquetas + los 8 módulos de Vue sin maqueta que son
+      portables con el catálogo actual** (banca y conciliación, SEPA,
+      inversiones, y RRHH: equipo, calendario de ausencias, correcciones de
+      fichaje, calendarios, horarios). POS y planes no entran (dominios fuera
+      del catálogo; planes es del panel central). Las rutas de PDF y
+      exportaciones que viven fuera de `/api/v1` se mueven dentro;
+   7. barrido de lo privado en web y escritorio;
+   8. abrir los dos repos;
+   9. subir `features/pimia/` al escritorio en bloque;
+   10. panel central a React + shadcn, cuando sobre tiempo.
 
-   **El barrido no se adelanta.**
+   **El barrido no se adelanta.** **Deploy a prod: solo al terminar por
+   completo en dev.** El escritorio ya es React + shadcn: el tema se aborda
+   al final y el ERP trae el suyo.
 
 7. **Cada vertical de terceros vive en su fork.** No hay una puerta por la que
    suban a Buzz a través de Pimia. El dialecto portable de `features/pimia/`
@@ -69,6 +98,18 @@ obtiene en el registro de Pimia o en el panel de integrador).
 
 8. **El SDK es la única superficie** de los anfitriones abiertos: ni el MCP ni
    la API a pelo. Lo que falta se reporta al contrato; nunca se rodea.
+
+9. **La web es el panel por defecto (rev. 2).** Un cliente que se registre
+   en Pimia aterriza en pimia-web-shadcn, no en el panel Vue. Consecuencias:
+   la web usa **un client OAuth global de primera parte** (no uno por
+   tenant); **tenant por selección**, el subdominio después como azúcar de
+   URL; el registro encadena el SSO que ya existe (entrar → auto-login) a
+   `/oauth/authorize` y la web aterriza al tenant en su panel sin volver a
+   teclear la contraseña; la lista blanca de la web pasa a ser código de
+   seguridad, porque es lo único que la distingue de un integrador.
+   **Despliegue: una sola instancia del panel** (el refresh token rota; dos
+   procesos refrescando = reuse = revocación en cascada), con su almacén de
+   grants y candado locales. Todas las pruebas contra un tenant de pruebas.
 
 ## Cómo se aplica en este repo (SDK)
 
