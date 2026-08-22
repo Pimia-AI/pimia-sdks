@@ -22,7 +22,7 @@ inconsistente con los números. Dos cosas que hay que saber antes de escribir
 código contra `api.d.ts`:
 
 **Los importes monetarios tipados `string` son decimales con dos cifras.**
-En la 0.6.0 hay 89 propiedades monetarias así (`amount`, `due_amount`,
+En la 0.6.0 hay 87 propiedades monetarias así (`amount`, `due_amount`,
 `total`, `sub_total`, `tax`, `*_price`… según el recurso). No son céntimos, no
 son notación científica y no llevan separador de miles ni símbolo de moneda:
 son la representación decimal de una columna `decimal(15, 2)` de Postgres, tal
@@ -33,8 +33,17 @@ tiene sentido. Conviértelos tú (`Number(v)` en TS; en PHP, mejor
 **No es un fallo del generador ni una decisión de diseño: falta un cast en el
 núcleo.** Solo `InvoiceResource`, `EstimateResource` y `ReceivedInvoiceResource`
 castean sus `total`/`sub_total`/`tax` a entero, y ni ellos castean
-`due_amount`. El resto de Resources no castea nada. Lo mismo pasa con 124
-propiedades `id`/`*_id`, que llegan como cadena en 31 Resources.
+`due_amount` ni los `base_*` — así que un `InvoiceResource` te devuelve
+`total: 12100` (entero) y `base_total: "121.00"` (cadena) **en la misma
+respuesta**. El resto de Resources no castea nada: `PaymentResource`,
+`ExpenseResource`, `RecurringInvoiceResource` y las vistas `?view=summary`
+mandan todo el dinero en cadena.
+
+Lo mismo pasa con **112 claves** (`id` y `*_id`; no cuento aquí los
+identificadores fiscales como `tax_id` o `national_id`, que sí son cadena de
+verdad). En **21 `*Resource` el propio `id` llega como cadena** — entre ellos
+`TaskResource`, `LeadResource`, `ProjectResource`, `TimeEntryResource`,
+`RoleResource` y los tres `*SummaryResource`.
 
 **Esto es deuda del contrato, no la forma definitiva.** Está abierto como
 issue en este repo y en el núcleo: cuando los Resources declaren sus casts, el
@@ -44,10 +53,14 @@ CHANGELOG. Hasta entonces, no asumas el tipo por el nombre del campo: **mira
 
 ## Operaciones con el `200` sin describir
 
-25 operaciones declaran un `200` vacío (`{"type": "object"}`) — entre ellas
-`POST /invoices`, `PUT /invoices/{invoice}`, `PUT /customers/{customer}` y
-`POST /estimates/{estimate}/convert-to-invoice`. El cuerpo llega igual; lo que
-falta es la descripción, y por eso el tipo generado no te ayuda ahí. Causa: un
-`@return JsonResponse` heredado de InvoiceShelf que gana a la inferencia, más
-la función global `respondJson()` que Scramble no resuelve. También está
-abierto como issue.
+**16 operaciones** describen su `200` como un `object` sin propiedades — entre
+ellas `POST /invoices`, `PUT /invoices/{invoice}`, `PUT /customers/{customer}`
+y `POST /estimates/{estimate}/convert-to-invoice`. El cuerpo llega igual; lo
+que falta es la descripción, y por eso el tipo generado no te ayuda ahí.
+Causa: un `@return JsonResponse` heredado de InvoiceShelf que gana a la
+inferencia, más la función global `respondJson()` que Scramble no resuelve.
+
+Aparte, **`GET /me/settings` declara `string`** y devuelve JSON, y
+`GET /legal-reports/pdf` declara `string` para su rama JSON. Las descargas de
+verdad (CSV, PDF, XML, adjuntos) **sí** están bien: declaran su media type y
+no cuentan aquí. Todo ello está abierto como issues de este repo.

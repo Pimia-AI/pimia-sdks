@@ -85,17 +85,21 @@ artefacto del contrato midiendo bien lo que ya devolvía la API. Conviene mirar
 el `tsc` antes de subir la dependencia.
 
 **Lo que este spec todavía NO arregla, porque no es cosa del generador:**
-siguen tipadas como `string` **124 propiedades `id`/`*_id`** (en 31
-`*Resource`) y **89 propiedades monetarias**. Ahí el spec no miente, la API es
-la inconsistente: esos Resources devuelven columnas `decimal(15,2)` sin cast y
-PDO las entrega como cadena. Solo `InvoiceResource`, `EstimateResource` y
-`ReceivedInvoiceResource` castean sus `total`/`sub_total`/`tax` a entero —y ni
-esos castean `due_amount`—. Hasta que el núcleo ponga los casts, **un
+siguen tipadas como `string` **112 claves** (`id` y `*_id`, sin contar los
+identificadores fiscales, que sí son cadena) y **87 propiedades monetarias**.
+Hay **21 `*Resource` cuyo propio `id` llega como cadena**. Ahí el spec no
+miente, la API es la inconsistente: esos Resources devuelven columnas
+`decimal(15,2)` sin cast y PDO las entrega como cadena. Solo `Invoice`,
+`Estimate` y `ReceivedInvoice` castean `total`/`sub_total`/`tax` a entero —y
+ninguno castea `due_amount` ni los `base_*`, así que el mismo recurso mezcla
+los dos tipos en una respuesta—. Hasta que el núcleo ponga los casts, **un
 monetario `string` es un decimal con dos cifras** (ver `spec/README.md`) y hay
-que hacerle `Number(...)` al leerlo. Quedan además **25 operaciones con el
-`200` vacío** (`POST /invoices`, `PUT /invoices/{invoice}`,
-`PUT /customers/{customer}`, `convert-to-invoice`…): el cuerpo llega, pero el
-spec no lo describe. Las dos cosas están abiertas como issues de este repo.
+que hacerle `Number(...)` al leerlo. Quedan además **16 operaciones cuyo `200`
+se describe como un `object` sin propiedades** (`POST /invoices`,
+`PUT /invoices/{invoice}`, `PUT /customers/{customer}`, `convert-to-invoice`…)
+más `GET /me/settings`, que devuelve JSON y el spec declara `string`: el
+cuerpo llega, pero el tipo generado no ayuda. Todo ello, abierto como issues
+de este repo.
 
 ## [0.5.0] — 2026-08-10
 
