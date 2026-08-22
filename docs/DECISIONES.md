@@ -40,6 +40,23 @@ obtiene en el registro de Pimia o en el panel de integrador).
    clients de integrador piden lo que el catálogo emita para partners,
    siempre con consentimiento. Dar `admin` a partners es una decisión
    aparte, posterior.
+   **Hecho (2026-08-22).** El flag existe, se llama `first_party` y vive en
+   la tabla de clients; nace en `false` y solo lo escribe un comando
+   idempotente, nunca el registro dinámico. El catálogo gana un **segundo eje,
+   `first_party_only`**, que es lo que permite emitir un scope sin dárselo a
+   los integradores — así entraron `admin` y `delegation`. No es lo mismo que
+   `privileged`: aquel mira **a dónde aterriza el código** (host de
+   redirección de confianza), este **quién es el client**, y un scope puede
+   necesitar uno, el otro, los dos o ninguno.
+   Abrirle uno de esos dominios a los partners —la decisión posterior, que
+   sigue pendiente— pide **dos cambios y no uno**: quitar el flag del scope Y
+   añadir el dominio a la superficie pública. Que sean dos es deliberado: es
+   lo que impide abrirlo a medias, con scope pero sin contrato o al revés.
+   ⛔ **Saltarse el consentimiento exige TRES condiciones, no dos**: el flag,
+   la sesión abierta y **redirect_uris registradas**. Un client sin ellas
+   acepta cualquier redirect por compatibilidad; eso, más el salto, entregaría
+   el código de autorización a donde diga quien construya la URL. La
+   combinación es el agujero, no cada mitad.
 
 4. **El catálogo OAuth es el cuello de botella, no las pantallas.** Hoy no
    emite `admin`, `settings:write`, `verifactu` ni `delegation`, y por eso la
@@ -61,16 +78,36 @@ obtiene en el registro de Pimia o en el panel de integrador).
    (verifactu crea el taxpayer; estado OAuth del LLM), `default_scope`
    desconocido → acceso total con registro dinámico abierto, y el modo del
    guard por defecto en «observar». Eslabón 1 antes del 2.
+   **Hecho (2026-08-22): la condición se cumplió y el catálogo ya está
+   abierto.** Emite **para partners, con consentimiento**, `settings:write`,
+   `reports:write` y `store:write`; **reservados a la primera parte**, `admin`
+   y `delegation`. Fuera del mapa para todos, ni siquiera con `admin`, queda
+   **acuñar credenciales — y son dos rutas, no una**: el minting de tokens que
+   la rev. 2 ya nombraba y el del puente de un canal de mensajería, porque el
+   criterio es *fabricar una credencial*, no la ruta concreta. Un token
+   acotado que puede fabricar otro token se ha acotado a sí mismo y a nadie
+   más.
+   ⛔ Tres cosas que parecían configuración resultaron ser tomas de cuenta y
+   hubo que cerrarlas en el mismo cambio: **cambiar la contraseña o el correo
+   del propio usuario** (no pedía la contraseña actual), **las escrituras de
+   autenticación** (una de ellas acuña un token a cambio de credenciales,
+   saltándose el Authorization Server entero) y **escribir credenciales por el
+   escritor genérico de ajustes**, que acepta clave arbitraria y con el que se
+   podía redirigir el correo del tenant a otro servidor. Las tres exigen ahora
+   `admin` o se rechazan; la lección es que **partir un dominio se hace
+   mirando sus rutas una a una**, no por su nombre.
 
 5. **Toda funcionalidad nueva del núcleo nace con ruta en `/api/v1` y tipo en
    el spec**, o no existe para nadie. Regenerar el OpenAPI y los tipos es un
    paso del release del SDK, no un acto manual.
 
 6. **Orden de trabajo (rev. 2: la cadena tiene cinco eslabones, no dos):**
-   1. sanear las lecturas de `settings` (núcleo);
-   2. abrir el catálogo OAuth con el client de primera parte (núcleo);
-   3. publicar las rutas de `admin` (usuarios, roles, módulos, SMTP) en
-      `/api/v1` y en el spec, con un export reproducible (núcleo);
+   1. ✅ **hecho (2026-08-22)** — sanear las lecturas de `settings` (núcleo);
+   2. ✅ **hecho (2026-08-22)** — abrir el catálogo OAuth con el client de
+      primera parte (núcleo);
+   3. **← aquí estamos.** Publicar las rutas de `admin` (usuarios, roles,
+      módulos, SMTP) en `/api/v1` y en el spec, con un export reproducible
+      (núcleo). El export es el bloqueo real: hoy no se regenera en limpio;
    4. release del SDK con el spec nuevo — la 0.6.0 puede salir YA con lo que
       `main` ya tiene (`/me`, plantillas, series, RRHH, tienda, empresa);
    5. portar en la web;
@@ -107,6 +144,12 @@ obtiene en el registro de Pimia o en el panel de integrador).
    `/oauth/authorize` y la web aterriza al tenant en su panel sin volver a
    teclear la contraseña; la lista blanca de la web pasa a ser código de
    seguridad, porque es lo único que la distingue de un integrador.
+   ⚠️ **Hay DOS Authorization Servers y no hacen lo mismo** (medido al
+   construir el flag): el del ápice autentica con correo, contraseña y
+   selector de instancia, y **no tiene sesión web que consultar**; el de la
+   instancia sí. El salto de consentimiento vive en el de la **instancia**,
+   que es donde este flujo deja al usuario. Quien monte el encadenado del SSO
+   tiene que hablar con ese, no con el del ápice.
    **Despliegue: una sola instancia del panel** (el refresh token rota; dos
    procesos refrescando = reuse = revocación en cascada), con su almacén de
    grants y candado locales. Todas las pruebas contra un tenant de pruebas.
