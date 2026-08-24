@@ -8,7 +8,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [No publicado]
+## [0.7.0] — 2026-08-24
+
+Los ficheros. Hasta aquí el cliente **no podía subir ni descargar ninguno**, y
+las dos veces fallaba en silencio; son diez operaciones del contrato para
+subir y dos para descargar. El spec **no se mueve** en esta versión —sigue el
+de la 0.6.0, factSaas@8552f60a, 314 operaciones— porque el artefacto nuevo del
+núcleo trae dos `operationId` duplicados y el generador de tipos lo rechaza:
+[factSaas#477](https://github.com/galeote/factSaas/issues/477). El contrato al
+día va en la siguiente.
 
 ### Corregido
 
