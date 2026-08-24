@@ -61,6 +61,23 @@ pública puede cambiar entre minors.
   Es un cambio de tipos publicados, pero no rompe ninguna llamada que hoy
   funcione: hasta esta versión el cliente no sabía mandar multipart.
 
+- 🔴 **Y la mitad simétrica: una descarga se corrompía en silencio.** Las dos
+  operaciones que devuelven un fichero —el membrete de una plantilla y el
+  documento escaneado de una factura recibida, ambas
+  `application/octet-stream`— se leían con `response.text()`, así que un PDF
+  llegaba entero de tamaño y no se abría. El peor final posible para una
+  descarga: no hay error que mirar.
+
+  Entra **`client.download(path)`**, que devuelve un `Blob` y pide `accept:
+  */*` (con `application/json` fijo, un servidor que negocie el tipo tendría
+  derecho a contestar 406). Los **errores se siguen leyendo como JSON** aunque
+  se pida un blob: cuando la API falla contesta su sobre de error, no el
+  fichero.
+
+  Sale con nombre propio y no como una bandera de `get()` a propósito: una
+  corrupción silenciosa no puede depender de que alguien se acuerde de poner
+  un parámetro.
+
 ### Añadido
 
 - **`toFormData(campos)`**, que arma el cuerpo con las conversiones que el
