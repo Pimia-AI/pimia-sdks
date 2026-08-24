@@ -6,7 +6,7 @@
  * salen los tipos de `./api`.
  */
 
-export { PimiaClient } from './client.js'
+export { PimiaClient, toFormData } from './client.js'
 export type {
   CustomerRequest,
   CustomerResource,

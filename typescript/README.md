@@ -92,6 +92,44 @@ if (meta.idempotentReplay) {
 }
 ```
 
+## Subir un fichero
+
+Diez operaciones de la API son `multipart/form-data`: el justificante de un
+gasto, el documento de una factura recibida, un extracto bancario, el membrete
+de una plantilla, el certificado de firma, el avatar. Para ésas pásale un
+`FormData` y el cliente lo manda tal cual — **no le pongas `content-type`**: el
+runtime escribe el suyo con el `boundary` que separa las partes, y una cabecera
+puesta a mano se lo quita (el cliente lo rechaza antes de salir, con un aviso
+que lo explica).
+
+`toFormData` hace las tres conversiones que el servidor espera y que `FormData`
+sola no hace: los booleanos como `1`/`0`, los objetos y arrays como cadena
+JSON, y los `null` omitidos en vez de mandados como la cadena `"null"`.
+
+```ts
+import { toFormData } from '@pimia/sdk'
+
+// Un gasto con su justificante en PDF, de una sola llamada.
+await client.post('/expenses', toFormData({
+  expense_date: '2026-08-24',
+  expense_category_id: 3,
+  amount: 12100,                       // céntimos, como todo importe
+  attachment_receipt: ficheroDelInput, // un File del navegador
+  customFields: [{ id: 3, value: 'REF-42' }],
+}))
+
+// El documento de una factura recibida, con un Blob al que le das nombre.
+const form = new FormData()
+form.append('document', blobPdf, 'factura-proveedor.pdf')
+await client.post(`/received-invoices/${id}/upload/document`, form)
+```
+
+Los campos de fichero salen tipados como `Blob` en `@pimia/sdk/api`, así que un
+`File` del navegador encaja sin ceremonia.
+
+⚠️ Lo que **no** puedes pasar es un `ReadableStream`: el cliente reintenta ante
+un 401 y ante un 429, y un cuerpo de un solo uso no se puede volver a mandar.
+
 ## Recibir webhooks
 
 `verifyWebhook` comprueba la firma `PIMIA-WEBHOOK-v1` y te devuelve el evento
