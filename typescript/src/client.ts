@@ -90,7 +90,27 @@ export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   /** Query string. Los `undefined`/`null` se omiten; los arrays se repiten. */
   query?: Record<string, string | number | boolean | undefined | null | Array<string | number>>
-  /** Cuerpo JSON. */
+  /**
+   * El cuerpo de la petición.
+   *
+   * Por defecto se manda como **JSON**, que es lo que pide casi toda la API.
+   *
+   * Diez operaciones del contrato son `multipart/form-data` —el justificante
+   * de un gasto, el documento de una factura recibida, importar un extracto
+   * bancario, el membrete de una plantilla, el certificado de firma…—, y para
+   * ésas se pasa un {@link FormData}: el cliente lo manda **tal cual** y **no
+   * le pone `content-type`**, para que el runtime escriba el suyo con su
+   * `boundary`. {@link toFormData} lo arma con las conversiones que el
+   * servidor espera.
+   *
+   * También pasan sin tocar `Blob`, `URLSearchParams`, `ArrayBuffer` y las
+   * vistas de `ArrayBuffer`.
+   *
+   * ⛔ Un `ReadableStream` **no**, y es a propósito: este cliente reintenta
+   * ante un 401 (tras refrescar) y ante un 429, y un stream ya consumido no se
+   * puede volver a mandar — el reintento fallaría con un error que no se
+   * parece en nada a su causa. Los cinco de arriba se pueden releer.
+   */
   body?: unknown
   headers?: Record<string, string>
   signal?: AbortSignal
@@ -335,6 +355,14 @@ export class PimiaClient {
     path: string,
     options: RequestOptions = {},
   ): Promise<ResponseWithMeta<T>> {
+    /* El cuerpo se clasifica UNA vez, fuera del bucle: lo que se manda no
+       cambia entre el intento y su reintento, y decidirlo dentro invitaría a
+       que algún día dejaran de coincidir. */
+    const cuerpoNativo = esCuerpoNativo(options.body)
+    if (cuerpoNativo) {
+      exigirSinContentType(options.body, { ...this.extraHeaders, ...options.headers })
+    }
+
     let tokens = await this.currentTokens()
 
     if (isExpired(tokens, this.skew)) {
@@ -349,7 +377,13 @@ export class PimiaClient {
         method: options.method ?? 'GET',
         headers: {
           accept: 'application/json',
-          ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
+          /* Un cuerpo nativo trae su propio tipo: el runtime le pone
+             `multipart/form-data` CON su `boundary`, o el de un `Blob`, o
+             `application/x-www-form-urlencoded`. Escribirlo aquí a mano se lo
+             quitaría, y sin `boundary` el servidor no puede parsear nada. */
+          ...(options.body === undefined || cuerpoNativo
+            ? {}
+            : { 'content-type': 'application/json' }),
           ...this.extraHeaders,
           ...options.headers,
           // Después de `options.headers` para que la opción con nombre mande
@@ -360,7 +394,12 @@ export class PimiaClient {
             : { 'idempotency-key': options.idempotencyKey }),
           authorization: `Bearer ${tokens.accessToken}`,
         },
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body:
+          options.body === undefined
+            ? undefined
+            : cuerpoNativo
+              ? (options.body as BodyInit)
+              : JSON.stringify(options.body),
         signal: options.signal,
       })
 
@@ -507,6 +546,126 @@ export class PimiaClient {
 
     return Math.min(base, this.maxRetryDelayMs)
   }
+}
+
+/**
+ * ¿Es un cuerpo que el runtime serializa por su cuenta?
+ *
+ * Los cinco de la lista tienen dos cosas en común, y las dos importan: `fetch`
+ * sabe convertirlos y **se pueden releer**. Lo segundo es lo que decide quién
+ * entra: este cliente reintenta ante un 401 (después de refrescar) y ante un
+ * 429, así que un cuerpo de un solo uso —un `ReadableStream`— reventaría en el
+ * reintento con un «body already used» que no se parece en nada a su causa.
+ *
+ * Los `typeof … !== 'undefined'` no son celo: este paquete corre en Node y en
+ * el navegador, y aunque Node 20 los trae todos, un runtime recortado que no
+ * tenga `FormData` debe fallar en el `instanceof`, no al evaluarlo.
+ */
+function esCuerpoNativo(body: unknown): boolean {
+  if (body === undefined || body === null) return false
+
+  return (
+    (typeof FormData !== 'undefined' && body instanceof FormData) ||
+    (typeof Blob !== 'undefined' && body instanceof Blob) ||
+    (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) ||
+    body instanceof ArrayBuffer ||
+    ArrayBuffer.isView(body)
+  )
+}
+
+/**
+ * Un `FormData` con un `content-type` puesto a mano **no se manda**: se avisa.
+ *
+ * La cabecera de un multipart lleva el `boundary` que separa las partes, y lo
+ * genera el runtime al serializar. Escribir `content-type:
+ * multipart/form-data` a mano se lo quita, y entonces el servidor recibe un
+ * cuerpo que no puede parsear: contesta un 422 sobre un campo obligatorio que
+ * el cliente **sí mandó**, y el rastro no lleva a ninguna parte.
+ *
+ * Es un error de quien llama, no de la API, así que se lanza aquí y no se
+ * intenta arreglar por su cuenta: quitarle la cabecera en silencio dejaría en
+ * pie la creencia de que hacía falta.
+ */
+function exigirSinContentType(body: unknown, headers: Record<string, string>): void {
+  if (typeof FormData === 'undefined' || !(body instanceof FormData)) return
+
+  const puesta = Object.keys(headers).find((k) => k.toLowerCase() === 'content-type')
+  if (puesta === undefined) return
+
+  throw new TypeError(
+    'No le pongas `content-type` a un cuerpo FormData: el runtime escribe el suyo ' +
+      'con el `boundary` que separa las partes, y una cabecera a mano se lo quita ' +
+      `(el servidor respondería 422 sobre un campo que sí mandaste). Quita \`${puesta}\` ` +
+      'de las cabeceras de esta petición.',
+  )
+}
+
+/**
+ * Arma el `FormData` de una operación multipart con las conversiones que el
+ * servidor de Pimia espera, que **no** son las que hace `FormData` sola.
+ *
+ * Tres reglas, y las tres salen del contrato, no de la costumbre:
+ *
+ * - **Los booleanos viajan como `1` y `0`.** Lo dice el propio spec en
+ *   `ExpenseRequest.is_attachment_receipt_removed`: «en `multipart/form-data`
+ *   viaja como `1` o `0`». Un `String(false)` daría `"false"`, que PHP lee
+ *   como verdadero.
+ * - **Los objetos y arrays viajan como JSON en una cadena.** También del
+ *   spec, en `ExpenseRequest.customFields`: «viaja como cadena JSON:
+ *   `[{"id":3,"value":"REF-42"}]`».
+ * - **`null` y `undefined` se omiten**, en vez de mandar `"null"`. Un campo
+ *   ausente es un campo ausente; la cadena `"null"` es un valor.
+ *
+ * Un `Blob` o un `File` se añaden tal cual. Con un `File` el runtime manda ya
+ * su nombre; con un `Blob` suelto se puede dar uno pasando `[blob, 'x.pdf']`,
+ * que es la forma que el tercer argumento de `append` admite.
+ *
+ * ```ts
+ * await client.post('/expenses', toFormData({
+ *   expense_date: '2026-08-24',
+ *   expense_category_id: 3,
+ *   amount: 12100,
+ *   attachment_receipt: ficheroPdf,
+ *   customFields: [{ id: 3, value: 'REF-42' }],
+ * }))
+ * ```
+ */
+export function toFormData(
+  fields: Record<string, unknown | [Blob, string]>,
+): FormData {
+  const form = new FormData()
+
+  for (const [name, value] of Object.entries(fields)) {
+    if (value === undefined || value === null) continue
+
+    if (Array.isArray(value) && value.length === 2 && esBlob(value[0]) && typeof value[1] === 'string') {
+      form.append(name, value[0] as Blob, value[1])
+      continue
+    }
+
+    if (esBlob(value)) {
+      form.append(name, value as Blob)
+      continue
+    }
+
+    if (typeof value === 'boolean') {
+      form.append(name, value ? '1' : '0')
+      continue
+    }
+
+    if (typeof value === 'object') {
+      form.append(name, JSON.stringify(value))
+      continue
+    }
+
+    form.append(name, String(value))
+  }
+
+  return form
+}
+
+function esBlob(value: unknown): boolean {
+  return typeof Blob !== 'undefined' && value instanceof Blob
 }
 
 function retryAfterSeconds(response: Response): number | undefined {

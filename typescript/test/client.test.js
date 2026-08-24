@@ -15,6 +15,7 @@ import {
   PimiaClient,
   RateLimitError,
   UnauthorizedError,
+  toFormData,
   ValidationError,
 } from '../dist/index.js'
 
@@ -533,4 +534,163 @@ test('convertToInvoice con externalRef null desvincula a propósito', async () =
 
   // Distinto de no mandarlo: el null explícito es «quítale la referencia».
   assert.deepEqual(JSON.parse(calls[0].init.body), { external_ref: null })
+})
+
+// ── Multipart: el cuerpo que NO se serializa ────────────────────────────────
+
+test('un FormData viaja tal cual: ni JSON.stringify ni content-type', async () => {
+  // 🔴 Es la regresión que este bloque existe para cerrar. Hasta la 0.7.0 el
+  // cliente pasaba TODO cuerpo por `JSON.stringify`, así que un FormData salía
+  // como la cadena `"{}"` — con `content-type: application/json` encima. La
+  // llamada compilaba y el servidor contestaba 422 por un campo que sí se había
+  // mandado, que es el peor sitio donde dejar un fallo.
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  const form = new FormData()
+  form.append('document', new Blob(['%PDF-1.4'], { type: 'application/pdf' }), 'factura.pdf')
+
+  await client.post('/received-invoices/7/upload/document', form)
+
+  const [call] = calls
+  assert.ok(call.init.body instanceof FormData, 'el cuerpo tiene que seguir siendo un FormData')
+  assert.equal(call.init.body.get('document').name, 'factura.pdf')
+
+  // Sin `content-type`: lo pone el runtime, CON el `boundary`. Escribirlo aquí
+  // se lo quitaría y el servidor no podría separar las partes.
+  const cabeceras = Object.keys(call.init.headers).map((k) => k.toLowerCase())
+  assert.ok(!cabeceras.includes('content-type'), `no debería llevar content-type: ${cabeceras}`)
+
+  // Y lo que no cambia: el bearer sigue yendo.
+  assert.equal(call.init.headers.authorization, 'Bearer at-1')
+})
+
+test('un cuerpo normal sigue siendo JSON, que es el 99 % de la API', async () => {
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  await client.post('/invoices', { total: 12100 })
+
+  assert.equal(calls[0].init.headers['content-type'], 'application/json')
+  assert.deepEqual(JSON.parse(calls[0].init.body), { total: 12100 })
+})
+
+test('los otros cuerpos nativos tampoco se serializan', async () => {
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+
+  const params = new URLSearchParams({ a: '1' })
+  await client.post('/x', params)
+  await client.post('/y', new Blob(['abc']))
+  await client.post('/z', new Uint8Array([1, 2, 3]))
+
+  assert.ok(calls[0].init.body instanceof URLSearchParams)
+  assert.ok(calls[1].init.body instanceof Blob)
+  assert.ok(calls[2].init.body instanceof Uint8Array)
+  for (const call of calls) {
+    const cabeceras = Object.keys(call.init.headers).map((k) => k.toLowerCase())
+    assert.ok(!cabeceras.includes('content-type'))
+  }
+})
+
+test('un FormData se puede REINTENTAR: sobrevive al refresco del 401', async () => {
+  // Es el motivo de que un ReadableStream no entre en la lista: un cuerpo de un
+  // solo uso reventaría aquí, en el segundo intento, con un error que no se
+  // parece en nada a su causa.
+  const { client, calls } = clientWith(
+    (url, init, n) => {
+      if (url.endsWith('/oauth/token')) {
+        return json({ access_token: 'at-2', refresh_token: 'rt-2', expires_in: 3600 })
+      }
+      return n === 1 ? json({ message: 'expirado' }, 401) : json({ data: { ok: true } })
+    },
+    { accessToken: 'at-1', refreshToken: 'rt-1' },
+  )
+
+  const form = new FormData()
+  form.append('file', new Blob(['x']), 'extracto.csv')
+
+  const salida = await client.post('/banking/import', form)
+
+  assert.deepEqual(salida, { data: { ok: true } })
+  const subidas = calls.filter((c) => c.url.includes('/banking/import'))
+  assert.equal(subidas.length, 2, 'debería haber reintentado tras refrescar')
+  assert.ok(subidas[1].init.body instanceof FormData)
+  assert.equal(subidas[1].init.body.get('file').name, 'extracto.csv')
+  assert.equal(subidas[1].init.headers.authorization, 'Bearer at-2')
+})
+
+test('poner content-type a mano sobre un FormData se rechaza, y se explica', async () => {
+  // Sin `boundary` el servidor no puede parsear el cuerpo y contesta 422 sobre
+  // un campo que sí se mandó. Se corta aquí, donde está el error.
+  const { client, calls } = clientWith(() => json({}), { accessToken: 'at-1' })
+
+  const form = new FormData()
+  form.append('file', new Blob(['x']), 'x.csv')
+
+  await assert.rejects(
+    () => client.post('/banking/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    (error) => {
+      assert.ok(error instanceof TypeError)
+      assert.match(error.message, /boundary/)
+      assert.match(error.message, /Content-Type/)
+      return true
+    },
+  )
+
+  assert.equal(calls.length, 0, 'no debería haber salido ninguna petición')
+})
+
+// ── `toFormData`: las conversiones que el servidor espera ───────────────────
+
+test('los booleanos viajan como 1 y 0, no como "true"', async () => {
+  // Lo dice el spec en `ExpenseRequest.is_attachment_receipt_removed`. Un
+  // `String(false)` daría `"false"`, que PHP lee como verdadero.
+  const form = toFormData({ is_attachment_receipt_removed: false, activo: true })
+
+  assert.equal(form.get('is_attachment_receipt_removed'), '0')
+  assert.equal(form.get('activo'), '1')
+})
+
+test('los objetos y arrays viajan como JSON en una cadena', async () => {
+  // También del spec, en `ExpenseRequest.customFields`.
+  const form = toFormData({ customFields: [{ id: 3, value: 'REF-42' }] })
+
+  assert.equal(form.get('customFields'), '[{"id":3,"value":"REF-42"}]')
+})
+
+test('null y undefined se OMITEN, en vez de mandar la cadena "null"', async () => {
+  const form = toFormData({ a: null, b: undefined, c: 0 })
+
+  assert.equal(form.has('a'), false)
+  assert.equal(form.has('b'), false)
+  // El cero sí va: es un valor, no un hueco.
+  assert.equal(form.get('c'), '0')
+})
+
+test('un fichero se añade tal cual, y un Blob puede llevar nombre', async () => {
+  const pdf = new Blob(['%PDF'], { type: 'application/pdf' })
+  const form = toFormData({
+    attachment_receipt: [pdf, 'ticket.pdf'],
+    otro: new File(['x'], 'ya-tiene-nombre.png'),
+  })
+
+  assert.equal(form.get('attachment_receipt').name, 'ticket.pdf')
+  assert.equal(form.get('otro').name, 'ya-tiene-nombre.png')
+})
+
+test('toFormData produce algo que el cliente manda sin tocar', async () => {
+  // Las dos mitades juntas, que es como se usa de verdad.
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  await client.post('/expenses', toFormData({
+    expense_date: '2026-08-24',
+    expense_category_id: 3,
+    amount: 12100,
+    attachment_receipt: [new Blob(['%PDF']), 'ticket.pdf'],
+  }))
+
+  const cuerpo = calls[0].init.body
+  assert.ok(cuerpo instanceof FormData)
+  assert.equal(cuerpo.get('amount'), '12100')
+  assert.equal(cuerpo.get('attachment_receipt').name, 'ticket.pdf')
 })

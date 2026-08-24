@@ -40,7 +40,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "generate:types": "openapi-typescript ../spec/pimia-api-v1.json -o src/api.ts",
+    "generate:types": "node scripts/generate-types.mjs",
     "test": "node --test test/*.test.js",
     "prepublishOnly": "npm run build"
   },

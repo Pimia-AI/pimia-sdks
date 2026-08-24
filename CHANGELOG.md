@@ -8,6 +8,75 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [No publicado]
+
+### Corregido
+
+- 🔴 **`@pimia/sdk` no podía llamar a ninguna operación `multipart/form-data`,
+  y fallaba en silencio.** El cliente pasaba **todo** cuerpo por
+  `JSON.stringify` y le fijaba `content-type: application/json`, así que un
+  `FormData` salía por el cable como la cadena `"{}"`. Y como `body` es
+  `unknown`, la llamada **compilaba**: el fichero desaparecía sin un solo aviso
+  y el servidor contestaba 422 sobre un campo que el cliente sí había mandado.
+
+  Medido contra la 0.6.0 publicada, con un `fetch` de mentira:
+
+  ```
+  cuerpo enviado: "{}"
+  content-type  : application/json
+  ```
+
+  Son **diez operaciones del contrato**, y entre ellas las que sostienen el
+  círculo de compras: el justificante de un gasto (`POST`/`PUT /expenses`), el
+  documento de una factura recibida
+  (`POST /received-invoices/{id}/upload/document`), la importación de un
+  extracto bancario (`POST /banking/import`), el membrete de una plantilla, el
+  certificado de firma y el avatar de la empresa.
+
+  Ahora un `FormData` viaja **tal cual** y **sin `content-type`**, para que el
+  runtime escriba el suyo con su `boundary`. Pasan igual `Blob`,
+  `URLSearchParams`, `ArrayBuffer` y sus vistas. Un `ReadableStream` **no**, a
+  propósito: el cliente reintenta ante un 401 y ante un 429, y un cuerpo de un
+  solo uso reventaría en el reintento con un error que no se parece a su causa.
+
+  ⚠️ Y si alguien le pone `content-type` a mano a un `FormData`, ahora se
+  **rechaza con un `TypeError` que lo explica** en vez de mandarlo: sin el
+  `boundary` el servidor no puede separar las partes, y el 422 resultante manda
+  a buscar el fallo donde no está.
+
+- 🔴 **Los campos de fichero se tipaban como `string`.** `openapi-typescript`
+  traduce `format: binary` a `string`, y en este contrato eso son **nueve**
+  sitios: siete campos de un cuerpo multipart y dos respuestas
+  `application/octet-stream`. El tipo afirmaba que un fichero se sube mandando
+  texto —no se puede— y, al revés, quien tuviera un `File` y quisiera hacer lo
+  correcto **no compilaba**.
+
+  Ahora salen como **`Blob`**, que vale para las dos direcciones (`File`
+  extiende `Blob`). Lo hace un `transform` en
+  `typescript/scripts/generate-types.mjs`, que sustituye a la línea de CLI
+  porque ese hook solo existe en la API de Node; el script **falla** si el
+  transform no toca nada, para que un cambio del generador no devuelva los
+  nueve campos a `string` sin que nadie se entere.
+
+  Es un cambio de tipos publicados, pero no rompe ninguna llamada que hoy
+  funcione: hasta esta versión el cliente no sabía mandar multipart.
+
+### Añadido
+
+- **`toFormData(campos)`**, que arma el cuerpo con las conversiones que el
+  servidor espera y que `FormData` sola no hace: los booleanos van como `1` y
+  `0` (un `"false"` PHP lo lee como verdadero), los objetos y arrays como
+  cadena JSON, y `null`/`undefined` **se omiten** en vez de viajar como la
+  cadena `"null"`. Las tres reglas están escritas en el propio spec, en
+  `ExpenseRequest`.
+
+### Pendiente
+
+- El SDK de **PHP** tiene la misma limitación (`json_encode` incondicional en
+  `PimiaClient::request`), y allí el arreglo es mayor: `Transport::send`
+  declara `?string $body`, así que admitir multipart cambia una **interfaz
+  pública** que un partner puede haber implementado. Va aparte.
+
 ## [0.6.0] — 2026-08-22
 
 El contrato al día. Se sincroniza el spec con `origin/main` del núcleo
