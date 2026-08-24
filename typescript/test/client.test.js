@@ -694,3 +694,51 @@ test('toFormData produce algo que el cliente manda sin tocar', async () => {
   assert.equal(cuerpo.get('amount'), '12100')
   assert.equal(cuerpo.get('attachment_receipt').name, 'ticket.pdf')
 })
+
+// ── Descargar un fichero ────────────────────────────────────────────────────
+
+test('download devuelve un Blob y NO lo pasa por text()', async () => {
+  // 🔴 Es la otra mitad del mismo fallo: `get()` lee con `response.text()`, y
+  // un PDF pasado por ahí llega entero de tamaño y no se abre. La corrupción es
+  // silenciosa, que es lo que la hace peor que un error.
+  const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x00, 0xff, 0xfe])
+  const { client, calls } = clientWith(
+    () => new Response(bytes, { headers: { 'content-type': 'application/pdf' } }),
+    { accessToken: 'at-1' },
+  )
+
+  const blob = await client.download('/received-invoices/7/show/document')
+
+  assert.ok(blob instanceof Blob)
+  const recibidos = new Uint8Array(await blob.arrayBuffer())
+  assert.deepEqual([...recibidos], [...bytes], 'los bytes tienen que llegar intactos')
+
+  // Y no pide JSON: un servidor que negocie el tipo podría contestar 406.
+  assert.equal(calls[0].init.headers.accept, '*/*')
+})
+
+test('un error de una descarga se sigue leyendo como JSON', async () => {
+  // Cuando la API falla contesta su sobre de error, no el fichero: leerlo como
+  // Blob dejaría el mensaje dentro de un binario que nadie mira.
+  const { client } = clientWith(
+    () => json({ message: 'No tienes permiso' }, 403),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(
+    () => client.download('/received-invoices/7/show/document'),
+    (error) => {
+      assert.equal(error.status, 403)
+      assert.match(error.message, /No tienes permiso/)
+      return true
+    },
+  )
+})
+
+test('una lectura normal sigue pidiendo JSON', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+
+  await client.get('/invoices')
+
+  assert.equal(calls[0].init.headers.accept, 'application/json')
+})

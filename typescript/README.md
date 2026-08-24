@@ -130,6 +130,18 @@ Los campos de fichero salen tipados como `Blob` en `@pimia/sdk/api`, así que un
 ⚠️ Lo que **no** puedes pasar es un `ReadableStream`: el cliente reintenta ante
 un 401 y ante un 429, y un cuerpo de un solo uso no se puede volver a mandar.
 
+## Descargar un fichero
+
+Para las dos operaciones que devuelven un binario, `download`:
+
+```ts
+const pdf = await client.download(`/received-invoices/${id}/show/document`)
+const url = URL.createObjectURL(pdf)
+```
+
+⚠️ **No uses `get()` para esto.** Lee la respuesta con `response.text()`, así
+que un PDF llega entero de tamaño y no se abre — sin ningún error que mirar.
+
 ## Recibir webhooks
 
 `verifyWebhook` comprueba la firma `PIMIA-WEBHOOK-v1` y te devuelve el evento

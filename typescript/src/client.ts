@@ -112,6 +112,21 @@ export interface RequestOptions {
    * parece en nada a su causa. Los cinco de arriba se pueden releer.
    */
   body?: unknown
+  /**
+   * Cómo leer una respuesta **correcta**.
+   *
+   * `'json'` (el defecto) es lo de siempre. `'blob'` es para las dos
+   * operaciones que devuelven un fichero (`application/octet-stream`):
+   * descargar el membrete de una plantilla y el documento escaneado de una
+   * factura recibida.
+   *
+   * ⚠️ Sin esto, un PDF se lee con `response.text()` y **se corrompe en
+   * silencio**: el fichero «llega», pesa lo suyo y no se abre.
+   *
+   * Los errores se siguen leyendo como JSON aunque pidas `'blob'` — cuando la
+   * API falla contesta su sobre de error, no el fichero.
+   */
+  responseType?: 'json' | 'blob'
   headers?: Record<string, string>
   signal?: AbortSignal
   /**
@@ -326,6 +341,37 @@ export class PimiaClient {
   }
 
   /**
+   * Descarga un fichero de la API y te lo da como `Blob`.
+   *
+   * Son dos operaciones: el membrete de una plantilla
+   * (`GET /invoice-templates/{id}/letterhead`) y el documento escaneado de una
+   * factura recibida (`GET /received-invoices/{id}/show/document`).
+   *
+   * Existe porque `get()` **corrompe un binario sin decirlo**: lee la
+   * respuesta con `response.text()`, y un PDF pasado por ahí llega entero de
+   * tamaño y no se abre. Ese es el peor final posible para una descarga, así
+   * que la forma correcta tiene nombre propio en vez de ser una bandera que
+   * hay que acordarse de poner.
+   *
+   * ```ts
+   * const pdf = await client.download(`/received-invoices/${id}/show/document`)
+   * const url = URL.createObjectURL(pdf)
+   * ```
+   */
+  download(
+    path: string,
+    query?: RequestOptions['query'],
+    options?: ReadOptions,
+  ): Promise<Blob> {
+    return this.request<Blob>(path, {
+      ...options,
+      method: 'GET',
+      query,
+      responseType: 'blob',
+    })
+  }
+
+  /**
    * Petición cruda contra `/api/v1`. `path` puede llevar el prefijo o no:
    * `/invoices` y `/api/v1/invoices` son lo mismo.
    */
@@ -376,7 +422,10 @@ export class PimiaClient {
       const response = await this.doFetch(this.urlFor(path, options.query), {
         method: options.method ?? 'GET',
         headers: {
-          accept: 'application/json',
+          /* Una descarga no pide JSON: si se dejara `application/json` fijo, un
+             servidor que negocie el tipo tendría derecho a contestar 406 —o a
+             mandar un JSON de error donde se esperaba el fichero. */
+          accept: options.responseType === 'blob' ? '*/*' : 'application/json',
           /* Un cuerpo nativo trae su propio tipo: el runtime le pone
              `multipart/form-data` CON su `boundary`, o el de un `Blob`, o
              `application/x-www-form-urlencoded`. Escribirlo aquí a mano se lo
@@ -407,7 +456,13 @@ export class PimiaClient {
 
       if (response.ok) {
         return {
-          data: (await parseBody(response)) as T,
+          /* Una descarga se devuelve como `Blob` SIN pasar por `parseBody`,
+             que hace `response.text()`: un PDF leído como texto se corrompe en
+             la primera secuencia que no sea UTF-8 válido, y lo hace en
+             silencio — el fichero «llega» y no se abre. */
+          data: (options.responseType === 'blob'
+            ? await response.blob()
+            : await parseBody(response)) as T,
           meta: {
             status: response.status,
             // Presente solo cuando Pimia reproduce; su ausencia significa
