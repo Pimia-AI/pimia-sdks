@@ -8,6 +8,33 @@
  */
 
 export interface paths {
+    "/abilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Handle the incoming request
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El `@response` no es adorno: el generador del OpenAPI lo lee y es lo que
+         *     hace que el contrato publique la FORMA de cada elemento. Sin él, la
+         *     respuesta salía como `abilities: array` con los elementos sin tipar —o
+         *     sea, el SDK no podía ni tipar el slug— porque el array se construye en
+         *     tiempo de ejecución y no hay literal que analizar. Es una etiqueta de
+         *     PHPDoc normal, no una dependencia del paquete.
+         */
+        get: operations["role.abilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/absences/balance": {
         parameters: {
             query?: never;
@@ -142,6 +169,20 @@ export interface paths {
          *       Lo consumen las tools MCP de informes (invoice-shelf-mcp).
          *
          *     Importes en céntimos, como el resto de la API.
+         *
+         *     QUÉ FACTURAS CUENTAN, que es la clase de cifra que un integrador no puede
+         *     verificar por su cuenta y que hasta el 2026-08-24 el contrato no decía:
+         *     **solo las EMITIDAS**, o sea las que tienen número (`invoice_number`), que
+         *     es lo que se asigna al publicar. Un BORRADOR no cuenta ni en la base
+         *     imponible ni en el IVA repercutido: no tiene número, no está en VeriFactu
+         *     y no existe para la AEAT. Las RECTIFICATIVAS tampoco entran: no se restan,
+         *     simplemente no cuentan.
+         *
+         *     Antes no había filtro de estado ninguno (#450) y eso no era un número de
+         *     adorno: es la pantalla desde la que se mira lo que se le debe a Hacienda y
+         *     desde la que se cierra un trimestre. Y pasaba mucho, porque cada
+         *     presupuesto o albarán convertido deja un borrador: en un tenant que
+         *     trabaje así, el «IVA a pagar» estaba inflado todo el rato.
          */
         get: operations["accountingSummary.index"];
         put?: never;
@@ -237,6 +278,23 @@ export interface paths {
          *     404 (no se filtra ni la existencia)
          */
         get: operations["approvals.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crm/assignable-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Usuarios a los que se les puede asignar una tarea o un lead */
+        get: operations["crm.assignableUsers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -359,9 +417,7 @@ export interface paths {
         put?: never;
         /**
          * Handle the incoming request
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         *
-         *     Asistente de arranque: fija el tipo de cambio de cada moneda en uso y
+         * @description Asistente de arranque: fija el tipo de cambio de cada moneda en uso y
          *     RECALCULA con él los importes base de todas las facturas, presupuestos y
          *     pagos de esa moneda — documentos ya emitidos incluidos. Corre una sola vez
          *     por empresa (mientras `bulk_exchange_rate_configured` sea 'NO').
@@ -375,6 +431,16 @@ export interface paths {
          *     OJO al frontend: el modal lo abre `LayoutBasic` en cuanto entra CUALQUIER
          *     usuario con la marca a 'NO'. Sin la condición de owner que se añadió allí,
          *     este gate deja a un empleado atrapado en un modal que no puede completar.
+         *
+         *     ⚠️ **Las dos ramas responden `200`.** Si el asistente ya se había
+         *     completado (`bulk_exchange_rate_configured` != 'NO') no se recalcula
+         *     nada y la respuesta es `error: false` — con `200` y con la clave `error`
+         *     a **falso**, que es tan raro como suena. El camino que sí trabaja
+         *     responde `success: true`. Quien llame tiene que mirar QUÉ clave llegó,
+         *     no el código de estado.
+         *
+         *     Eso va en esta prosa porque el `@response` de abajo sustituye a lo que el
+         *     generador dedujera; sin él, este `200` se publicaba como un objeto opaco.
          */
         post: operations["general.bulkExchangeRate"];
         delete?: never;
@@ -511,7 +577,7 @@ export interface paths {
         /**
          * Update the Admin profile.
          *     Includes name, email and (or) password
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         * @description **No disponible para integradores.** Exige `admin:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
          */
         put: operations["company.updateProfile"];
         post?: never;
@@ -530,10 +596,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Upload the Admin Avatar to public storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Upload the Admin Avatar to public storage */
         post: operations["company.uploadAvatar"];
         delete?: never;
         options?: never;
@@ -549,10 +612,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Update Admin Company Details
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Update Admin Company Details */
         put: operations["company.updateCompany"];
         post?: never;
         delete?: never;
@@ -570,10 +630,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Upload the company logo to storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Upload the company logo to storage */
         post: operations["company.uploadCompanyLogo"];
         delete?: never;
         options?: never;
@@ -666,6 +723,19 @@ export interface paths {
          *     `invoice.created` ya ha salido con la referencia nula, y entre las dos
          *     llamadas hay una ventana en la que la factura existe y no la encuentras
          *     por tu referencia.
+         *
+         *     Un presupuesto **sin cliente** no se convierte: la respuesta es un `422`
+         *     con `success: false` y el motivo en `message` (una propuesta atada a un
+         *     lead que todavía no es cliente). Esa forma —`success` en un error, y sin
+         *     clave `error`— es la que se sirve hoy y se conserva; pasarla por
+         *     `abort()` la cambiaría por `{message}` a secas.
+         *
+         *     La factura sale como **borrador sin numerar**: el número se asigna al
+         *     publicarla, no aquí.
+         *
+         *     Tipar el `200` no exige tocar la rama del error: el `@response` de abajo
+         *     se lo dice al generador sin cambiar una línea de código. Sin él, con dos
+         *     ramas de retorno, se publicaba como un objeto opaco.
          */
         post: operations["estimate.convertEstimate"];
         delete?: never;
@@ -703,7 +773,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a credit note (factura rectificativa) from an existing invoice */
+        /**
+         * Emite la factura rectificativa de una factura ya expedida
+         * @description Tres cosas la impiden, cada una con su `422`: que el origen ya sea una
+         *     rectificativa, que esté en borrador (no hay nada que rectificar todavía)
+         *     y que ya exista una rectificativa suya. En las tres el cuerpo trae un
+         *     `error` con la frase en español, sin `message` — es la forma que sirve hoy
+         *     y se conserva, aunque no case con la de los demás endpoints. A eso se suma
+         *     el corte del NIF del destinatario, que es un `422` de validación con la
+         *     forma normal de Laravel.
+         *
+         *     Tipar el `200` no exige tocar ninguna: con cuatro ramas de retorno el
+         *     generador no sabía qué se serializa en el camino bueno y publicaba un
+         *     objeto opaco; el `@response` de abajo se lo dice sin cambiar una línea de
+         *     código.
+         */
         post: operations["invoice.creditNote"];
         delete?: never;
         options?: never;
@@ -744,10 +828,7 @@ export interface paths {
          */
         get: operations["custom-fields.index"];
         put?: never;
-        /**
-         * Store a newly created resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Store a newly created resource in storage */
         post: operations["custom-fields.store"];
         delete?: never;
         options?: never;
@@ -767,17 +848,28 @@ export interface paths {
          * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
          */
         get: operations["custom-fields.show"];
-        /**
-         * Update the specified resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Update the specified resource in storage */
         put: operations["custom-fields.update"];
         post?: never;
-        /**
-         * Remove the specified resource from storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Remove the specified resource from storage */
         delete: operations["custom-fields.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/sales/customers/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["report.customerSalesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -844,7 +936,20 @@ export interface paths {
         };
         /** Display the specified resource */
         get: operations["customers.show"];
-        /** Update the specified resource in storage */
+        /**
+         * Edita un cliente
+         * @description La moneda **no se cambia** una vez el cliente tiene documentos: la
+         *     respuesta es un `422` con `error: you_cannot_edit_currency`. Ojo desde un
+         *     cliente de API: una actualización parcial que omita `currency_id` cuenta
+         *     como intento de cambio (por eso el servidor MCP relee la ficha y
+         *     recompone el cuerpo, ver `utils/partial-update.ts`). El panel también lo
+         *     trata por ese código, en `helpers/error-handling.js`.
+         *
+         *     Ese código es contrato consumido por los dos, así que la rama se deja tal
+         *     cual en vez de pasarla por `abort()`, que solo produce `{message}`. Tipar
+         *     el `200` no exige tocarla: el `@response` de abajo se lo dice al generador
+         *     sin cambiar una línea de código.
+         */
         put: operations["customers.update"];
         post?: never;
         delete?: never;
@@ -1010,6 +1115,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/estimates/pdf/{estimate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["pdf.estimatePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/estimate-series": {
         parameters: {
             query?: never;
@@ -1148,7 +1270,17 @@ export interface paths {
         /** Update the specified resource in storage */
         put: operations["categories.update"];
         post?: never;
-        /** Remove the specified resource from storage */
+        /**
+         * Borra una categoría de gasto
+         * @description Una categoría que todavía tenga gastos NO se borra: la respuesta es un
+         *     `422` con `error: expense_attached`. Hay que recategorizar esos gastos
+         *     primero. Un identificador que no existe es un `404`.
+         *
+         *     Los dos casos van en esta prosa y no en el bloque de respuestas porque el
+         *     `@response` de abajo fija el cuerpo del camino bueno —que es lo que el SDK
+         *     necesita tipar— y al hacerlo sustituye a lo que el generador dedujera. Sin
+         *     él, este `200` se publicaba como un objeto opaco.
+         */
         delete: operations["categories.destroy"];
         options?: never;
         head?: never;
@@ -1207,6 +1339,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/expenses/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["report.expensesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/invoices/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export invoices as CSV */
+        get: operations["export.invoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/received-invoices/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export received invoices as CSV */
+        get: operations["export.receivedInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/expenses/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export expenses as CSV */
+        get: operations["export.expenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/{invoice}/facturae": {
         parameters: {
             query?: never;
@@ -1252,9 +1452,7 @@ export interface paths {
         put?: never;
         /**
          * Toggle lock state for a quarter
-         * @description **No disponible para integradores.** Exige `reports:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         *
-         *     Cerrar un trimestre corta el alta y la edición de facturas emitidas y
+         * @description Cerrar un trimestre corta el alta y la edición de facturas emitidas y
          *     recibidas con fecha en ese periodo ({@see FiscalQuarter::isLocked}); esta
          *     misma acción lo REABRE. Es cierre contable, así que va con el gate de
          *     owner que ya gobierna la configuración sensible del tenant.
@@ -1319,10 +1517,7 @@ export interface paths {
         /** Handle the incoming request */
         get: operations["settings.getCompanySettings"];
         put?: never;
-        /**
-         * Handle the incoming request
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Handle the incoming request */
         post: operations["settings.updateCompanySettings"];
         delete?: never;
         options?: never;
@@ -1338,8 +1533,19 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Handle the incoming request
+         * El último tipo de cambio conocido de esta moneda contra la de la empresa
          * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         *
+         *     ⚠️ **Las dos ramas responden `200`.** Cuando hay cambio registrado viene
+         *     `exchangeRate`, un array de un solo elemento (así lo consume
+         *     `ExchangeRateConverter.vue`); cuando no hay ninguno viene
+         *     `error: no_exchange_rate_available` — con `200`, no con `404`. Quien
+         *     llame tiene que mirar QUÉ clave llegó, no el código de estado.
+         *
+         *     Una moneda que no existe sí es un `404`, y también la empresa sin ajuste
+         *     `currency`. Eso va en esta prosa porque el `@response` de abajo sustituye
+         *     a lo que el generador dedujera; sin él, este `200` se publicaba como un
+         *     objeto opaco.
          */
         get: operations["exchangeRate.getExchangeRate"];
         put?: never;
@@ -1361,8 +1567,19 @@ export interface paths {
         get: operations["settings.getSettings"];
         put?: never;
         /**
-         * Handle the incoming request
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         * Escribe ajustes de la INSTANCIA (no de la empresa)
+         * @description Un token cuyo scope gobierne esta escritura no puede tocar las claves de
+         *     credencial: si el cuerpo trae alguna, la respuesta es un `422` con
+         *     `success: false` y un `message` que las nombra, y **no se escribe
+         *     ninguna** (ver {@see \App\Support\SensitiveSettingKeys}). Ese caso va en
+         *     esta prosa porque el `@response` de abajo sustituye a lo que el generador
+         *     dedujera; sin él, este `200` se publicaba como un objeto opaco.
+         *
+         *     ⚠️ La respuesta del camino bueno trae, además del `success`, un eco de
+         *     los ajustes escritos bajo la clave **`"0"`**: el controlador arma
+         *     `['success' => true, $request->settings]` y el segundo elemento entra sin
+         *     clave, así que PHP le pone el índice 0. Es feo y está documentado tal
+         *     cual en vez de arreglado, porque cambiarlo rompería a quien ya lo lea.
          */
         post: operations["settings.updateSettings"];
         delete?: never;
@@ -1378,12 +1595,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
-        get: operations["settings.getUserSettings"];
         /**
-         * Handle the incoming request
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         * Los ajustes del usuario que llama, por clave
+         * @description Se piden por su nombre (`?settings[]=language&settings[]=locale`) y la
+         *     respuesta es un **objeto** con las claves pedidas que existan: una que no
+         *     esté guardada simplemente no aparece.
+         *
+         *     El `@response` es lo que hace que el contrato lo diga: `pluck()` devuelve
+         *     una colección INDEXADA POR CLAVE, que en JSON es un objeto, y el
+         *     generador la publicaba como `array` con los elementos sin tipar. Un
+         *     cliente generado de ahí esperaba una lista y recibía un diccionario.
+         *
+         *     (Esta ruta daba 500 hasta el #424: `User::getSettings()` no existía.)
          */
+        get: operations["settings.getUserSettings"];
+        /** Handle the incoming request */
         put: operations["settings.updateUserSettings"];
         post?: never;
         delete?: never;
@@ -1508,6 +1734,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/pdf/{invoice}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["pdf.invoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoice-series": {
         parameters: {
             query?: never;
@@ -1565,6 +1808,19 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Previsualiza esta plantilla en PDF, con datos reales de la empresa
+         * @description Devuelve **un PDF**, no JSON. Su hermana `POST /templates/preview` ya
+         *     salía bien en el contrato porque el generador ve ahí el `Content-Type`
+         *     de la Response; esta delega en el mismo controlador con
+         *     `app(InvoiceTemplatePreviewController::class)($request)` y esa
+         *     indirección no la sigue, así que el tipo se declara a mano en
+         *     {@see \App\Support\OpenApiDownloads}.
+         *
+         *     Sin ninguna factura y sin empresa resoluble responde `422`; ese caso no
+         *     cabe en el bloque de respuestas —el `200` ya no es JSON— y va aquí, que
+         *     es la prosa que se publica.
+         */
         post: operations["invoiceTemplate.preview"];
         delete?: never;
         options?: never;
@@ -1707,7 +1963,20 @@ export interface paths {
          */
         get: operations["invoices.index"];
         put?: never;
-        /** Store a newly created resource in storage */
+        /**
+         * Da de alta una factura
+         * @description Una fecha dentro de un trimestre fiscal CERRADO no se admite: la
+         *     respuesta es un `422` con `error: fiscal_quarter_locked`. Ese código es
+         *     contrato consumido —el servidor MCP lo traduce a `locked` en
+         *     `utils/errors.ts` para que el agente distinga «trimestre cerrado» de un
+         *     error de validación cualquiera—, así que la rama se deja tal cual, con su
+         *     `response()->json()`, en vez de pasarla por `abort()`, que solo produce
+         *     `{message}` y se llevaría el código por delante.
+         *
+         *     Tipar el `200` no exige tocarla: con dos ramas de retorno el generador no
+         *     sabía qué se serializa en el camino bueno y publicaba un objeto opaco, y
+         *     el `@response` de abajo se lo dice sin cambiar una línea de código.
+         */
         post: operations["invoices.store"];
         delete?: never;
         options?: never;
@@ -1724,7 +1993,21 @@ export interface paths {
         };
         /** Display the specified resource */
         get: operations["invoices.show"];
-        /** Update the specified resource in storage */
+        /**
+         * Edita una factura
+         * @description Solo se edita mientras la factura **no está numerada**: en cuanto tiene
+         *     `invoice_number` (o `allow_edit` es falso) la respuesta es un `422` con
+         *     `error: invoice_immutable` — para corregir una factura ya emitida está
+         *     `POST /invoices/{invoice}/credit-note`. Una fecha dentro de un trimestre
+         *     fiscal cerrado da `error: fiscal_quarter_locked`, y una referencia
+         *     externa o un número de documento repetidos dan su propio código.
+         *
+         *     Esos códigos son contrato consumido —el servidor MCP los traduce en
+         *     `utils/errors.ts`—, así que las ramas se dejan tal cual en vez de pasarlas
+         *     por `abort()`, que solo produce `{message}`. Tipar el `200` no exige
+         *     tocarlas: el `@response` de abajo se lo dice al generador sin cambiar una
+         *     línea de código.
+         */
         put: operations["invoices.update"];
         post?: never;
         delete?: never;
@@ -1756,10 +2039,66 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Devuelve UNA categoría, la de la ruta
+         * @description No existía, y la ruta sí: `Route::apiResource('item-categories')` publica
+         *     `GET /item-categories/{itemCategory}` apuntando a `show()`, así que
+         *     llamarla moría con `BadMethodCallException` — un 500, que ni siquiera se
+         *     lee como «esto no existe». El panel Vue no la usa (pinta el árbol entero
+         *     desde `index`) y por eso el agujero llegó hasta que un anfitrión lo
+         *     reportó como un hueco de CRUD del contrato (pimia-sdks#34, issue #444).
+         *
+         *     La categoría llega por VINCULACIÓN DE RUTA, como en `update()` y
+         *     `destroy()`, y la empresa se comprueba después. Resolverla a mano
+         *     (`whereCompany()->findOrFail($id)`) también valía, pero deja el parámetro
+         *     de la ruta con su nombre por defecto —`{item_category}` en vez de
+         *     `{itemCategory}`— y el contrato publicaba DOS rutas distintas para el
+         *     mismo recurso, la del `show` con el id como `string`. Medido al regenerar
+         *     el artefacto el 2026-08-24.
+         *
+         *     El 404 no es un descuido de código: dentro de una instancia puede haber
+         *     varias empresas, y sin esta comprobación el id de otra serviría su
+         *     categoría. Es 404 y no 403 porque para esta empresa esa categoría no
+         *     existe, y un 403 confirmaría que sí.
+         */
+        get: operations["item-categories.show"];
         put: operations["item-categories.update"];
         post?: never;
         delete: operations["item-categories.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export items as CSV */
+        get: operations["exports.items"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/items-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a CSV template for import */
+        get: operations["exports.items-template"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1773,7 +2112,7 @@ export interface paths {
             cookie?: never;
         };
         /** Export items as CSV */
-        get: operations["itemImportExport.export"];
+        get: operations["items-export"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1790,7 +2129,7 @@ export interface paths {
             cookie?: never;
         };
         /** Download a CSV template for import */
-        get: operations["itemImportExport.template"];
+        get: operations["items-template"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1810,6 +2149,23 @@ export interface paths {
         put?: never;
         /** Import items from CSV */
         post: operations["itemImportExport.import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/sales/items/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["report.itemSalesReport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2098,6 +2454,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mail/drivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Drivers que se pueden elegir
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailConfiguration.getMailDrivers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Configuración de correo de la instancia, sin secretos
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     De cada secreto solo sale si existe (`mail_password_set`), nunca el valor:
+         *     antes esta ruta devolvía la contraseña SMTP en claro a cualquiera con
+         *     permiso para abrir la pantalla.
+         *
+         *     Las claves que salen dependen del driver guardado —las de `smtp` o las de
+         *     `ses`—, por eso todas menos las cuatro comunes son opcionales en el
+         *     contrato. El `@response` es lo que las publica: el array se arma en
+         *     tiempo de ejecución y sin él la respuesta salía como un objeto opaco.
+         */
+        get: operations["mailConfiguration.getMailEnvironment"];
+        put?: never;
+        /**
+         * Guarda la configuración de correo de la instancia
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Los campos que hacen falta dependen del `mail_driver`: `smtp` pide
+         *     servidor y puerto, `ses` pide la clave. Los secretos —la contraseña SMTP
+         *     y el secret de SES— son OPCIONALES por diseño: omitirlos significa «deja
+         *     el que hay», porque la lectura no los devuelve y el panel no puede
+         *     reenviar lo que no puede leer.
+         */
+        post: operations["mailConfiguration.saveMailEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envía un correo de prueba **con la configuración guardada**
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Antes salía por el mailer global, así que daba «enviado» sin haber tocado
+         *     el SMTP de la empresa: probaba otra cosa que la que se acababa de guardar.
+         *
+         *     Sigue siendo síncrono a propósito —su razón de ser es decirle al usuario
+         *     si su configuración funciona— y por eso devuelve **200 con
+         *     `success: false`** y el motivo en `error` (`mail_not_configured` o
+         *     `mail_send_failed`) en vez de un error de transporte sin traducir. O sea
+         *     que aquí un `200` NO significa que el correo saliera: hay que mirar
+         *     `success`.
+         */
+        post: operations["mailConfiguration.testEmailConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/next-number": {
         parameters: {
             query?: never;
@@ -2151,10 +2596,7 @@ export interface paths {
         /** Display a listing of the resource */
         get: operations["notes.index"];
         put?: never;
-        /**
-         * Store a newly created resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Store a newly created resource in storage */
         post: operations["notes.store"];
         delete?: never;
         options?: never;
@@ -2171,16 +2613,10 @@ export interface paths {
         };
         /** Display the specified resource */
         get: operations["notes.show"];
-        /**
-         * Update the specified resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Update the specified resource in storage */
         put: operations["notes.update"];
         post?: never;
-        /**
-         * Remove the specified resource from storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Remove the specified resource from storage */
         delete: operations["notes.destroy"];
         options?: never;
         head?: never;
@@ -2271,6 +2707,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ocr/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extract structured invoice data from an uploaded document
+         * @description Primary: modelo con visión del tenant (Gemini nativo u OpenAI-compatible
+         *     multimodal, según provider — BYOK estricto, ver CompanyLlmSettings::ocrConfig)
+         *     Secondary: modo texto (pdftotext → text → JSON)
+         *     Fallback: pdftotext + regex (offline)
+         *
+         *     Accepts field name 'document' (web) or 'file' (mobile).
+         *
+         *     El multiparte vive en OcrExtractRequest para que el contrato publique
+         *     campo, tipos y tope (#476); las claves de `data` dependen del motor
+         *     (visión, texto o regex) y por eso el `@response` las deja abiertas: las
+         *     estables son `supplier_name`, `supplier_nif`, `invoice_number`, `date`,
+         *     `due_date`, `subtotal`, `taxes`, `total`, `items`, `confidence`,
+         *     `engine` y, si el proveedor casa con uno del tenant,
+         *     `supplier_suggestion`. Sin texto legible o con el motor caído la
+         *     respuesta es un 422 con `{success: false, error}`.
+         */
+        post: operations["ocr.extract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/smart-ocr/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extract structured invoice data from an uploaded document
+         * @description Primary: modelo con visión del tenant (Gemini nativo u OpenAI-compatible
+         *     multimodal, según provider — BYOK estricto, ver CompanyLlmSettings::ocrConfig)
+         *     Secondary: modo texto (pdftotext → text → JSON)
+         *     Fallback: pdftotext + regex (offline)
+         *
+         *     Accepts field name 'document' (web) or 'file' (mobile).
+         *
+         *     El multiparte vive en OcrExtractRequest para que el contrato publique
+         *     campo, tipos y tope (#476); las claves de `data` dependen del motor
+         *     (visión, texto o regex) y por eso el `@response` las deja abiertas: las
+         *     estables son `supplier_name`, `supplier_nif`, `invoice_number`, `date`,
+         *     `due_date`, `subtotal`, `taxes`, `total`, `items`, `confidence`,
+         *     `engine` y, si el proveedor casa con uno del tenant,
+         *     `supplier_suggestion`. Sin texto legible o con el motor caído la
+         *     respuesta es un 422 con `{success: false, error}`.
+         */
+        post: operations["smart-ocr.process"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pdf/drivers": {
         parameters: {
             query?: never;
@@ -2296,7 +2800,6 @@ export interface paths {
         };
         get: operations["pDFConfiguration.getEnvironment"];
         put?: never;
-        /** @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame. */
         post: operations["pDFConfiguration.saveEnvironment"];
         delete?: never;
         options?: never;
@@ -2334,8 +2837,43 @@ export interface paths {
         /** Update the specified resource in storage */
         put: operations["payment-methods.update"];
         post?: never;
-        /** Remove the specified resource from storage */
+        /**
+         * Borra un método de pago
+         * @description Un método que ya se haya usado NO se borra: la respuesta es un `422` con
+         *     `error: payments_attached` si lo tiene algún cobro, o
+         *     `error: expenses_attached` si lo tiene algún gasto. Un identificador que
+         *     no existe es un `404`.
+         *
+         *     ⚠️ El `success` de esta operación es una **frase**, no un booleano
+         *     (`'Payment method deleted successfully'`), al revés que el de
+         *     `DELETE /roles/{role}` o `DELETE /categories/{category}`. El `@response`
+         *     dice lo que de verdad se sirve, no lo que uno esperaría: cambiarlo a
+         *     `true` para que casen los cuatro sería romper el contrato de quien ya
+         *     lee esta clave.
+         *
+         *     Los `4xx` van en esta prosa y no en el bloque de respuestas porque el
+         *     `@response` de abajo fija el cuerpo del camino bueno —que es lo que el SDK
+         *     necesita tipar— y al hacerlo sustituye a lo que el generador dedujera. Sin
+         *     él, este `200` se publicaba como un objeto opaco.
+         */
         delete: operations["payment-methods.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/pdf/{payment}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["pdf.paymentPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2439,6 +2977,23 @@ export interface paths {
         post: operations["pdfSign.uploadCertificate"];
         /** Delete the certificate for the current company */
         delete: operations["pdfSign.deleteCertificate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/profit-loss/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["report.profitLossReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2664,7 +3219,18 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get suggestions for a specific transaction */
+        /**
+         * Get suggestions for a specific transaction
+         * @description Devuelve hasta cinco documentos que podrían corresponder al movimiento,
+         *     ordenados por `score` descendente (importe, proximidad de fecha,
+         *     referencia y nombre del cliente).
+         *
+         *     **`amount` va en céntimos**, como el `total` del que sale y como todo
+         *     importe de documento en esta API. No lo confundas con
+         *     `bank_transactions.amount`, que sí va en euros con decimales por ser el
+         *     reflejo de un extracto bancario. `number` es `null` en los borradores,
+         *     que nacen sin numerar: el identificador estable es `model.id`.
+         */
         get: operations["reconciliation.suggestions"];
         put?: never;
         post?: never;
@@ -2789,7 +3355,27 @@ export interface paths {
         /** Update the specified resource in storage */
         put: operations["recurring-invoices.update"];
         post?: never;
-        delete?: never;
+        /**
+         * Borra UNA recurrente, la de la ruta
+         * @description No existía, y la ruta sí: `Route::apiResource('recurring-invoices')`
+         *     publica `DELETE /recurring-invoices/{recurringInvoice}` apuntando a
+         *     `destroy()`, y este controlador solo tenía `delete()`, que es el borrado
+         *     EN LOTE colgado de `POST /recurring-invoices/delete`. Llamar al DELETE
+         *     moría con `BadMethodCallException` — un 500, no un 404. El panel Vue
+         *     borra en lote y nunca la usó; es el mismo defecto que cerró el #434 para
+         *     `DELETE /users/{user}` (issue #444).
+         *
+         *     La guarda no es la del lote y la diferencia importa: `delete()` pregunta
+         *     por el gate `delete multiple recurring invoices`, que es un permiso de
+         *     conjunto; aquí se pregunta a la POLÍTICA sobre ESTA recurrente, que
+         *     además comprueba `hasCompany()` —dentro de una instancia hay varias
+         *     empresas y la vinculación de ruta por sí sola serviría la de otra—.
+         *
+         *     El desmontaje (desligar las facturas ya emitidas, borrar líneas e
+         *     impuestos) es el mismo del lote: se reusa `deleteRecurringInvoice()` con
+         *     un solo id en vez de repetirlo aquí.
+         */
+        delete: operations["recurring-invoices.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2806,6 +3392,135 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/register-book/invoices/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Libro de facturas emitidas — formato AEAT */
+        get: operations["registerBook.invoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/register-book/received-invoices/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Libro de facturas recibidas — formato AEAT */
+        get: operations["registerBook.receivedInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{role}/abilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /roles/{role}/abilities — slugs currently granted to the role
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El `@response` es lo que hace que el contrato diga que son STRINGS: la
+         *     lista se arma en tiempo de ejecución desde la relación de Bouncer, y sin
+         *     la etiqueta el spec publicaba `abilities: array` con los elementos sin
+         *     tipar. Es PHPDoc normal, no una dependencia del generador.
+         */
+        get: operations["roles.getAbilities"];
+        /**
+         * PUT /roles/{role}/abilities — replace the role's ability set
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El cuerpo son SLUGS (`['view-lead', 'create-lead']`), no los objetos del
+         *     catálogo que acepta `RoleRequest` al crear el rol. Las dos claves se
+         *     llaman `abilities` y no tienen la misma forma; ahora cada una lo dice en
+         *     el contrato ({@see RoleAbilitiesRequest}).
+         */
+        put: operations["roles.updateAbilities"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Display a listing of the resource
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["roles.index"];
+        put?: never;
+        /**
+         * Store a newly created resource in storage
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["roles.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Display the specified resource
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["roles.show"];
+        /**
+         * Update the specified resource in storage
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        put: operations["roles.update"];
+        post?: never;
+        /**
+         * Borra un rol
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Un rol que todavía tenga usuarios asignados NO se borra: la respuesta es
+         *     un `422` con `error: role_attached_to_users`. Hay que reasignar a esos
+         *     usuarios primero. Un identificador que no existe es un `404`.
+         *
+         *     Los dos casos van en esta prosa y no en el bloque de respuestas porque el
+         *     `@response` de abajo fija el cuerpo del camino bueno —que es lo que el SDK
+         *     necesita tipar— y al hacerlo sustituye a lo que el generador dedujera. Sin
+         *     él, este `200` se publicaba como un objeto opaco.
+         */
+        delete: operations["roles.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2875,7 +3590,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Previsualiza el correo de el presupuesto tal y como se enviará
+         * @description Devuelve **HTML**, no JSON: es el cuerpo del mensaje ya renderizado
+         *     (`Markdown::render()`), listo para pintarlo en un iframe. Que el contrato
+         *     lo diga no es cosmética — un cliente generado del spec hacía
+         *     `JSON.parse()` sobre el HTML y se estrellaba. El tipo se declara en
+         *     {@see \App\Support\OpenApiDownloads}, que es lo único que puede saberlo
+         *     sin ejecutar la acción.
+         */
         get: operations["estimate.sendEstimatePreview"];
         put?: never;
         post?: never;
@@ -2909,7 +3632,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Mail a specific invoice to the corresponding customer's email address */
+        /**
+         * Previsualiza el correo de la factura tal y como se enviará
+         * @description Devuelve **HTML**, no JSON: es el cuerpo del mensaje ya renderizado
+         *     (`Markdown::render()`), listo para pintarlo en un iframe. Que el contrato
+         *     lo diga no es cosmética — un cliente generado del spec hacía
+         *     `JSON.parse()` sobre el HTML y se estrellaba. El tipo se declara en
+         *     {@see \App\Support\OpenApiDownloads}, que es lo único que puede saberlo
+         *     sin ejecutar la acción.
+         */
         get: operations["invoice.sendInvoicePreview"];
         put?: never;
         post?: never;
@@ -2951,8 +3682,31 @@ export interface paths {
          *     el cuerpo vacío, así que enseñaba un correo que no era el que se iba a
          *     mandar — y el envío de después sí valida, con lo que la vista previa
          *     mentía justo en el caso en que había algo que corregir.
+         *
+         *     Devuelve **HTML**, no JSON: es el cuerpo del mensaje ya renderizado
+         *     (`Markdown::render()`), listo para pintarlo en un iframe. El tipo se
+         *     declara en {@see \App\Support\OpenApiDownloads}, que es lo único que
+         *     puede saberlo sin ejecutar la acción; hasta el #443 el contrato lo
+         *     publicaba como un `application/json` opaco.
          */
         get: operations["payment.sendPaymentPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/sepa-remittance/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download SEPA XML file */
+        get: operations["sepaRemittance.download"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3021,7 +3775,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retrieve details of an expense receipt from storage */
+        /**
+         * Sirve el fichero del recibo de un gasto
+         * @description Devuelve **el fichero**, no JSON: los bytes tal cual se subieron
+         *     (`response()->file()`), con el `Content-Type` que les corresponda. El
+         *     contrato lo publica como `application/octet-stream` porque lo que el
+         *     cliente necesita saber es que no debe parsearlos; se declara en
+         *     {@see \App\Support\OpenApiDownloads}.
+         *
+         *     Un gasto **sin recibo** responde `422` con
+         *     `error: receipt_does_not_exist`. Ese caso no cabe en el bloque de
+         *     respuestas —el `200` de esta operación ya no es JSON— y va aquí, que es
+         *     la prosa que se publica.
+         */
         get: operations["expense.showReceipt"];
         put?: never;
         post?: never;
@@ -3042,9 +3808,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/store/specializations/{slug}/install
-         * @description **No disponible para integradores.** Exige `store:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         *
-         *     Idempotente: con una entrega en vuelo devuelve su estado sin encolar otra.
+         * @description Idempotente: con una entrega en vuelo devuelve su estado sin encolar otra.
          *     Sobre una instalada, re-entrega (actualizar); sobre una fallida, reintenta.
          */
         post: operations["specializationInstall.install"];
@@ -3317,6 +4081,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/tax-summary/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the incoming request */
+        get: operations["report.taxSummaryReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tax-types": {
         parameters: {
             query?: never;
@@ -3327,10 +4108,7 @@ export interface paths {
         /** Display a listing of the resource */
         get: operations["tax-types.index"];
         put?: never;
-        /**
-         * Store a newly created resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Store a newly created resource in storage */
         post: operations["tax-types.store"];
         delete?: never;
         options?: never;
@@ -3347,15 +4125,21 @@ export interface paths {
         };
         /** Display the specified resource */
         get: operations["tax-types.show"];
-        /**
-         * Update the specified resource in storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Update the specified resource in storage */
         put: operations["tax-types.update"];
         post?: never;
         /**
-         * Remove the specified resource from storage
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         * Borra un tipo de impuesto
+         * @description Un tipo que ya se haya aplicado en algún documento NO se borra: la
+         *     respuesta es un `422` con `error: taxes_attached`. Para retirarlo de la
+         *     circulación sin perder los documentos que lo usan está
+         *     `POST /tax-types/{tax_type}/toggle-active`. Un identificador que no existe
+         *     es un `404`.
+         *
+         *     Los dos casos van en esta prosa y no en el bloque de respuestas porque el
+         *     `@response` de abajo fija el cuerpo del camino bueno —que es lo que el SDK
+         *     necesita tipar— y al hacerlo sustituye a lo que el generador dedujera. Sin
+         *     él, este `200` se publicaba como un objeto opaco.
          */
         delete: operations["tax-types.destroy"];
         options?: never;
@@ -3372,11 +4156,85 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Toggle the is_active state of a tax type
-         * @description **No disponible para integradores.** Exige `settings:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
-         */
+        /** Toggle the is_active state of a tax type */
         post: operations["taxTypes.toggleActive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant-modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los módulos del registro y en qué estado está cada uno EN ESTA INSTANCIA
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `available_in_plan` es lo que permite a la pantalla decir «no incluido en
+         *     tu plan» en vez de ofrecer un botón que devuelve 422 al pulsarlo, y
+         *     `dependents` los módulos que dejarían de funcionar si se desactiva este.
+         *
+         *     El `@response` describe la forma porque el array se arma en tiempo de
+         *     ejecución: sin él, `meta`, `depends_on`, `dependents` e `installed_slugs`
+         *     se publicaban sin tipar. Es PHPDoc normal, no una dependencia del
+         *     generador.
+         */
+        get: operations["tenantModules.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant-modules/{slug}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Instala un módulo en la instancia, y con él sus dependencias
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Un módulo que no existe, uno que el plan de la instancia no incluye, o una
+         *     dependencia que no se puede satisfacer, salen como `422` con el motivo en
+         *     `message`.
+         */
+        post: operations["tenantModules.install"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant-modules/{slug}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desactiva un módulo de la instancia
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Un módulo `core` no se puede desactivar, y tampoco uno del que dependa
+         *     otro que siga instalado: los dos casos son `422` con el motivo en
+         *     `message`.
+         */
+        post: operations["tenantModules.disable"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3526,6 +4384,10 @@ export interface paths {
         /**
          * Return unbilled time entries for a customer's projects, grouped by
          *     (item_id, hourly_rate_cents) — the unit Fase F bills by
+         * @description El `@response` de abajo existe porque el generador no infiere lo que se
+         *     arma con `groupBy()->map()`: publicaba `entries` como `string` cuando lo
+         *     servido es una lista de objetos (#489), y un lector escrito contra el
+         *     tipo publicado no leía nada.
          */
         get: operations["timeEntry.pendingForCustomer"];
         put?: never;
@@ -3670,7 +4532,23 @@ export interface paths {
         /** Update the specified resource in storage */
         put: operations["units.update"];
         post?: never;
-        /** Remove the specified resource from storage */
+        /**
+         * Borra una unidad de medida
+         * @description Una unidad que todavía tenga artículos NO se borra: la respuesta es un
+         *     `422` con `error: items_attached`. Hay que reasignar esos artículos
+         *     primero. Un identificador que no existe es un `404`.
+         *
+         *     ⚠️ El `success` de esta operación es una **frase**, no un booleano
+         *     (`'Unit deleted successfully'`), al revés que el de `DELETE /roles/{role}`
+         *     o `DELETE /categories/{category}`. El `@response` dice lo que de verdad se
+         *     sirve, no lo que uno esperaría: cambiarlo a `true` para que casen los
+         *     cuatro sería romper el contrato de quien ya lee esta clave.
+         *
+         *     Los `4xx` van en esta prosa y no en el bloque de respuestas porque el
+         *     `@response` de abajo fija el cuerpo del camino bueno —que es lo que el SDK
+         *     necesita tipar— y al hacerlo sustituye a lo que el generador dedujera. Sin
+         *     él, este `200` se publicaba como un objeto opaco.
+         */
         delete: operations["units.destroy"];
         options?: never;
         head?: never;
@@ -3689,6 +4567,98 @@ export interface paths {
         /** Upload the expense receipts to storage */
         post: operations["expense.uploadReceipt"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete users in bulk
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["users.delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Display a listing of the resource
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["users.index"];
+        put?: never;
+        /**
+         * Store a newly created resource in storage
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["users.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Display the specified resource
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El usuario llega por VINCULACIÓN DE RUTA, no resuelto a mano dentro. El
+         *     comportamiento es el mismo (404 si no está) y el tipo deja de ser
+         *     `mixed`, que es lo que el generador del OpenAPI necesita para saber qué
+         *     se serializa. Lo otro que hacía falta para tipar el 200 está en
+         *     `negarSiEstaProtegido()`.
+         */
+        get: operations["users.show"];
+        /**
+         * Update the specified resource in storage
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        put: operations["users.update"];
+        post?: never;
+        /**
+         * Borra UN usuario, el de la ruta
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     No existía, y la ruta sí: `Route::apiResource('/users')` publica
+         *     `DELETE /users/{user}` apuntando a `destroy()`, así que llamarla moría con
+         *     `BadMethodCallException` — un 500, que ni siquiera se lee como «esto no
+         *     existe». El panel Vue nunca la usó (borra en lote con `POST
+         *     /users/delete`), y por eso el agujero llegó hasta que la familia entró en
+         *     el contrato.
+         *
+         *     Las dos guardas son las mismas que las del resto del controlador, y ni
+         *     una es de adorno: la política decide QUIÉN puede borrar, y
+         *     `protectedEmails()` decide A QUIÉN — sin esa segunda, el borrado sería la
+         *     puerta trasera al usuario que el listado esconde (la gestoría dueña de la
+         *     instancia y los superadmin de la plataforma), que es justo lo que
+         *     `index()`, `show()` y `update()` impiden.
+         */
+        delete: operations["users.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3976,9 +4946,9 @@ export interface components {
         };
         /** AbsenceResource */
         AbsenceResource: {
-            id: string;
-            company_id: string;
-            user_id: string;
+            id: number;
+            company_id: number;
+            user_id: number;
             type: string;
             status: string;
             start_date: string;
@@ -3986,10 +4956,10 @@ export interface components {
             half_day_start: boolean;
             half_day_end: boolean;
             working_days: number | null;
-            reason: string;
-            approver_id: string;
+            reason: string | null;
+            approver_id: number | null;
             decided_at: string;
-            decision_note: string;
+            decision_note: string | null;
             created_at: string;
             user?: {
                 id: number;
@@ -4021,7 +4991,26 @@ export interface components {
             user?: components["schemas"]["UserResource"] | null;
         };
         /** Appointment */
-        Appointment: string[];
+        Appointment: {
+            id: number;
+            company_id: number;
+            customer_id: number | null;
+            item_id: number | null;
+            staff_user_id: number | null;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string | null;
+            status: string;
+            source: string;
+            notes: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            /** Format: date-time */
+            deleted_at: string | null;
+        };
         /**
          * AppointmentRequest
          * @description Cita de agenda. Reglas movidas literalmente desde el método privado
@@ -4058,6 +5047,7 @@ export interface components {
             name: string;
             iban: string | null;
             bank_name: string | null;
+            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             opening_balance: string;
             currency_code: string;
             enabled: boolean;
@@ -4067,6 +5057,7 @@ export interface components {
             updated_at: string | null;
             /** Format: date-time */
             deleted_at: string | null;
+            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             balance: string;
         };
         /** BankImport */
@@ -4095,6 +5086,7 @@ export interface components {
             transaction_date: string;
             /** Format: date-time */
             value_date: string | null;
+            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             amount: string;
             type: string;
             concept: string | null;
@@ -4167,7 +5159,7 @@ export interface components {
         CompanyResource: {
             id: number;
             name: string;
-            trade_name: string;
+            trade_name: string | null;
             vat_id: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
@@ -4195,20 +5187,22 @@ export interface components {
         };
         /** ContactResource */
         ContactResource: {
-            id: string;
-            customer_id: string;
-            company_id: string;
+            id: number;
+            customer_id: number;
+            company_id: number | null;
             name: string;
-            email: string;
-            phone: string;
-            role: string;
-            initials: string;
-            color: string;
-            notes: string;
+            email: string | null;
+            phone: string | null;
+            role: string | null;
+            initials: string | null;
+            color: string | null;
+            notes: string | null;
             is_primary: boolean;
-            creator_id: string;
-            created_at: string;
-            updated_at: string;
+            creator_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /**
          * ConvertEstimateRequest
@@ -4270,7 +5264,7 @@ export interface components {
         CurrentCompanyResource: {
             id: number;
             name: string;
-            trade_name: string;
+            trade_name: string | null;
             vat_id: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
@@ -4302,7 +5296,7 @@ export interface components {
             id: number;
             name: string;
             slug: string;
-            label: string;
+            label: string | null;
             model_type: string;
             type: string;
             placeholder: string | null;
@@ -4353,7 +5347,7 @@ export interface components {
             shipping_address_id: number | null;
             currency_id: number | null;
             creator_id: number | null;
-            nif: string | null;
+            tax_id: string | null;
             country_code: string;
             /** Format: date-time */
             created_at: string | null;
@@ -4363,6 +5357,9 @@ export interface components {
             bic: string | null;
             sepa_mandate_id: string | null;
             sepa_mandate_date: string | null;
+            payment_method_id: number | null;
+            customer_type: string;
+            notes: string | null;
             avatar: string;
             currency?: components["schemas"]["Currency"] | null;
         };
@@ -4375,6 +5372,11 @@ export interface components {
             contact_name?: string | null;
             website?: string | null;
             prefix?: string | null;
+            /**
+             * @description NIF/CIF del cliente. Es el dato que VeriFactu exige del
+             *     destinatario al publicar una factura completa, y el que viaja
+             *     como `taxNumber` del comprador en FacturaE.
+             */
             tax_id?: string | null;
             notes?: string | null;
             /**
@@ -4390,6 +5392,30 @@ export interface components {
             external_ref?: string | null;
             currency_id?: string | null;
             payment_method_id?: number | null;
+            /**
+             * @description Cuenta del cliente para la domiciliación SEPA. Es lo que decide si
+             *     sus facturas entran en una remesa: `POST /sepa-remittances` deja
+             *     fuera —con `missing_iban`— a todo cliente sin este campo, y lo
+             *     vuelca como `debtorIban` del adeudo. Se guarda tal cual llega, con
+             *     espacios o sin ellos.
+             */
+            iban?: string | null;
+            /**
+             * @description BIC/SWIFT de esa cuenta. Opcional: en una remesa SEPA dentro de la
+             *     zona única no hace falta, y si no está va vacío en el adeudo.
+             */
+            bic?: string | null;
+            /**
+             * @description Referencia del mandato de domiciliación firmado por el cliente. Si
+             *     no la hay, la remesa usa su propio número como referencia.
+             */
+            sepa_mandate_id?: string | null;
+            /**
+             * Format: date-time
+             * @description Fecha de firma de ese mandato, `YYYY-MM-DD`. Sin ella, la remesa
+             *     pone la del día en que se genera.
+             */
+            sepa_mandate_date?: string | null;
             billing?: {
                 name?: string | null;
                 address_street_1?: string | null;
@@ -4431,7 +5457,7 @@ export interface components {
             enable_portal: boolean;
             password_added: boolean;
             currency_id: number | null;
-            payment_method_id: string;
+            payment_method_id: number | null;
             company_id: number | null;
             /**
              * Format: date-time
@@ -4444,11 +5470,23 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
             avatar: string;
-            due_amount: string;
-            base_due_amount: string;
+            /**
+             * @description La deuda no es una columna de `customers`: la añade
+             *     `scopeWithDueAmount()` como subconsulta, y un `SUM()` de
+             *     PostgreSQL llega como cadena. El cast del modelo la convierte
+             *     cuando el atributo existe, pero el generador del OpenAPI no puede
+             *     saberlo —no hay columna que introspeccionar— y publicaba los dos
+             *     importes como `string`. Con el `(int)` explícito el contrato dice
+             *     la verdad y la respuesta también. El `null` se conserva a propósito: sin el scope aplicado no hay
+             *     deuda calculada, y servir un `0` ahí es lo que hacía que la ficha
+             *     de un cliente dijera «no debe nada» cuando lo que pasaba es que
+             *     nadie lo había preguntado (#354, #358).
+             */
+            due_amount: number | null;
+            base_due_amount: number | null;
             prefix: string | null;
-            tax_id: string;
-            notes: string;
+            tax_id: string | null;
+            notes: string | null;
             /**
              * @description Referencia externa DE QUIEN PREGUNTA: la resuelve el client OAuth
              *     del token, así que dos integradores ven cada uno la suya y el
@@ -4465,36 +5503,48 @@ export interface components {
             fields?: components["schemas"]["CustomFieldValueResource"][];
             company?: components["schemas"]["CompanyResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
-            payment_method?: components["schemas"]["PaymentMethodResource"];
+            payment_method?: components["schemas"]["PaymentMethodResource"] | null;
         };
         /** CustomerSummaryResource */
         CustomerSummaryResource: {
-            id: string;
+            id: number;
             name: string;
-            email: string;
-            phone: string;
-            contact_name: string;
-            website: string;
-            tax_id: string;
-            prefix: string;
-            enable_portal: string;
-            currency_id: string;
-            payment_method_id: string;
-            company_id: string;
+            email: string | null;
+            phone: string | null;
+            contact_name: string | null;
+            website: string | null;
+            tax_id: string | null;
+            prefix: string | null;
+            enable_portal: boolean;
+            currency_id: number | null;
+            payment_method_id: number | null;
+            company_id: number | null;
             /**
              * @description Netos de rectificativas: los calcula withNetDueAmounts() en la
              *     propia consulta del índice, no un accessor por fila.
+             *     La deuda no es una columna de `customers`: la añade
+             *     `scopeWithDueAmount()` como subconsulta, y un `SUM()` de
+             *     PostgreSQL llega como cadena. El cast del modelo la convierte
+             *     cuando el atributo existe, pero el generador del OpenAPI no puede
+             *     saberlo —no hay columna que introspeccionar— y publicaba los dos
+             *     importes como `string`. Con el `(int)` explícito el contrato dice
+             *     la verdad y la respuesta también. El `null` se conserva a propósito: sin el scope aplicado no hay
+             *     deuda calculada, y servir un `0` ahí es lo que hacía que la ficha
+             *     de un cliente dijera «no debe nada» cuando lo que pasaba es que
+             *     nadie lo había preguntado (#354, #358).
              */
-            due_amount: string;
-            base_due_amount: string;
-            created_at: string;
+            due_amount: number | null;
+            base_due_amount: number | null;
+            /** Format: date-time */
+            created_at: string | null;
             formatted_created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            updated_at: string | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay),
              *     siempre presente para que el tipo del SDK no alterne.
              */
-            external_ref: string;
+            external_ref: string | null;
         };
         /** DeleteCustomersRequest */
         DeleteCustomersRequest: {
@@ -4542,6 +5592,10 @@ export interface components {
         DeleteSuppliersRequest: {
             ids: number[];
         };
+        /** DeleteUserRequest */
+        DeleteUserRequest: {
+            users: number[];
+        };
         /** DeliveryNoteItem */
         DeliveryNoteItem: {
             id: number;
@@ -4559,10 +5613,10 @@ export interface components {
             unit_name: string | null;
             company_id: number | null;
             exchange_rate: number | null;
-            base_total: number | null;
-            base_discount_val: number | null;
-            base_tax: number | null;
-            base_price: number | null;
+            base_total: number;
+            base_discount_val: number;
+            base_tax: number;
+            base_price: number;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
@@ -4635,24 +5689,26 @@ export interface components {
         };
         /** EmployeeProfileResource */
         EmployeeProfileResource: {
-            id: string;
-            company_id: string;
-            user_id: string;
-            national_id: string;
-            social_security_no: string;
-            contract_type: string;
+            id: number;
+            company_id: number;
+            user_id: number;
+            national_id: string | null;
+            social_security_no: string | null;
+            contract_type: string | null;
             hired_at: string;
             terminated_at: string;
-            weekly_hours: string;
-            department: string;
-            manager_user_id: string;
-            work_schedule_id: string;
-            work_calendar_id: string;
-            payroll_iban: string;
-            vacation_days_per_year: string;
+            weekly_hours: number | null;
+            department: string | null;
+            manager_user_id: number | null;
+            work_schedule_id: number | null;
+            work_calendar_id: number | null;
+            payroll_iban: string | null;
+            vacation_days_per_year: number | null;
             is_active: boolean;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             user?: {
                 id: number;
                 name: string;
@@ -4663,12 +5719,12 @@ export interface components {
                 name: string;
             } | null;
             work_schedule?: {
-                id: string;
+                id: number;
                 name: string;
-                weekly_seconds: string;
+                weekly_seconds: number | null;
             } | null;
             work_calendar?: {
-                id: string;
+                id: number;
                 name: string;
             } | null;
         };
@@ -4698,6 +5754,21 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            lead_id: number | null;
+            tax_per_item: string | null;
+            tax_included: string;
+            discount_per_item: string | null;
+            reference_number: string | null;
+            /** Format: date-time */
+            sent_at: string | null;
+            /** Format: date-time */
+            viewed_at: string | null;
+            rejection_reason: string | null;
+            estimate_series_id: number | null;
+            base_total: number;
+            base_sub_total: number;
+            base_tax: number;
+            base_discount_val: number;
         };
         /** EstimateItemResource */
         EstimateItemResource: {
@@ -4716,10 +5787,10 @@ export interface components {
             estimate_id: number;
             company_id: number | null;
             exchange_rate: string | null;
-            base_discount_val: string | null;
-            base_price: string | null;
-            base_tax: string | null;
-            base_total: string | null;
+            base_discount_val: number;
+            base_price: number;
+            base_tax: number;
+            base_total: number;
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
         };
@@ -4746,11 +5817,11 @@ export interface components {
              *     justo el motivo de que no se guarde en `notes`, que sí sale en el
              *     papel que ve el cliente.
              */
-            rejection_reason: string;
-            reference_number: string;
-            tax_per_item: string;
+            rejection_reason: string | null;
+            reference_number: string | null;
+            tax_per_item: string | null;
             tax_included: string;
-            discount_per_item: string;
+            discount_per_item: string | null;
             notes: unknown[] | string;
             discount: number;
             discount_type: string | null;
@@ -4770,8 +5841,8 @@ export interface components {
              *     en cuanto un tenant configure `2026/PRE/0001` la deducción
              *     inventa una serie que no existe.
              */
-            estimate_series_id: string;
-            lead_id: string;
+            estimate_series_id: number | null;
+            lead_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay).
              *     Es el asidero que `lead_id` no podía ser: aquel es un entero de
@@ -4779,10 +5850,10 @@ export interface components {
              */
             external_ref: string | null;
             exchange_rate: number | null;
-            base_discount_val: string;
-            base_sub_total: string;
-            base_total: string;
-            base_tax: string;
+            base_discount_val: number;
+            base_sub_total: number;
+            base_total: number;
+            base_tax: number;
             sequence_number: number | null;
             currency_id: number | null;
             formatted_expiry_date: string;
@@ -4798,11 +5869,11 @@ export interface components {
             items?: components["schemas"]["EstimateItemResource"][];
             customer?: components["schemas"]["CustomerResource"] | null;
             lead?: {
-                id: string;
+                id: number;
                 title: string;
-                organization_name: string;
-                person_name: string;
-                email: string;
+                organization_name: string | null;
+                person_name: string | null;
+                email: string | null;
             };
             creator?: components["schemas"]["UserResource"] | null;
             /**
@@ -4815,7 +5886,7 @@ export interface components {
             fields?: components["schemas"]["CustomFieldValueResource"][];
             company?: components["schemas"]["CompanyResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
-            estimate_series?: components["schemas"]["EstimateSeriesResource"];
+            estimate_series?: components["schemas"]["EstimateSeriesResource"] | null;
         };
         /**
          * EstimateSeriesRequest
@@ -4838,38 +5909,40 @@ export interface components {
         };
         /** EstimateSeriesResource */
         EstimateSeriesResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number;
             code: string;
             name: string;
-            number_format: string;
-            next_sequence: string;
-            is_default: string;
-            is_active: string;
+            number_format: string | null;
+            next_sequence: number;
+            is_default: boolean;
+            is_active: boolean;
             estimates_count?: number;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** EstimateSummaryResource */
         EstimateSummaryResource: {
-            id: string;
+            id: number;
             estimate_date: string;
-            expiry_date: string;
-            estimate_number: string;
-            reference_number: string;
+            expiry_date: string | null;
+            estimate_number: string | null;
+            reference_number: string | null;
             status: string;
-            sub_total: string;
-            discount_val: string;
-            tax: string;
-            total: string;
-            currency_id: string;
-            customer_id: string;
-            lead_id: string;
+            sub_total: number;
+            discount_val: number;
+            tax: number;
+            total: number;
+            currency_id: number | null;
+            customer_id: number | null;
+            lead_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay),
              *     siempre presente para que el tipo del SDK no alterne.
              */
-            external_ref: string;
+            external_ref: string | null;
             estimate_pdf_url: string;
             /**
              * @description Lo justo del cliente para la columna del listado y para
@@ -4877,10 +5950,10 @@ export interface components {
              *     completa vive en `GET /customers/{id}`.
              */
             customer?: {
-                id: string;
+                id: number;
                 name: string;
-                email: string;
-                phone: string;
+                email: string | null;
+                phone: string | null;
             };
         };
         /** EstimatesRequest */
@@ -4931,7 +6004,13 @@ export interface components {
              */
             sub_total?: number | null;
             total?: number | null;
-            tax?: string | null;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            tax?: number | null;
             template_name?: string | null;
             /**
              * @description Los tres de abajo los manda el panel y hasta ahora se persistían SIN
@@ -5046,7 +6125,14 @@ export interface components {
             name: string;
             description: string | null;
             company_id: number | null;
-            amount: string;
+            /**
+             * @description El `(int)` explícito, aunque el accesor ya devuelva `int`: el
+             *     generador del OpenAPI no resuelve el tipo de un atributo que vive
+             *     en `$appends` —no hay columna que introspeccionar— y lo publicaba
+             *     como `string`. Con el cast a la vista, el contrato dice lo mismo
+             *     que la respuesta.
+             */
+            amount: number;
             formatted_created_at: string;
             company?: components["schemas"]["CompanyResource"] | null;
         };
@@ -5063,7 +6149,13 @@ export interface components {
              */
             exchange_rate?: string | null;
             payment_method_id?: string | null;
-            amount: string;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            amount: number;
             customer_id?: string | null;
             supplier_id?: string | null;
             notes?: string | null;
@@ -5082,8 +6174,8 @@ export interface components {
         ExpenseResource: {
             id: number;
             expense_date: string;
-            expense_number: string;
-            amount: string;
+            expense_number: string | null;
+            amount: number;
             notes: string | null;
             customer_id: number | null;
             supplier_id: number | null;
@@ -5097,7 +6189,7 @@ export interface components {
             formatted_created_at: string;
             exchange_rate: number | null;
             currency_id: number | null;
-            base_amount: string | null;
+            base_amount: number;
             payment_method_id: number | null;
             customer?: components["schemas"]["CustomerResource"] | null;
             supplier?: components["schemas"]["SupplierResource"] | null;
@@ -5110,13 +6202,13 @@ export interface components {
         };
         /** HolidayResource */
         HolidayResource: {
-            id: string;
-            work_calendar_id: string;
+            id: number;
+            work_calendar_id: number;
             date: string;
             name: string;
             scope: string;
-            region_code: string;
-            catalog_id: string;
+            region_code: string | null;
+            catalog_id: number | null;
             is_override: boolean;
         };
         /** IncidenceRequest */
@@ -5129,16 +6221,16 @@ export interface components {
         };
         /** IncidenceResource */
         IncidenceResource: {
-            id: string;
-            company_id: string;
-            user_id: string;
+            id: number;
+            company_id: number;
+            user_id: number;
             occurred_on: string;
             category: string;
             description: string;
             status: string;
-            reviewer_id: string;
+            reviewer_id: number | null;
             reviewed_at: string;
-            review_note: string;
+            review_note: string | null;
             created_at: string;
             user?: {
                 id: number;
@@ -5186,7 +6278,7 @@ export interface components {
             discount: number;
             discount_type: string | null;
             discount_val: number;
-            due_amount: string;
+            due_amount: number;
             notes: string | null;
             customer_id: number | null;
             company_id: number | null;
@@ -5199,11 +6291,11 @@ export interface components {
             overdue: string;
             sequence_number: number | null;
             exchange_rate: number | null;
-            base_total: string | null;
-            base_discount_val: string | null;
-            base_sub_total: string | null;
-            base_tax: string | null;
-            base_due_amount: string | null;
+            base_total: number;
+            base_discount_val: number;
+            base_sub_total: number;
+            base_tax: number;
+            base_due_amount: number;
             aeat_status: string;
             aeat_csv: string | null;
             qr_data: string | null;
@@ -5223,11 +6315,25 @@ export interface components {
             rectified_invoice_id: number | null;
             customer_sequence_number: number | null;
             is_credit_note: boolean;
+            invoice_series_id: number | null;
+            payment_method_id: number | null;
+            is_simplified: string;
+            pos_ticket_id: number | null;
+            pos_session_id: number | null;
+            tax_per_item: string | null;
+            tax_included: string;
+            recurring_invoice_id: number | null;
+            discount_per_item: string | null;
+            reference_number: string | null;
+            /** Format: date-time */
+            sent_at: string | null;
+            /** Format: date-time */
+            viewed_at: string | null;
         };
         /** InvoiceItem */
         InvoiceItem: {
             id: number;
-            invoice_id: number;
+            invoice_id: number | null;
             item_id: number | null;
             name: string;
             description: string | null;
@@ -5241,14 +6347,15 @@ export interface components {
             unit_name: string | null;
             company_id: number | null;
             exchange_rate: string | null;
-            base_total: string | null;
-            base_discount_val: string | null;
-            base_tax: string | null;
-            base_price: string | null;
+            base_total: number;
+            base_discount_val: number;
+            base_tax: number;
+            base_price: number;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            recurring_invoice_id: number | null;
         };
         /** InvoiceItemResource */
         InvoiceItemResource: {
@@ -5263,15 +6370,26 @@ export interface components {
             discount_val: number;
             tax: number;
             total: number;
-            invoice_id: number;
+            invoice_id: number | null;
             item_id: number | null;
             company_id: number | null;
-            base_price: string | null;
+            base_price: number;
             exchange_rate: string | null;
-            base_discount_val: string | null;
-            base_tax: string | null;
-            base_total: string | null;
-            recurring_invoice_id: string;
+            base_discount_val: number;
+            base_tax: number;
+            base_total: number;
+            recurring_invoice_id: number | null;
+            /**
+             * @description Los partes de tiempo que esta línea cobra. Es lo que hay que
+             *     reenviar en el PUT para conservar o reasignar el vínculo al
+             *     editar la factura; si el PUT no manda la clave, la línea de esa
+             *     posición conserva los suyos. Viaja en la ficha y en las
+             *     respuestas de escritura, con `[]` cuando la línea no cobra
+             *     ninguno; en el índice no viaja.
+             */
+            time_entry_ids?: {
+                [key: string]: unknown;
+            };
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
         };
@@ -5281,12 +6399,12 @@ export interface components {
             invoice_date: string;
             due_date: string | null;
             invoice_number: string | null;
-            reference_number: string;
+            reference_number: string | null;
             status: string;
             paid_status: string;
-            tax_per_item: string;
+            tax_per_item: string | null;
             tax_included: string;
-            discount_per_item: string;
+            discount_per_item: string | null;
             notes: string | null;
             discount_type: string | null;
             discount: number;
@@ -5295,7 +6413,7 @@ export interface components {
             total: number;
             effective_total: string;
             tax: number;
-            due_amount: string;
+            due_amount: number;
             effective_due_amount: string;
             sent: string;
             viewed: string;
@@ -5309,23 +6427,23 @@ export interface components {
             viewed_at: string;
             unique_hash: string | null;
             template_name: string | null;
-            invoice_series_id: string;
+            invoice_series_id: number | null;
             customer_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay):
              *     cada integrador ve la suya y solo la suya.
              */
             external_ref: string | null;
-            payment_method_id: string;
-            recurring_invoice_id: string;
+            payment_method_id: number | null;
+            recurring_invoice_id: number | null;
             sequence_number: number | null;
             exchange_rate: number | null;
-            base_discount_val: string | null;
-            base_sub_total: string | null;
-            base_total: string | null;
+            base_discount_val: number;
+            base_sub_total: number;
+            base_total: number;
             creator_id: number | null;
-            base_tax: string | null;
-            base_due_amount: string | null;
+            base_tax: number;
+            base_due_amount: number;
             effective_base_total: string;
             effective_base_due_amount: string;
             credited_total: string;
@@ -5357,7 +6475,7 @@ export interface components {
             rectified_invoice?: {
                 id: number;
                 invoice_number: string | null;
-                tax_per_item: string;
+                tax_per_item: string | null;
                 tax_included: string;
                 sub_total: number;
                 discount_val: number;
@@ -5383,8 +6501,8 @@ export interface components {
              */
             email_logs?: components["schemas"]["EmailLogResource"][];
             customer?: components["schemas"]["CustomerResource"] | null;
-            invoice_series?: components["schemas"]["InvoiceSeriesResource"];
-            payment_method?: components["schemas"]["PaymentMethodResource"];
+            invoice_series?: components["schemas"]["InvoiceSeriesResource"] | null;
+            payment_method?: components["schemas"]["PaymentMethodResource"] | null;
             creator?: components["schemas"]["UserResource"] | null;
             taxes: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
@@ -5409,40 +6527,43 @@ export interface components {
         };
         /** InvoiceSeriesResource */
         InvoiceSeriesResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number;
             code: string;
             name: string;
-            number_format: string;
-            default_template_id: string;
-            default_template?: components["schemas"]["InvoiceTemplateResource"];
-            next_sequence: string;
-            is_default: string;
-            is_active: string;
-            aeat_registered: string;
-            aeat_registered_at: string;
+            number_format: string | null;
+            default_template_id: number | null;
+            default_template?: components["schemas"]["InvoiceTemplateResource"] | null;
+            next_sequence: number;
+            is_default: boolean;
+            is_active: boolean;
+            aeat_registered: boolean;
+            /** Format: date-time */
+            aeat_registered_at: string | null;
             invoices_count?: number;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** InvoiceSummaryResource */
         InvoiceSummaryResource: {
-            id: string;
+            id: number;
             invoice_date: string;
-            due_date: string;
+            due_date: string | null;
             /** @description `null` en un borrador: el número oficial se asigna al publicar. */
-            invoice_number: string;
-            reference_number: string;
+            invoice_number: string | null;
+            reference_number: string | null;
             status: string;
             paid_status: string;
             overdue: string;
-            is_credit_note: string | boolean;
-            rectified_invoice_id: string;
-            sub_total: string;
-            discount_val: string;
-            tax: string;
-            total: string;
-            due_amount: string;
+            is_credit_note: boolean;
+            rectified_invoice_id: number | null;
+            sub_total: number;
+            discount_val: number;
+            tax: number;
+            total: number;
+            due_amount: number;
             /**
              * @description Netos de rectificativas, leídos igual que en InvoiceResource
              *     para que las dos vistas digan lo mismo del mismo documento.
@@ -5456,13 +6577,13 @@ export interface components {
             effective_due_amount: string;
             effective_paid_status: string;
             effective_overdue: string;
-            currency_id: string;
-            customer_id: string;
+            currency_id: number | null;
+            customer_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay),
              *     siempre presente para que el tipo del SDK no alterne.
              */
-            external_ref: string;
+            external_ref: string | null;
             invoice_pdf_url: string;
             /**
              * @description El tercer eje. Las pruebas del registro (qr_data, hash,
@@ -5475,10 +6596,10 @@ export interface components {
              *     completa vive en `GET /customers/{id}`.
              */
             customer?: {
-                id: string;
+                id: number;
                 name: string;
-                email: string;
-                phone: string;
+                email: string | null;
+                phone: string | null;
             };
         };
         /**
@@ -5523,17 +6644,19 @@ export interface components {
         };
         /** InvoiceTemplateResource */
         InvoiceTemplateResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number;
             name: string;
             slug: string;
             base_template: string;
-            config: string;
-            is_default: string;
-            is_system: string;
+            config: unknown[];
+            is_default: boolean;
+            is_system: boolean;
             has_letterhead: boolean;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** InvoicesRequest */
         InvoicesRequest: {
@@ -5566,7 +6689,13 @@ export interface components {
              */
             sub_total?: number | null;
             total?: number | null;
-            tax?: string | null;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            tax?: number | null;
             /**
              * @description Opcional como en EstimatesRequest: getInvoicePayload cae a 'invoice1'.
              *     Exigirlo obligaba a un cliente de la API a conocer el nombre interno de
@@ -5622,6 +6751,16 @@ export interface components {
                 discount_val?: number | null;
                 tax?: number | null;
                 total?: number | null;
+                /**
+                 * @description Partes de tiempo que esta línea cobra: al crear o editar, los
+                 *     apuntes con esos ids quedan vinculados a la línea y bloqueados
+                 *     (dejan de salir en `GET /customers/{id}/pending-time-entries`).
+                 *     En el PUT, mandar la clave —aunque sea `[]`— fija los partes de
+                 *     la línea; omitirla conserva los que la línea de esa posición ya
+                 *     cobraba. La ficha de la factura devuelve `time_entry_ids` en
+                 *     cada línea, que es de donde se copian para reasignar.
+                 */
+                time_entry_ids?: number[] | null;
                 /**
                  * @description Impuestos. El importe es derivable a partir del porcentaje
                  *     (DocumentTaxPayload), así que un cliente de la API puede declarar
@@ -5687,6 +6826,8 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            pos_color: string | null;
+            pos_visible: string;
         };
         /** ItemResource */
         ItemResource: {
@@ -5712,7 +6853,7 @@ export interface components {
             tax_per_item: string;
             is_active: boolean;
             is_time_trackable: boolean;
-            opening_stock: string | 0;
+            opening_stock: number;
             stock_alert_qty: number | null;
             allow_sale_without_stock: boolean;
             purchase_tax_type_id: number | null;
@@ -5729,13 +6870,19 @@ export interface components {
         /** ItemsRequest */
         ItemsRequest: {
             name: string;
-            price: string;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            price: number;
             /** @enum {string|null} */
             item_type?: "product" | "service" | null;
             sku?: string | null;
             supplier_reference?: string | null;
             category_id?: number | null;
-            purchase_price?: string | null;
+            purchase_price?: number | null;
             default_discount?: number | null;
             unit_id?: string | null;
             description?: string | null;
@@ -5748,7 +6895,18 @@ export interface components {
             opening_stock?: number | null;
         };
         /** LeadActivity */
-        LeadActivity: string[];
+        LeadActivity: {
+            id: number;
+            lead_id: number;
+            company_id: number;
+            user_id: number | null;
+            type: string;
+            payload: unknown[] | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
         /** LeadRequest */
         LeadRequest: {
             title: string;
@@ -5775,32 +6933,35 @@ export interface components {
         };
         /** LeadResource */
         LeadResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number | null;
             title: string;
-            person_name: string;
-            email: string;
-            phone: string;
-            organization_name: string;
+            person_name: string | null;
+            email: string | null;
+            phone: string | null;
+            organization_name: string | null;
             stage: string;
-            source: string;
-            lead_type: string;
+            source: string | null;
+            lead_type: string | null;
             expected_amount_cents: number;
             currency_code: string;
             probability: number;
             expected_close_date: string;
-            customer_id: string;
-            contact_id: string;
-            assigned_user_id: string;
-            creator_id: string;
-            converted_at: string;
-            converted_to_customer_id: string;
-            converted_to_estimate_id: string;
-            closing_estimate_id: string;
-            description: string;
-            tags: string | string[];
-            created_at: string;
-            updated_at: string;
+            customer_id: number | null;
+            contact_id: number | null;
+            assigned_user_id: number | null;
+            creator_id: number | null;
+            /** Format: date-time */
+            converted_at: string | null;
+            converted_to_customer_id: number | null;
+            converted_to_estimate_id: number | null;
+            closing_estimate_id: number | null;
+            description: string | null;
+            tags: unknown[];
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             estimates_count?: number;
             tasks_count?: number;
             notes_count?: number;
@@ -5825,19 +6986,75 @@ export interface components {
                 name: string;
             } | null;
         };
+        /**
+         * MailEnvironmentRequest
+         * @description Validación de la pantalla de configuración de correo.
+         *
+         *     El driver se valida contra `TenantMailSettings::DRIVERS`, que son los que
+         *     esta imagen puede usar de verdad. Antes el `default` del switch dejaba pasar
+         *     cualquier cadena con solo remitente y nombre: se podía guardar `mailgun` sin
+         *     credenciales, o un driver inexistente, y el fallo aparecía —si acaso— al
+         *     enviar.
+         *
+         *     Los secretos son opcionales por diseño: el panel no puede reenviar lo que no
+         *     puede leer, así que omitirlos significa «deja la que hay». Ver
+         *     `TenantMailSettings::save()`.
+         *
+         *     `mail_timeout` está acotado por arriba para que un SMTP colgado no se coma el
+         *     `$timeout = 60` de `App\Jobs\SendDocumentMail`. (Va aquí y no junto a la
+         *     clave: un comentario pegado a un campo de `rules()` se PUBLICA como su
+         *     `description` en el contrato, y esto es una nota para quien mantiene el
+         *     código, no para el integrador.)
+         *
+         *     ── Por qué las reglas son UNA lista y no un `match` por driver ──────────────
+         *     Lo eran, y el efecto no se veía aquí sino en el contrato: el generador del
+         *     OpenAPI ejecuta `rules()` EN FRÍO, sin petición, así que `$this->get('mail_driver')`
+         *     es `null`, el `match` caía en su rama `default` y el cuerpo publicado de
+         *     `POST /mail/config` eran TRES campos —driver, remitente y nombre—. Ni el
+         *     servidor, ni el puerto, ni la clave de SES: justo lo que hay que mandar para
+         *     que la llamada haga algo. Quien la implementara desde el SDK no tenía de dónde
+         *     sacarlos.
+         *
+         *     Con la lista plana y `required_if`, la condición viaja al documento en vez de
+         *     desaparecer. Y la validación no se afloja: lo que era `required` para un
+         *     driver sigue siéndolo para ese driver. Lo único que cambia es que un campo del
+         *     OTRO driver, si llega, se valida en vez de ignorarse — y `save()` solo
+         *     persiste los del driver elegido, así que no acaba en la base de datos.
+         */
+        MailEnvironmentRequest: {
+            /** @enum {string} */
+            mail_driver: "smtp" | "ses";
+            from_name: string;
+            /** Format: email */
+            from_mail: string;
+            mail_host?: string;
+            mail_port?: number;
+            mail_username?: string | null;
+            mail_password?: string | null;
+            /** @enum {string|null} */
+            mail_encryption?: "smtp" | "smtps" | "none" | "tls" | "ssl" | "" | null;
+            /** @enum {string|null} */
+            mail_scheme?: "smtp" | "smtps" | "" | null;
+            mail_timeout?: number | null;
+            mail_local_domain?: string | null;
+            mail_ses_key?: string;
+            mail_ses_secret?: string | null;
+            mail_ses_region?: string | null;
+        };
         /** Note */
         Note: {
             id: number;
             type: string;
             name: string | null;
             notes: string | null;
-            noteable_type: string;
-            noteable_id: number;
+            noteable_type: string | null;
+            noteable_id: number | null;
             company_id: number | null;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            is_default: string;
         };
         /** NoteResource */
         NoteResource: {
@@ -5854,6 +7071,25 @@ export interface components {
             name: string;
             notes: string;
             is_default: string;
+        };
+        /**
+         * OcrExtractRequest
+         * @description El multiparte del OCR: el documento viaja como `document` (web) o como
+         *     `file` (app móvil), uno de los dos, con los mismos tipos y el mismo tope.
+         */
+        OcrExtractRequest: {
+            /**
+             * Format: binary
+             * @description El documento a leer, en `multipart/form-data`: jpg, jpeg, png,
+             *     pdf, tiff o webp, de 10 MB como máximo. La app móvil puede
+             *     mandarlo como `file`; si viajan los dos, se lee `document`.
+             */
+            document?: Blob;
+            /**
+             * Format: binary
+             * @description Alias de `document` para la app móvil. Mismos tipos y mismo tope.
+             */
+            file?: Blob;
         };
         /** PDFConfigurationRequest */
         PDFConfigurationRequest: {
@@ -5914,7 +7150,7 @@ export interface components {
             payment_number: string | null;
             payment_date: string;
             notes: unknown[] | string;
-            amount: string;
+            amount: number;
             unique_hash: string | null;
             invoice_id: number | null;
             company_id: number | null;
@@ -5922,9 +7158,9 @@ export interface components {
             creator_id: number | null;
             customer_id: number | null;
             exchange_rate: number | null;
-            base_amount: string | null;
-            currency_id: string;
-            transaction_id: string;
+            base_amount: number;
+            currency_id: number | null;
+            transaction_id: number | null;
             sequence_number: number | null;
             formatted_created_at: string;
             formatted_payment_date: string;
@@ -5934,8 +7170,8 @@ export interface components {
             payment_method?: components["schemas"]["PaymentMethodResource"] | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
             company?: components["schemas"]["CompanyResource"] | null;
-            currency?: components["schemas"]["CurrencyResource"];
-            transaction?: components["schemas"]["TransactionResource"];
+            currency?: components["schemas"]["CurrencyResource"] | null;
+            transaction?: components["schemas"]["TransactionResource"] | null;
         };
         /** ProfileRequest */
         ProfileRequest: {
@@ -5966,13 +7202,13 @@ export interface components {
         };
         /** ProjectResource */
         ProjectResource: {
-            id: string;
-            company_id: string;
-            customer_id: string;
+            id: number;
+            company_id: number | null;
+            customer_id: number;
             name: string;
-            code: string;
-            description: string;
-            color: string;
+            code: string | null;
+            description: string | null;
+            color: string | null;
             status: string;
             hourly_rate_cents: number;
             currency_code: string;
@@ -5981,12 +7217,14 @@ export interface components {
             billable: boolean;
             start_date: string;
             end_date: string;
-            manager_user_id: string;
-            creator_id: string;
+            manager_user_id: number | null;
+            creator_id: number | null;
             tracked_hours: number;
             progress_percent: Record<string, never> | null;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             customer?: {
                 id: number;
                 name: string;
@@ -6013,10 +7251,10 @@ export interface components {
             unit_name: string | null;
             company_id: number | null;
             exchange_rate: string | null;
-            base_total: string | null;
-            base_discount_val: string | null;
-            base_tax: string | null;
-            base_price: string | null;
+            base_total: number;
+            base_discount_val: number;
+            base_tax: number;
+            base_price: number;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
@@ -6038,10 +7276,10 @@ export interface components {
             tax: number;
             unit_name: string | null;
             exchange_rate: string | null;
-            base_price: string | null;
-            base_discount_val: string | null;
-            base_tax: string | null;
-            base_total: string | null;
+            base_price: number;
+            base_discount_val: number;
+            base_tax: number;
+            base_total: number;
             taxes?: components["schemas"]["TaxResource"][];
         };
         /** ReceivedInvoiceRequest */
@@ -6075,7 +7313,13 @@ export interface components {
             discount_val: number;
             sub_total: number;
             total: number;
-            tax: string;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            tax: number;
             /**
              * @description Los cuatro de abajo los manda el panel (stub/received-invoice.js) y se
              *     persistían SIN regla: el payload era una lista NEGRA y cualquier clave
@@ -6131,17 +7375,17 @@ export interface components {
             sub_total: number;
             total: number;
             tax: number;
-            due_amount: string;
+            due_amount: number;
             irpf_amount: number;
             supplier_id: number | null;
             sequence_number: number | null;
             exchange_rate: number | null;
-            base_discount_val: string | null;
-            base_sub_total: string | null;
-            base_total: string | null;
+            base_discount_val: number;
+            base_sub_total: number;
+            base_total: number;
             creator_id: number | null;
-            base_tax: string | null;
-            base_due_amount: string | null;
+            base_tax: number;
+            base_due_amount: number;
             currency_id: number | null;
             formatted_created_at: string;
             formatted_received_invoice_date: string;
@@ -6189,7 +7433,13 @@ export interface components {
              */
             sub_total?: number | null;
             total?: number | null;
-            tax?: string | null;
+            /**
+             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
+             *     publicaba este campo como `string` —el generador deduce el tipo
+             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
+             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             */
+            tax?: number | null;
             /**
              * @description Igual que en facturas y presupuestos desde el #296: si no llega, la pone
              *     el payload. Un cliente de la API no tiene por qué conocer el nombre
@@ -6291,35 +7541,35 @@ export interface components {
         };
         /** RecurringInvoiceResource */
         RecurringInvoiceResource: {
-            id: string;
-            starts_at: string;
+            id: number;
+            starts_at: string | null;
             formatted_starts_at: string;
             formatted_created_at: string;
             formatted_next_invoice_at: string;
             formatted_limit_date: string;
-            send_automatically: string;
-            customer_id: string;
-            company_id: string;
-            creator_id: string;
+            send_automatically: boolean;
+            customer_id: number | null;
+            company_id: number | null;
+            creator_id: number | null;
             status: string;
-            next_invoice_at: string;
+            next_invoice_at: string | null;
             frequency: string;
             limit_by: string;
-            limit_count: string;
-            limit_date: string;
-            exchange_rate: string;
-            tax_per_item: string;
+            limit_count: number;
+            limit_date: string | null;
+            exchange_rate: number | null;
+            tax_per_item: string | null;
             tax_included: string;
-            discount_per_item: string;
-            notes: string;
-            discount_type: string;
-            discount: string;
-            discount_val: string;
-            sub_total: string;
-            total: string;
-            tax: string;
-            due_amount: string;
-            template_name: string;
+            discount_per_item: string | null;
+            notes: string | null;
+            discount_type: string | null;
+            discount: string | null;
+            discount_val: number | null;
+            sub_total: number | null;
+            total: number | null;
+            tax: number | null;
+            due_amount: number | null;
+            template_name: string | null;
             /**
              * @description Sin `sales_tax_type` ni `sales_tax_address_type`: son del módulo de
              *     impuestos de EE.UU. del upstream y no existen en NINGUNA tabla de
@@ -6329,12 +7579,12 @@ export interface components {
              */
             fields?: components["schemas"]["CustomFieldValueResource"][];
             items?: components["schemas"]["InvoiceItemResource"][];
-            customer?: components["schemas"]["CustomerResource"];
-            company?: components["schemas"]["CompanyResource"];
+            customer?: components["schemas"]["CustomerResource"] | null;
+            company?: components["schemas"]["CompanyResource"] | null;
             invoices?: components["schemas"]["InvoiceResource"][];
             taxes?: components["schemas"]["TaxResource"][];
-            creator?: components["schemas"]["UserResource"];
-            currency?: components["schemas"]["CurrencyResource"];
+            creator?: components["schemas"]["UserResource"] | null;
+            currency?: components["schemas"]["CurrencyResource"] | null;
         };
         /** Role */
         Role: {
@@ -6347,14 +7597,71 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
         };
+        /**
+         * RoleAbilitiesRequest
+         * @description Cuerpo de `PUT /roles/{role}/abilities`: la lista COMPLETA de permisos que el
+         *     rol pasa a tener.
+         *
+         *     No existía. El controlador leía `$request->input('abilities', [])` a pelo, así
+         *     que el cuerpo de la única ruta que reparte permisos dentro de una instancia no
+         *     aparecía en el contrato: quien la implementara desde el SDK tenía que
+         *     adivinar el nombre del campo y su forma.
+         *
+         *     ⚠️ Y la forma NO es la misma que la de `abilities` en `RoleRequest`, aunque
+         *     las dos claves se llamen igual: aquí son **slugs** (`['view-lead',
+         *     'create-lead']`) y allí son los **objetos** del catálogo (`[{ability: …,
+         *     model: …}]`), porque el panel manda la fila entera al crear el rol y solo el
+         *     slug al editar sus permisos. Publicar las dos por separado es lo que impide
+         *     que el SDK tipe una y se estrelle con la otra.
+         *
+         *     Un slug que no esté en el catálogo se RECHAZA. Antes se ignoraba en silencio
+         *     —el controlador recorre `config('abilities.abilities')` y solo concede lo que
+         *     casa—, así que un cliente con una errata veía un 200 y un rol al que le
+         *     faltaba un permiso, sin nada que mirar. Es además lo que hace que el contrato
+         *     publique la lista de valores posibles.
+         */
+        RoleAbilitiesRequest: {
+            /**
+             * @description Presente y array, pero puede venir VACÍO: dejar a un rol sin
+             *     ningún permiso es una operación legítima, y `required` la
+             *     prohibiría (un array vacío no pasa `required`).
+             */
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment")[];
+        };
+        /**
+         * RoleRequest
+         * @description Cuerpo de `POST /roles` y `PUT /roles/{role}`.
+         *
+         *     `abilities` son los OBJETOS del catálogo (`[{ability: 'view-lead', model: …}]`),
+         *     no una lista de slugs: `RolesController::syncAbilities()` los lee con
+         *     `array_column($requested, 'ability')`. Una lista de slugs sueltos —que es
+         *     justo lo que acepta la OTRA ruta de permisos, `PUT /roles/{role}/abilities`—
+         *     se traducía aquí en un rol SIN NINGÚN permiso y un 200: `array_column` sobre
+         *     strings devuelve vacío, y entonces el bucle los revoca todos.
+         *
+         *     Declarar `abilities.*.ability` cierra las dos mitades: publica la forma en el
+         *     contrato —dos claves que se llaman igual y no son lo mismo— y convierte el
+         *     malentendido en un 422 en vez de un rol vacío.
+         *
+         *     (Ojo al documentar dentro del array de `rules()`: un comentario pegado a una
+         *     clave lo publica Scramble como la `description` de ese campo. Este docblock
+         *     de clase no viaja al contrato, que es lo que se quiere para una nota interna.)
+         */
+        RoleRequest: {
+            name: string;
+            abilities?: {
+                /** @enum {string} */
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment";
+            }[] | null;
+        };
         /** RoleResource */
         RoleResource: {
-            id: string;
+            id: number;
             name: string;
-            title: string;
+            title: string | null;
             level: string | null;
             formatted_created_at: string | null;
-            abilities: string | string[];
+            abilities: Record<string, never> | string[];
         };
         /**
          * SendEstimatesRequest
@@ -6557,12 +7864,12 @@ export interface components {
         };
         /** TaskResource */
         TaskResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number | null;
             title: string;
-            description: string;
+            description: string | null;
             taskable_type: string | number | Record<string, never> | null;
-            taskable_id: string;
+            taskable_id: number | null;
             type: string;
             priority: string;
             status: string;
@@ -6576,17 +7883,19 @@ export interface components {
              *     aquí, que se pintaría una consulta por fila.
              */
             tracked_minutes: number;
-            assigned_user_id: string;
-            creator_id: string;
-            created_at: string;
-            updated_at: string;
+            assigned_user_id: number | null;
+            creator_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             assigned_user?: {
                 id: number;
                 name: string;
                 email: string;
             } | null;
             taskable?: {
-                id: string;
+                id: number;
                 type: string | number | Record<string, never> | null;
                 label: string;
             } | null;
@@ -6618,7 +7927,7 @@ export interface components {
                 delegated_at: string;
                 created_at: string;
                 updated_at: string;
-            };
+            } | null;
         };
         /** Tax */
         Tax: {
@@ -6633,7 +7942,7 @@ export interface components {
             name: string;
             amount: number;
             percent: number;
-            base_amount: string | null;
+            base_amount: number;
             currency_id: number | null;
             exchange_rate: string | null;
             /** Format: date-time */
@@ -6645,6 +7954,7 @@ export interface components {
             received_invoice_id: number | null;
             received_invoice_item_id: number | null;
             expense_id: number | null;
+            recurring_invoice_id: number | null;
         };
         /** TaxResource */
         TaxResource: {
@@ -6665,10 +7975,10 @@ export interface components {
              *     en cada documento desde siempre (#377). `compound_tax` sí existe
              *     en `tax_types` y sigue publicándose ahí, que es donde se define.
              */
-            base_amount: string | null;
+            base_amount: number;
             currency_id: number | null;
             type: string;
-            recurring_invoice_id: string;
+            recurring_invoice_id: number | null;
             tax_type?: components["schemas"]["TaxTypeResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
         };
@@ -6732,6 +8042,26 @@ export interface components {
             is_active: boolean;
             company?: components["schemas"]["CompanyResource"] | null;
         };
+        /**
+         * TenantModuleInstallRequest
+         * @description Cuerpo de `POST /tenant-modules/{slug}/install`.
+         *
+         *     No existía: el controlador leía `$request->input('meta', [])` a pelo, así que
+         *     la instalación de un módulo se publicaba en el contrato SIN CUERPO — quien la
+         *     implementara desde el SDK no tenía forma de saber que acepta configuración, ni
+         *     bajo qué clave.
+         *
+         *     `meta` es la configuración del módulo tal y como la guarda `tenant_modules`
+         *     (columna JSON, `array` en el modelo). Es deliberadamente abierta —cada módulo
+         *     define sus claves— y por eso se valida la FORMA y no el contenido: lo que se
+         *     defiende aquí es que no llegue un escalar donde el modelo espera un objeto.
+         */
+        TenantModuleInstallRequest: {
+            /** @description Configuración del módulo, como objeto de clave → valor. Cada módulo define sus claves; se guarda tal cual en `tenant_modules.meta`. */
+            meta?: {
+                [key: string]: string;
+            };
+        };
         /** TimeClockCorrectionRequest */
         TimeClockCorrectionRequest: {
             time_clock_id?: number | null;
@@ -6743,17 +8073,17 @@ export interface components {
         };
         /** TimeClockCorrectionResource */
         TimeClockCorrectionResource: {
-            id: string;
-            company_id: string;
-            user_id: string;
-            time_clock_id: string;
+            id: number;
+            company_id: number;
+            user_id: number;
+            time_clock_id: number | null;
             proposed_kind: string;
             proposed_punched_at: string;
             status: string;
             reason: string;
-            approver_id: string;
+            approver_id: number | null;
             decided_at: string;
-            decision_note: string;
+            decision_note: string | null;
             created_at: string;
             user?: {
                 id: number;
@@ -6765,10 +8095,10 @@ export interface components {
                 name: string;
             } | null;
             time_clock?: {
-                id: string;
+                id: number;
                 kind: string;
-                punched_at: string | null;
-                local_date: string | null;
+                punched_at: string;
+                local_date: string;
             } | null;
         };
         /** TimeEntryRequest */
@@ -6790,32 +8120,34 @@ export interface components {
         };
         /** TimeEntryResource */
         TimeEntryResource: {
-            id: string;
-            company_id: string;
-            project_id: string;
-            item_id: string;
-            task_id: string;
-            user_id: string;
-            creator_id: string;
+            id: number;
+            company_id: number | null;
+            project_id: number;
+            item_id: number | null;
+            task_id: number | null;
+            user_id: number;
+            creator_id: number | null;
             date: string;
             duration_minutes: number;
             duration_seconds: number | null;
-            start_time: string;
-            end_time: string;
-            notes: string;
+            start_time: string | null;
+            end_time: string | null;
+            notes: string | null;
             hourly_rate_cents: number;
             billable: boolean;
             currency_code: string;
             locked: boolean;
-            invoice_item_id: string;
+            invoice_item_id: number | null;
             invoiced_at: string;
             amount_cents: string;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
             project?: {
-                id: string;
+                id: number;
                 name: string;
-                customer_id: string;
+                customer_id: number;
                 color: string | null;
                 hourly_rate_cents: number;
             };
@@ -6825,7 +8157,7 @@ export interface components {
                 price: number;
             };
             task?: {
-                id: string;
+                id: number;
                 title: string;
             };
             user?: {
@@ -6835,14 +8167,14 @@ export interface components {
         };
         /** TransactionResource */
         TransactionResource: {
-            id: string;
-            transaction_id: string;
-            type: string;
+            id: number;
+            transaction_id: string | null;
+            type: string | null;
             status: string;
-            transaction_date: string;
-            invoice_id: string;
-            invoice?: components["schemas"]["InvoiceResource"];
-            company?: components["schemas"]["CompanyResource"];
+            transaction_date: string | null;
+            invoice_id: number | null;
+            invoice?: components["schemas"]["InvoiceResource"] | null;
+            company?: components["schemas"]["CompanyResource"] | null;
         };
         /** UnitRequest */
         UnitRequest: {
@@ -6855,9 +8187,19 @@ export interface components {
             company_id: number | null;
             company?: components["schemas"]["CompanyResource"] | null;
         };
-        /** UpdateSettingsRequest */
+        /**
+         * UpdateSettingsRequest
+         * @description Cuerpo de las dos escrituras de ajustes: los de la empresa
+         *     (`POST /company/settings`) y los del usuario (`PUT /me/settings`).
+         *
+         *     `settings` es un objeto de **nombre del ajuste → valor**, no una lista: los
+         *     nombres son claves, no posiciones.
+         */
         UpdateSettingsRequest: {
-            settings: string;
+            /** @description Ajustes a guardar, como objeto de **nombre del ajuste → valor**. No es una lista: un array sin claves —o con claves numéricas— se rechaza con 422, porque sus índices acabarían guardados como nombres de ajuste. Los nombres son abiertos y los conocidos se leen en `GET /bootstrap` (`current_company_settings`, `current_user_settings`). */
+            settings: {
+                [key: string]: string;
+            };
         };
         /** UploadExpenseReceiptRequest */
         UploadExpenseReceiptRequest: {
@@ -6868,29 +8210,36 @@ export interface components {
             id: number;
             name: string;
             email: string;
+            phone: string | null;
+            role: string;
+            company_id: number | null;
+            creator_id: number | null;
             /** Format: date-time */
             email_verified_at: string | null;
-            stripe_customer_id: string | null;
             /** Format: date-time */
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
-            is_admin: boolean;
-            is_super_admin: boolean;
-            account_type: string;
-            stripe_id: string | null;
-            pm_type: string | null;
-            pm_last_four: string | null;
-            trial_ends_at: string | null;
-            verifactu_client_id: string | null;
-            copilot_enabled: boolean;
+            pos_pin_set_at: string | null;
+        };
+        /** UserRequest */
+        UserRequest: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone?: string | null;
+            password: string;
+            companies: {
+                id: string;
+                role: string;
+            }[];
         };
         /** UserResource */
         UserResource: {
             id: number;
             name: string;
             email: string;
-            phone: string;
+            phone: string | null;
             role: string;
             /** Format: date-time */
             created_at: string | null;
@@ -6903,7 +8252,7 @@ export interface components {
             companies?: {
                 id: number;
                 name: string;
-                trade_name: string;
+                trade_name: string | null;
                 vat_id: string | null;
                 /**
                  * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
@@ -6927,17 +8276,19 @@ export interface components {
         };
         /** WorkCalendarResource */
         WorkCalendarResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number;
             name: string;
-            region_code: string;
-            locality: string;
+            region_code: string | null;
+            locality: string | null;
             is_default: boolean;
             holidays_count?: number;
             employees_count?: number;
             holidays?: components["schemas"]["HolidayResource"][];
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** WorkScheduleRequest */
         WorkScheduleRequest: {
@@ -6951,17 +8302,19 @@ export interface components {
         };
         /** WorkScheduleResource */
         WorkScheduleResource: {
-            id: string;
-            company_id: string;
+            id: number;
+            company_id: number;
             name: string;
-            description: string;
-            weekly_pattern: string | Record<string, never>;
+            description: string | null;
+            weekly_pattern: unknown[];
             weekly_seconds: number;
             weekly_hours: number;
             is_default: boolean;
             employees_count?: number;
-            created_at: string;
-            updated_at: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
     };
     responses: {
@@ -7013,6 +8366,32 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "role.abilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        abilities: {
+                            ability: string;
+                            model: string | null;
+                            module: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
     "absence.balance": {
         parameters: {
             query?: never;
@@ -7035,9 +8414,9 @@ export interface operations {
                             pending: number;
                             remaining: number;
                             employee: {
-                                id: string;
-                                user_id: string;
-                                vacation_days_per_year_override: string;
+                                id: number;
+                                user_id: number;
+                                vacation_days_per_year_override: number | null;
                             };
                         };
                     } | {
@@ -7631,6 +9010,45 @@ export interface operations {
             };
         };
     };
+    "crm.assignableUsers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example No autorizado.
+                         */
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
     "bank-accounts.index": {
         parameters: {
             query?: never;
@@ -7930,7 +9348,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success?: boolean;
+                        error?: boolean;
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -8423,12 +9844,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description `InvoiceResource` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        data: components["schemas"]["InvoiceResource"];
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -8469,12 +9893,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description `InvoiceResource` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        data: components["schemas"]["InvoiceResource"];
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -8639,6 +10066,28 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "report.customerSalesReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
     "customer.customerStats": {
         parameters: {
             query?: never;
@@ -8696,7 +10145,7 @@ export interface operations {
                                 formatted_estimate_date: string;
                                 status: string;
                                 total: number;
-                                base_total: string;
+                                base_total: number;
                             }[];
                             estimatesActiveCount: number;
                             totalDueAmount: number | null;
@@ -8847,12 +10296,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description `CustomerResource` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        data: components["schemas"]["CustomerResource"];
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -9401,6 +10853,29 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "pdf.estimatePdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The estimate unique hash */
+                estimate: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "estimate-series.index": {
         parameters: {
             query?: never;
@@ -9845,7 +11320,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success: boolean;
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -9992,6 +11469,104 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "report.expensesReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "export.invoices": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "export.receivedInvoices": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "export.expenses": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "facturae.download": {
         parameters: {
             query?: never;
@@ -10010,7 +11585,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/xml": string;
+                    "application/xml": Blob;
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
@@ -10186,7 +11761,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        exchangeRate?: number[];
+                        error?: string;
+                    };
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
@@ -10237,7 +11815,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         success: boolean;
-                        ""?: string;
                     };
                 };
             };
@@ -10261,7 +11838,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
                 };
             };
             422: components["responses"]["ValidationException"];
@@ -10701,6 +12280,29 @@ export interface operations {
             403: components["responses"]["AuthorizationException"];
         };
     };
+    "pdf.invoicePdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The invoice unique hash */
+                invoice: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "invoice-series.index": {
         parameters: {
             query?: never;
@@ -10905,7 +12507,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/pdf": Blob;
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -11172,6 +12774,11 @@ export interface operations {
             };
         };
         responses: {
+            /**
+             * @description `output()` son los bytes del PDF. `stream()` devuelve un `Response`
+             *     de Symfony, y pasado como contenido de `make()` se serializaba con
+             *     `__toString()`: línea de estado + cabeceras delante del `%PDF` (#416).
+             */
             200: {
                 headers: {
                     "Content-Disposition"?: "inline; filename=\"invoice-template-preview.pdf\"";
@@ -11293,12 +12900,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description `InvoiceResource` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        data: components["schemas"]["InvoiceResource"];
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -11348,12 +12958,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description `InvoiceResource` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        data: components["schemas"]["InvoiceResource"];
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -11412,6 +13025,31 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "item-categories.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The item category ID */
+                itemCategory: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ItemCategory"];
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "item-categories.update": {
@@ -11473,7 +13111,7 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "itemImportExport.export": {
+    "exports.items": {
         parameters: {
             query?: never;
             header?: never;
@@ -11488,12 +13126,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/csv; charset=UTF-8": string;
+                    "text/csv": Blob;
                 };
             };
         };
     };
-    "itemImportExport.template": {
+    "exports.items-template": {
         parameters: {
             query?: never;
             header?: never;
@@ -11508,7 +13146,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/csv; charset=UTF-8": string;
+                    "text/csv": Blob;
+                };
+            };
+        };
+    };
+    "items-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Transfer-Encoding": "chunked";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+        };
+    };
+    "items-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Transfer-Encoding": "chunked";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
                 };
             };
         };
@@ -11556,6 +13234,28 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "report.itemSalesReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "items.delete": {
@@ -11797,7 +13497,7 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "lead_already_converted";
-                        customer_id: string;
+                        customer_id: number | null;
                     };
                 };
             };
@@ -12106,11 +13806,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            user_id: string;
+                            user_id: number;
                             name: string;
                             email: string;
-                            contract_type: string;
-                            department: string;
+                            contract_type: string | null;
+                            department: string | null;
                             terminated_at: string | null;
                         }[];
                         meta: {
@@ -12138,14 +13838,14 @@ export interface operations {
                     "application/json": {
                         data: {
                             employee: {
-                                user_id: string;
+                                user_id: number;
                                 name: string;
                                 email: string;
-                                national_id: string;
-                                contract_type: string;
-                                department: string;
+                                national_id: string | null;
+                                contract_type: string | null;
+                                department: string | null;
                                 hired_at: string | null;
-                                weekly_hours: string;
+                                weekly_hours: number | null;
                             };
                             period: {
                                 from: string;
@@ -12187,11 +13887,11 @@ export interface operations {
                             };
                             absences: unknown[];
                             corrections: {
-                                id: string;
+                                id: number;
                                 kind: string;
                                 proposed_at: string;
                                 reason: string;
-                                approved_by: string;
+                                approved_by: string | null;
                                 decided_at: string | null;
                             }[];
                             last_punch_hash: string | null;
@@ -12221,8 +13921,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
-                    "application/pdf": Record<string, never>;
+                    "application/pdf": Blob;
                 };
             };
         };
@@ -12242,7 +13941,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/csv; charset=UTF-8": string;
+                    "text/csv": Blob;
                 };
             };
         };
@@ -12263,21 +13962,138 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            id: string;
+                            id: number;
                             subject: string;
-                            subject_user_id: string;
+                            subject_user_id: number;
                             period_from: string;
                             period_to: string;
                             kind: string;
                             hash: string;
-                            hash_prev: string;
+                            hash_prev: string | null;
                             content_sha256: string;
                             generated_by: string;
-                            generated_at: string | null;
+                            generated_at: string;
                         }[];
                     };
                 };
             };
+        };
+    };
+    "mailConfiguration.getMailDrivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "mailConfiguration.getMailEnvironment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mail_driver: string;
+                        from_name: string;
+                        from_mail: string;
+                        is_configured: boolean;
+                        mail_host?: string;
+                        mail_port?: string;
+                        mail_username?: string;
+                        mail_password_set?: boolean;
+                        mail_encryption?: string;
+                        mail_scheme?: string;
+                        mail_timeout?: string | number;
+                        mail_local_domain?: string;
+                        mail_ses_key?: string;
+                        mail_ses_secret_set?: boolean;
+                        mail_ses_region?: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "mailConfiguration.saveMailEnvironment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailEnvironmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailConfiguration.testEmailConfig": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    to: string;
+                    subject: string;
+                    message: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        error?: string;
+                        message?: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "general.nextNumber": {
@@ -12496,9 +14312,11 @@ export interface operations {
                         data: {
                             id: string;
                             type: string;
-                            data: string;
-                            read_at: string;
-                            created_at: string;
+                            data: unknown[];
+                            /** Format: date-time */
+                            read_at: string | null;
+                            /** Format: date-time */
+                            created_at: string | null;
                         }[];
                         meta: {
                             unread_count: number;
@@ -12595,6 +14413,64 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "ocr.extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["OcrExtractRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "smart-ocr.process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["OcrExtractRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "pDFConfiguration.getDrivers": {
@@ -12800,10 +14676,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success: string;
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "pdf.paymentPdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The payment unique hash */
+                payment: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -13097,6 +14998,28 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "report.profitLossReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "projects.index": {
@@ -13619,7 +15542,17 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: unknown[];
+                        data: {
+                            model: {
+                                [key: string]: unknown;
+                            };
+                            type: string;
+                            number: string | null;
+                            amount: number;
+                            date: string;
+                            customer?: string;
+                            score: number;
+                        }[];
                     };
                 };
             };
@@ -13870,6 +15803,32 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "recurring-invoices.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The recurring invoice ID */
+                recurringInvoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "recurringInvoice.recurringInvoiceFrequency": {
         parameters: {
             query?: never;
@@ -13890,6 +15849,243 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "registerBook.invoices": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "registerBook.receivedInvoices": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": Blob;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "roles.getAbilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        abilities: string[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "roles.updateAbilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleAbilitiesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        abilities: unknown[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "roles.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `RoleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RoleResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "roles.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleRequest"];
+            };
+        };
+        responses: {
+            /** @description `RoleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RoleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "roles.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The role ID */
+                role: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `RoleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RoleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "roles.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The role ID */
+                role: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleRequest"];
+            };
+        };
+        responses: {
+            /** @description `RoleResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["RoleResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "roles.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "general.search": {
@@ -14039,7 +16235,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "text/html": Blob;
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -14102,7 +16298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "text/html": Blob;
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -14165,12 +16361,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "text/html": Blob;
                 };
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "sepaRemittance.download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @example attachment */
+                    "Content-Disposition": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/xml": Blob;
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Archivo XML no encontrado.";
+                    };
+                };
+            };
         };
     };
     "sepaRemittance.eligibleInvoices": {
@@ -14324,7 +16554,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/octet-stream": Blob;
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -14351,9 +16581,9 @@ export interface operations {
                         data: {
                             slug: string;
                             status: string;
-                            version: string;
+                            version: string | null;
                             origin: string;
-                            last_error: string;
+                            last_error: string | null;
                             installed_at: string | null;
                         };
                     };
@@ -14368,9 +16598,9 @@ export interface operations {
                         data: {
                             slug: string;
                             status: string;
-                            version: string;
+                            version: string | null;
                             origin: string;
-                            last_error: string;
+                            last_error: string | null;
                             installed_at: string | null;
                         };
                     };
@@ -14435,9 +16665,9 @@ export interface operations {
                         data: {
                             slug: string;
                             status: string;
-                            version: string;
+                            version: string | null;
                             origin: string;
-                            last_error: string;
+                            last_error: string | null;
                             installed_at: string | null;
                         };
                     } | {
@@ -14678,9 +16908,9 @@ export interface operations {
                                 status: string;
                                 paid_status: string;
                                 total: number;
-                                due_amount: string;
-                                base_total: string | null;
-                                base_due_amount: string | null;
+                                due_amount: number;
+                                base_total: number;
+                                base_due_amount: number;
                             }[];
                             topItems: components["schemas"]["ReceivedInvoiceItem"][];
                         };
@@ -15163,6 +17393,28 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "report.taxSummaryReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
     "tax-types.index": {
         parameters: {
             query?: never;
@@ -15290,7 +17542,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success: boolean;
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -15324,6 +17578,103 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "tenantModules.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        modules: {
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            core: boolean;
+                            depends_on: string[];
+                            abilities_namespace: string | null;
+                            status: string;
+                            available_in_plan: boolean;
+                            installed_at: string | null;
+                            disabled_at: string | null;
+                            version: string | null;
+                            meta: {
+                                [key: string]: unknown;
+                            } | null;
+                            dependents: string[];
+                        }[];
+                        installed_slugs: string[];
+                    };
+                };
+            };
+        };
+    };
+    "tenantModules.install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TenantModuleInstallRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        slug: string;
+                        status: string;
+                        installed_at: string | null;
+                        installed_slugs: string[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "tenantModules.disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        slug: string;
+                        status: string;
+                        disabled_at: string | null;
+                        installed_slugs: string[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
     "timeClock.punch": {
         parameters: {
             query?: never;
@@ -15355,12 +17706,12 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            id: string;
+                            id: number;
                             kind: string;
                             punched_at: string;
                             local_date: string;
                             source: string;
-                            hash: string;
+                            hash: string | null;
                         };
                     };
                 };
@@ -15570,7 +17921,17 @@ export interface operations {
                         data: components["schemas"]["TimeClockCorrectionResource"][];
                         meta: {
                             pending_team_count: number;
-                            can_decide: string;
+                            /**
+                             * @description Puede aprobar o rechazar correcciones AJENAS (la mitad «no
+                             *     sobre lo propio» la aplica la política en cada una): es la
+                             *     misma habilidad que exige TimeClockCorrectionPolicy::decide.
+                             */
+                            can_decide: boolean;
+                            /**
+                             * @description Puede ver las correcciones de todo el equipo (`?scope=team`).
+                             *     Decidirlas es lo de arriba: son dos permisos distintos.
+                             */
+                            can_view_team: boolean;
                         };
                     };
                 };
@@ -15652,14 +18013,27 @@ export interface operations {
                     "application/json": {
                         data: {
                             key: string;
-                            item_id: string;
+                            item_id: number | null;
                             item_name: string | null;
                             item_price: number | null;
                             hourly_rate_cents: number;
                             total_minutes: number;
                             total_seconds: number;
                             amount_cents: number;
-                            entries: string;
+                            entries: {
+                                id: number;
+                                date: string | null;
+                                duration_minutes: number;
+                                duration_seconds: number | null;
+                                hourly_rate_cents: number;
+                                amount_cents: number;
+                                notes: string | null;
+                                project_id: number | null;
+                                project_name: string | null;
+                                project_color: string | null;
+                                user_id: number | null;
+                                user_name: string | null;
+                            }[];
                         }[];
                         meta: {
                             total_entries: number;
@@ -15937,7 +18311,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/csv; charset=UTF-8": string;
+                    "text/csv": Blob;
                 };
             };
         };
@@ -18605,7 +20979,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        success: string;
+                    };
                 };
             };
             403: components["responses"]["AuthorizationException"];
@@ -18642,6 +21018,182 @@ export interface operations {
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "users.delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteUserRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "users.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Aquí había un `Log::info` que volcaba en cada listado el CORREO DE
+             *     TODOS los usuarios visibles. Es rastro de depuración, y en una
+             *     instalación multiinstancia con `LOG_CHANNEL=stderr` acaba en los
+             *     `docker logs` del contenedor compartido: datos personales de la
+             *     plantilla de cada pyme, en un sitio que no es la pyme.
+             *
+             *
+             *
+             *     Array of `UserResource`
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"][];
+                        meta: {
+                            user_total_count: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "users.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserRequest"];
+            };
+        };
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "users.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "users.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserRequest"];
+            };
+        };
+        responses: {
+            /** @description `UserResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["UserResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "users.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "veriFactu.index": {
@@ -19058,8 +21610,15 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         synced: number;
+                        /**
+                         * @description Con `synced: 0` esto es lo que dice cuál de las dos causas es:
+                         *     0 = el catálogo central no tiene ese año (nadie lo ha sembrado,
+                         *     ver holidays:seed-catalog); > 0 = había entradas y no aplicaron
+                         *     (comunidad sin autonómicos cargados, o todo eran overrides).
+                         */
+                        catalog_total: number;
                         year: number;
-                        region_code: string;
+                        region_code: string | null;
                     };
                 };
             };
