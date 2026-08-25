@@ -178,8 +178,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
    **Despliegue: una sola instancia del panel** (el refresh token rota; dos
    procesos refrescando = reuse = revocación en cascada), con su almacén de
    grants y candado locales. Todas las pruebas contra `reformas-vera` (dev).
-   **Construido el 2026-08-25** (núcleo galeote/factSaas#481, web
-   pimia-web-shadcn#133), **medido a medias** y conviene saber qué mitad:
+   **HECHO Y MEDIDO el 2026-08-25** (núcleo galeote/factSaas#481 y #482, web
+   pimia-web-shadcn#133), desplegado en dev y ejercido contra
+   `prueba-registro-web`, un tenant creado por el registro público:
    - ✅ **El eslabón web, medido de punta a punta.** Con la sesión del tenant
      viva, `/conectar?tenant=reformas-vera` completa la ceremonia **en un solo
      salto** —sin pantalla de consentimiento— y aterriza en el panel con el
@@ -197,12 +198,23 @@ obtiene en el registro de Pimia o en el panel de integrador).
      la sesión, así que un redirect libre entrega a un usuario recién
      autenticado — y encadenado al salto de consentimiento, es el agujero
      entero.
-   - ⏳ **Falta medir el automatismo**, y falta por dos cosas concretas: el
-     núcleo no está desplegado en dev con `PANEL_WEB_URL` y
-     `PANEL_WEB_LANDING_ENABLED`, y **el alta de una cuenta nueva la tiene que
-     hacer 👤** (crear cuenta y teclear contraseña no son pasos que ejecute un
-     agente de esta casa). Lo que queda por ver es que la cadena se recorra
-     sola, no que el destino funcione: eso ya está medido.
+   - ✅ **El automatismo, medido con el interruptor encendido en dev.** `enter`
+     devuelve el destino **sin que nadie lo pida**
+     (`next=http://localhost:3000/conectar?tenant=…`), y las dos entradas del
+     autónomo al panel central —la vuelta del correo
+     (`/login?verificado=1&instancia=…`) y cualquier ruta con `requiresAuth`—
+     terminan en el panel web. Dos grants vivos a la vez en la misma sesión,
+     27 permisos cada uno.
+   - 🔴 **Y una trampa que costó una vuelta, por si vuelve a aparecer**: el
+     encadenado no puede vivir en la pantalla de login. El guard del router
+     central manda al autónomo fuera **antes de montarla** (`meta.guest` →
+     `dashboard` → `tenants[0].url`), así que ahí no se ejecuta nunca en el
+     caso normal — y ese salto llevaba al panel Vue, incumpliendo esta misma
+     decisión. Va en el guard (#482).
+   - ⚠️ **Desplegar esto NO es solo `config:cache` + `route:cache`.** El tramo
+     de registro vive en `resources/scripts/central/`, o sea en el bundle de
+     Vite: sin `npm run build` el navegador sigue con el SPA anterior y la
+     medición mide el código viejo creyendo que mide el nuevo.
 
 ## Cómo se aplica en este repo (núcleo)
 
