@@ -1293,6 +1293,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/expenses/{expense}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sube o reemplaza el justificante de un gasto
+         * @description Es la mitad que faltaba: hasta aquí, adjuntar un papel a un gasto que ya
+         *     existe **no se podía hacer desde ningún cliente del contrato**. El `PUT`
+         *     lo publicaba como multiparte y no puede cumplirlo (ver `update()`), y el
+         *     otro camino —`POST /expenses/{expense}/upload/receipts`— pide base64 y
+         *     solo acepta `gif`, `jpg` y `png`, así que rechaza el PDF que el propio
+         *     alta sí admite (#498).
+         *
+         *     Misma forma que `receivedInvoices.uploadDocument`, que es el precedente
+         *     de la casa para esto: `POST`, multiparte, se limpia la colección antes de
+         *     añadir —así no se acumulan huérfanos en cada resubida— y se devuelve el
+         *     recurso.
+         */
+        post: operations["expenses.uploadReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/expenses/delete": {
         parameters: {
             query?: never;
@@ -8482,7 +8512,7 @@ export interface operations {
     "absence.teamCalendar": {
         parameters: {
             query?: {
-                month?: string;
+                month?: string | null;
             };
             header?: never;
             path?: never;
@@ -8508,6 +8538,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "absence.approve": {
@@ -11373,6 +11404,44 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "expenses.uploadReceipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The expense ID */
+                expense: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Maximum file size: 20000 kilobytes.
+                     */
+                    receipt: Blob;
+                };
+            };
+        };
+        responses: {
+            /** @description `ExpenseResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ExpenseResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "expenses.delete": {

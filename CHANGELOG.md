@@ -19,10 +19,21 @@ los diez importes derivados que seguían siendo texto y los ids de los partes.
 Con esto se cierra [#41](https://github.com/Pimia-AI/pimia-sdks/issues/41),
 que llevaba tres versiones pidiendo el contrato al día.
 
-Spec sincronizado con **factSaas@b61e8306** (2026-08-25) — **356 operaciones**,
-las mismas que la 0.8.0.
+Spec sincronizado con **factSaas@42382923** (2026-08-25) — **357 operaciones**,
+una más que la 0.8.0.
 
 ### Añadido
+
+- **`POST /expenses/{expense}/receipt`**, y con ella la capacidad que faltaba:
+  adjuntar el justificante a un gasto que **ya existe** no se podía hacer desde
+  ningún cliente del contrato. `PUT /expenses/{id}` se publicaba como multiparte
+  y no puede cumplirlo —PHP solo puebla `$_FILES` en un `POST`, así que el
+  fichero se perdía y la respuesta era **un 200 sin una palabra**—, y la otra
+  puerta pide base64 y rechaza el PDF que el propio alta sí admite.
+
+  Multiparte, campo `receipt`, y **resubir reemplaza en vez de acumular**. El
+  `PUT` con multiparte ahora responde 422 diciendo dónde está la puerta buena,
+  en vez de tragarse el fichero.
 
 - **Banca deja de ser opaca**, que era lo único que impedía cerrar la #41:
 

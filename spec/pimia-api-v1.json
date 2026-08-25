@@ -235,7 +235,11 @@
                         "name": "month",
                         "in": "query",
                         "schema": {
-                            "type": "string"
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
                         }
                     }
                 ],
@@ -287,6 +291,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -6943,6 +6950,84 @@
                 ]
             }
         },
+        "/expenses/{expense}/receipt": {
+            "post": {
+                "operationId": "expenses.uploadReceipt",
+                "description": "Es la mitad que faltaba: hasta aqu\u00ed, adjuntar un papel a un gasto que ya\nexiste **no se pod\u00eda hacer desde ning\u00fan cliente del contrato**. El `PUT`\nlo publicaba como multiparte y no puede cumplirlo (ver `update()`), y el\notro camino \u2014`POST /expenses/{expense}/upload/receipts`\u2014 pide base64 y\nsolo acepta `gif`, `jpg` y `png`, as\u00ed que rechaza el PDF que el propio\nalta s\u00ed admite (#498).\n\nMisma forma que `receivedInvoices.uploadDocument`, que es el precedente\nde la casa para esto: `POST`, multiparte, se limpia la colecci\u00f3n antes de\na\u00f1adir \u2014as\u00ed no se acumulan hu\u00e9rfanos en cada resubida\u2014 y se devuelve el\nrecurso.",
+                "summary": "Sube o reemplaza el justificante de un gasto",
+                "tags": [
+                    "Expenses"
+                ],
+                "parameters": [
+                    {
+                        "name": "expense",
+                        "in": "path",
+                        "required": true,
+                        "description": "The expense ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "receipt": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Maximum file size: 20000 kilobytes."
+                                    }
+                                },
+                                "required": [
+                                    "receipt"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ExpenseResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExpenseResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "expenses:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/expenses/delete": {
             "post": {
                 "operationId": "expenses.delete",
@@ -7197,14 +7282,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
