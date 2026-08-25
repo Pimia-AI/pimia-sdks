@@ -8603,7 +8603,7 @@ export interface operations {
         };
         responses: {
             /** @description `AbsenceResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9452,7 +9452,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description `EstimateResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9479,7 +9479,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description `InvoiceResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9729,7 +9729,7 @@ export interface operations {
         };
         responses: {
             /** @description `ContactResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9967,7 +9967,7 @@ export interface operations {
         };
         responses: {
             /** @description `CustomFieldResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10602,7 +10602,7 @@ export interface operations {
         };
         responses: {
             /** @description `DeliveryNoteResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10754,7 +10754,7 @@ export interface operations {
         };
         responses: {
             /** @description `EmployeeProfileResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10913,7 +10913,7 @@ export interface operations {
         };
         responses: {
             /** @description `EstimateSeriesResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11120,7 +11120,7 @@ export interface operations {
         };
         responses: {
             /** @description `EstimateResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11230,7 +11230,7 @@ export interface operations {
         };
         responses: {
             /** @description `ExpenseCategoryResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11396,7 +11396,7 @@ export interface operations {
         };
         responses: {
             /** @description `ExpenseResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11951,7 +11951,7 @@ export interface operations {
         };
         responses: {
             /** @description `IncidenceResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12133,7 +12133,7 @@ export interface operations {
         };
         responses: {
             /** @description `InvestmentAssetResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12340,7 +12340,7 @@ export interface operations {
         };
         responses: {
             /** @description `InvoiceSeriesResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12471,7 +12471,7 @@ export interface operations {
         };
         responses: {
             /** @description `InvoiceTemplateResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12640,7 +12640,7 @@ export interface operations {
         };
         responses: {
             /** @description `InvoiceTemplateResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13691,7 +13691,7 @@ export interface operations {
         };
         responses: {
             /** @description `LeadResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14195,7 +14195,7 @@ export interface operations {
         };
         responses: {
             /** @description `NoteResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14586,7 +14586,7 @@ export interface operations {
         };
         responses: {
             /** @description `PaymentMethodResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15065,7 +15065,7 @@ export interface operations {
         };
         responses: {
             /** @description `ProjectResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15730,7 +15730,7 @@ export interface operations {
         };
         responses: {
             /** @description `RecurringInvoiceResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15991,7 +15991,7 @@ export interface operations {
         };
         responses: {
             /** @description `RoleResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17294,7 +17294,7 @@ export interface operations {
         };
         responses: {
             /** @description `TaskResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17452,7 +17452,7 @@ export interface operations {
         };
         responses: {
             /** @description `TaxTypeResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17953,7 +17953,7 @@ export interface operations {
         };
         responses: {
             /** @description `TimeClockCorrectionResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18092,7 +18092,7 @@ export interface operations {
         };
         responses: {
             /** @description `TimeEntryResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20889,7 +20889,7 @@ export interface operations {
         };
         responses: {
             /** @description `UnitResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21097,7 +21097,7 @@ export interface operations {
         };
         responses: {
             /** @description `UserResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21651,7 +21651,7 @@ export interface operations {
         };
         responses: {
             /** @description `HolidayResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21731,7 +21731,7 @@ export interface operations {
         };
         responses: {
             /** @description `WorkCalendarResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21869,7 +21869,7 @@ export interface operations {
         };
         responses: {
             /** @description `WorkScheduleResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
