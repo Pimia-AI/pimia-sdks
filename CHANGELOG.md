@@ -10,18 +10,50 @@ pública puede cambiar entre minors.
 
 ## [0.9.0] — 2026-08-25
 
-**Las altas devuelven `201`, y el contrato ya lo dice.** Sale pegada a la 0.8.0
-—minutos— porque el arreglo del núcleo llegó justo después de tagearla, y no
-merecía la pena que el contrato siguiera mintiendo una versión más.
+**Las altas devuelven `201`, y la deuda de banca queda cerrada.** Sale pegada a
+la 0.8.0 —el arreglo del `201` en el núcleo llegó justo después de tagearla, y
+no merecía la pena que el contrato siguiera mintiendo una versión más— y de
+paso se lleva lo que la 0.8.0 dejó abierto: los enums y los filtros de banca,
+los diez importes derivados que seguían siendo texto y los ids de los partes.
 
-Nada cambia en el servidor: la API contestaba `201` desde siempre. Lo que
-cambia es el spec, que publicaba `200` porque el generador no puede saber el
-código — lo pone Laravel al ver `wasRecentlyCreated` en el modelo, y eso solo
-se sabe ejecutando la acción
-([factSaas#435](https://github.com/galeote/factSaas/issues/435)).
+Con esto se cierra [#41](https://github.com/Pimia-AI/pimia-sdks/issues/41),
+que llevaba tres versiones pidiendo el contrato al día.
 
-Spec sincronizado con **factSaas@c232711d** (2026-08-25) — **356 operaciones**,
-las mismas que la 0.8.0: no entra ni sale ninguna, solo cambian los códigos.
+Spec sincronizado con **factSaas@42382923** (2026-08-25) — **357 operaciones**,
+una más que la 0.8.0.
+
+### Añadido
+
+- **`POST /expenses/{expense}/receipt`**, y con ella la capacidad que faltaba:
+  adjuntar el justificante a un gasto que **ya existe** no se podía hacer desde
+  ningún cliente del contrato. `PUT /expenses/{id}` se publicaba como multiparte
+  y no puede cumplirlo —PHP solo puebla `$_FILES` en un `POST`, así que el
+  fichero se perdía y la respuesta era **un 200 sin una palabra**—, y la otra
+  puerta pide base64 y rechaza el PDF que el propio alta sí admite.
+
+  Multiparte, campo `receipt`, y **resubir reemplaza en vez de acumular**. El
+  `PUT` con multiparte ahora responde 422 diciendo dónde está la puerta buena,
+  en vez de tragarse el fichero.
+
+- **Banca deja de ser opaca**, que era lo único que impedía cerrar la #41:
+
+  - `BankTransaction.status` publica **`pending | matched | reconciled |
+    ignored`** y `.type` **`credit | debit`**, cada uno con la prosa de qué
+    significa. El ciclo de conciliación es la mitad de la lógica del módulo y
+    había que ir a leer el núcleo para conocer sus valores.
+  - **`GET /banking/transactions` declara sus seis filtros** —
+    `bank_account_id`, `status`, `type`, `from_date`, `to_date`, `per_page`—,
+    `GET /banking/summary` el suyo, y `POST /banking/auto-match` lo lleva en el
+    cuerpo. Antes los tres publicaban `parameters: []` mientras el controlador
+    leía seis: quien generaba un cliente del contrato **no veía que se podía
+    filtrar**.
+  - `bank_account` y `reconciliations[]`, que el listado carga siempre y viajan
+    en cada fila, por fin están en el schema de `BankTransaction`.
+
+  ⚠️ Con los filtros llega su validación: un `status` o un `type` que no existe
+  ahora da **422** en vez de devolver la lista entera sin filtrar — que es lo
+  que evita el «pedí los pendientes y me los dio todos». `per_page` acepta de 1
+  a 200.
 
 ### Cambiado
 
@@ -29,6 +61,12 @@ las mismas que la 0.8.0: no entra ni sale ninguna, solo cambian los códigos.
   recurso recién creado: presupuestos, gastos, tareas, obras, usuarios, roles,
   series, plantillas, los cinco módulos de RRHH, los tres clonados y el alta de
   festivo.
+
+  Nada cambia en el servidor: la API contestaba `201` desde siempre. Lo que
+  cambia es el spec, que publicaba `200` porque el generador no puede saber el
+  código — lo pone Laravel al ver `wasRecentlyCreated` en el modelo, y eso solo
+  se sabe ejecutando la acción
+  ([factSaas#435](https://github.com/galeote/factSaas/issues/435)).
 
   **Qué hacer**: si tipas la respuesta por su código, **regenera** — el cuerpo
   vive ahora bajo el `201`. Si compruebas `status === 200`, acéptale también el
@@ -47,6 +85,42 @@ las mismas que la 0.8.0: no entra ni sale ninguna, solo cambian los códigos.
 - `POST /appointments` publica **los dos** códigos, como ya hacía: devuelve
   `200` con `duplicate: true` si la cita ya existía y `201` si la crea.
 
+- **Trece propiedades más dejan de viajar como texto**, con el mismo criterio de
+  la 0.8.0 — céntimos enteros:
+
+  | | antes | ahora |
+  |---|---|---|
+  | `summary.pending\|matched\|reconciled\|ignored` | `string` | `integer` |
+  | los seis `effective_*` y `credited_*` de `InvoiceResource` | `string` | `integer` |
+  | los dos `effective_*` de `InvoiceSummaryResource` | `string` | `integer` |
+  | los tres accessors de `InvestmentAssetResource` | `string` | `integer` |
+  | `RecurringInvoiceResource.discount` | `string` | `number` |
+  | `import/presets` → `data` | `unknown[]` | `string[]` |
+
+  🔬 **Y no era solo el contrato**: los seis netos de rectificativa devolvían
+  `float`, así que la respuesta traía `effective_total: 121000.0` junto a
+  `total: 121000` sobre columnas que son céntimos enteros. Se arreglaron los dos
+  lados, o sea que además del tipo cambia lo que llega por el cable.
+
+  `RecurringInvoiceResource.discount` va a `number` y no a `integer` a
+  propósito: con `discount_type = percentage` es un porcentaje, y un `10,5 %`
+  truncado a `10` sería otro descuento.
+
+  ⛔ `effective_base_due_amount` es **`integer | null`**, y el `null` importa:
+  ahí el hueco no es un cero. Una factura que no ha calculado su deuda en moneda
+  base no es una factura que no deba nada — es el bug que vació el panel de
+  pendientes teniendo 368 facturas detrás.
+
+- **`InvoiceItemResource.time_entry_ids` pasa de `object` a `integer[]`.** Era
+  el defecto que se reportó al publicar la 0.8.0: el `POST` y el `PUT` lo
+  declaraban `integer[]` —allí el tipo sale de las reglas de validación— y la
+  lectura salía como objeto, así que **el round-trip que la propia descripción
+  del campo manda hacer** (leer los ids de la ficha y reenviarlos al editar) no
+  compilaba.
+
+- `GET /absences/team-calendar` publica el formato de `month` y su `422`. Antes
+  un `month=hola` daba 500.
+
 ### Corregido
 
 - 🔴 **`Ok<>` miraba solo el `200`, y con el `201` habría degradado a `never`
@@ -60,6 +134,18 @@ las mismas que la 0.8.0: no entra ni sale ninguna, solo cambian los códigos.
   publicaba `201` desde antes, el helper viejo resolvía a `never`. Llevaba así
   desde que esa ruta entró en el contrato; no se notó porque `client.ts` no la
   expone.
+
+### Nota para quien actualice desde la 0.8.0
+
+Dos cosas que el `tsc` va a señalar y conviene mirar antes:
+
+1. **Los códigos.** Si tipas por `200`, las 31 altas de arriba ya no lo llevan.
+2. **Los trece tipos.** Si formateabas `effective_total` con `parseFloat`, ahora
+   es un entero de céntimos como su hermano `total` — y si comparabas
+   `time_entry_ids` como si fuera un objeto, ahora es una lista.
+
+La regla del dinero no cambia: **todo importe de facturación es un entero en
+céntimos, salvo los tres de banca, que son euros decimales en `string`.**
 
 ## [0.8.0] — 2026-08-25
 
