@@ -15,52 +15,57 @@ clientes, gastos, pagos, artículos, banca, CRM, agenda, informes) más los
 catálogos `meta`. Administración, configuración e internos quedan fuera a
 propósito.
 
-## Cómo leer los tipos: los `string` que son números
+## Cómo leer los tipos: el dinero y los identificadores
 
-El spec describe lo que la API **devuelve de verdad**, y la API es
-inconsistente con los números. Dos cosas que hay que saber antes de escribir
-código contra `api.d.ts`:
+**Desde la 0.8.0 el dinero de facturación es un entero en céntimos**, y los
+`id` son números. En la 0.7.0 no lo eran: 172 propiedades viajaban como texto
+porque a los Resources del núcleo les faltaban los casts, y el spec describía
+—correctamente— lo que la API devolvía. Ahora los declara, y el contrato lo
+publica. Si vienes de la 0.7.0, la nota de migración está en el CHANGELOG.
 
-**Los importes monetarios tipados `string` son decimales con dos cifras.**
-En la 0.6.0 hay 87 propiedades monetarias así (`amount`, `due_amount`,
-`total`, `sub_total`, `tax`, `*_price`… según el recurso). No son céntimos, no
-son notación científica y no llevan separador de miles ni símbolo de moneda:
-son la representación decimal de una columna `decimal(15, 2)` de Postgres, tal
-cual la entrega PDO — `"1234.56"`, `"0.00"`, y `"-99.90"` cuando el signo
-tiene sentido. Conviértelos tú (`Number(v)` en TS; en PHP, mejor
-`bcadd`/`bcmul` o un tipo decimal antes que `floatval`, si vas a sumar).
+Lo que hay que saber hoy son las **excepciones**, que son pocas y concretas:
 
-**No es un fallo del generador ni una decisión de diseño: falta un cast en el
-núcleo.** Solo `InvoiceResource`, `EstimateResource` y `ReceivedInvoiceResource`
-castean sus `total`/`sub_total`/`tax` a entero, y ni ellos castean
-`due_amount` ni los `base_*` — así que un `InvoiceResource` te devuelve
-`total: 12100` (entero) y `base_total: "121.00"` (cadena) **en la misma
-respuesta**. El resto de Resources no castea nada: `PaymentResource`,
-`ExpenseResource`, `RecurringInvoiceResource` y las vistas `?view=summary`
-mandan todo el dinero en cadena.
+**La banca cuenta en euros, no en céntimos.** `BankAccount.opening_balance`,
+`BankAccount.balance` y `BankTransaction.amount` siguen tipados `string` y son
+decimales con dos cifras — `"1234.56"`, `"0.00"`, `"-99.90"` cuando el signo
+tiene sentido: la representación de una columna `decimal(15,2)` tal cual la
+entrega PDO. No es un descuido: es el criterio del módulo de banca, y por eso
+las tres llevan la unidad escrita en su `description`. Es el sitio exacto
+donde el MCP ya se equivocó una vez, así que **no apliques al extracto
+bancario el `/100` que necesita una factura**.
 
-Lo mismo pasa con **112 claves** (`id` y `*_id`; no cuento aquí los
-identificadores fiscales como `tax_id` o `national_id`, que sí son cadena de
-verdad). En **21 `*Resource` el propio `id` llega como cadena** — entre ellos
-`TaskResource`, `LeadResource`, `ProjectResource`, `TimeEntryResource`,
-`RoleResource` y los tres `*SummaryResource`.
+**Quedan nueve importes de facturación sin castear**, y todos son derivados:
+los seis `effective_*` y `credited_*` de `InvoiceResource`, los dos
+`effective_*` de `InvoiceSummaryResource` y `RecurringInvoiceResource.discount`.
+Y una trampa con nombre engañoso:
+**`TimeEntryResource.amount_cents` se declara `string`** pese a llamarse
+`cents`. Todos son decimales, como los de banca.
 
-**Esto es deuda del contrato, no la forma definitiva.** Está abierto como
-issue en este repo y en el núcleo: cuando los Resources declaren sus casts, el
-spec pasará a tipar `number` y será un cambio incompatible anunciado en el
-CHANGELOG. Hasta entonces, no asumas el tipo por el nombre del campo: **mira
+**22 claves `*_id` siguen siendo cadena**, pero **ninguna es ya el `id` de un
+recurso**: los 21 `*Resource` que devolvían su propio `id` como texto se
+arreglaron. Las que quedan son ajenas (`country_id`, `sepa_mandate_id`) o
+identificadores fiscales de verdad (`vat_id`), más `currency_id`, que en el
+núcleo es `string` en 8 schemas e `integer` en 13 y tiene su issue abierta.
+
+**Y algunas banderas siguen sin ser booleanas**: `tax_included`,
+`tax_per_item`, `discount_per_item` y `discount_type` se declaran `string`,
+sin enum, y lo que viaja son los `"YES"`/`"NO"` que mide la
+[#26](https://github.com/Pimia-AI/pimia-sdks/issues/26). Nueve banderas sí
+pasaron a `boolean` en la 0.8.0 (`is_default`, `is_active`, `is_system`,
+`aeat_registered`…); estas no.
+
+La regla, en una línea: **no asumas el tipo por el nombre del campo — mira
 `api.d.ts`**, que dice el que hay hoy.
 
 ## Operaciones con el `200` sin describir
 
-**16 operaciones** describen su `200` como un `object` sin propiedades — entre
-ellas `POST /invoices`, `PUT /invoices/{invoice}`, `PUT /customers/{customer}`
-y `POST /estimates/{estimate}/convert-to-invoice`. El cuerpo llega igual; lo
-que falta es la descripción, y por eso el tipo generado no te ayuda ahí.
-Causa: un `@return JsonResponse` heredado de InvoiceShelf que gana a la
-inferencia, más la función global `respondJson()` que Scramble no resuelve.
+**Ninguna, desde la 0.8.0.** Eran 18 —entre ellas `POST /invoices`,
+`PUT /invoices/{invoice}`, `PUT /customers/{customer}` y
+`POST /estimates/{estimate}/convert-to-invoice`, o sea casi todas las
+escrituras que un integrador hace de verdad—, y describían su `200` como un
+`object` sin una sola propiedad: el cuerpo llegaba, pero el tipo generado no
+ayudaba. Se cerraron también los dos casos que declaraban `string` y devuelven
+JSON, `GET /me/settings` y `GET /legal-reports/pdf`.
 
-Aparte, **`GET /me/settings` declara `string`** y devuelve JSON, y
-`GET /legal-reports/pdf` declara `string` para su rama JSON. Las descargas de
-verdad (CSV, PDF, XML, adjuntos) **sí** están bien: declaran su media type y
-no cuentan aquí. Todo ello está abierto como issues de este repo.
+Las descargas de verdad (CSV, PDF, XML, adjuntos) declaran su media type y
+salen tipadas como `Blob`; para leerlas usa `client.download()`, no `get()`.

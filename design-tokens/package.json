@@ -1,6 +1,6 @@
 {
   "name": "@pimia/design-tokens",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Sistema de diseño de Pimia como paquete OPCIONAL para apps de partner: tokens tipados, variables CSS y preset de Tailwind. El white-label es poder no usarlo.",
   "license": "MIT",
   "author": "Pimia (https://pimia.es)",

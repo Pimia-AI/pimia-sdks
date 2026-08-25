@@ -8,6 +8,149 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.8.0] — 2026-08-25
+
+El contrato al día, y con él la deuda de tipos saldada. Se sincroniza el spec
+con `origin/main` del núcleo —**factSaas@c825948a**, 2026-08-25, **356
+operaciones**— después de tres versiones con el de la 0.6.0 (314). Entran **42
+operaciones** y **no desaparece ninguna**, pero esta no es una release
+aditiva: **172 propiedades dejan de viajar como texto**. Los `id` son números
+y los importes son céntimos enteros, que es lo que la API devolvía todo el
+tiempo mientras el contrato lo describía mal.
+
+Lo que la desbloqueó fue arreglar el núcleo, no rodearlo: el artefacto traía
+**tres `operationId` repetidos** y `openapi-typescript` valida antes de
+generar, así que desde el 22 de agosto no se podían regenerar los tipos
+([factSaas#477](https://github.com/galeote/factSaas/issues/477), cerrada por
+[factSaas#507](https://github.com/galeote/factSaas/pull/507)).
+
+### Cambiado
+
+- 🔴 **172 propiedades pasan de `string` a `integer`, en 42 schemas.** Es el
+  cambio incompatible de esta versión y hay que leerlo entero antes de subir
+  la dependencia. Se parte en dos mitades:
+
+  - **93 son `id` y `*_id`** (el propio `id` en **21 `*Resource`**:
+    `TaskResource`, `LeadResource`, `ProjectResource`, `TimeEntryResource`,
+    `RoleResource`, los tres `*SummaryResource`…). Quien compare con `===`
+    contra una cadena, o construya una clave de React con el `id`, tiene aquí
+    su trabajo. Los identificadores **fiscales** no se tocan: `tax_id` y
+    `national_id` son cadenas de verdad y siguen siéndolo.
+
+  - **79 son importes y contadores**: `due_amount` y todos los `base_*` de
+    facturas, presupuestos, recibidas y recurrentes; los cuatro totales de los
+    `*SummaryResource`; `PaymentResource.amount`, `ExpenseResource.amount`,
+    `TaxResource.base_amount`, `ItemsRequest.price`. **Van en céntimos**, como
+    los `total` que ya eran enteros. Hasta aquí el mismo recurso mezclaba los
+    dos tipos en una sola respuesta —`total: 12100` junto a
+    `base_total: "121.00"`—, que era lo que hacía imposible escribir un
+    formateador que no se equivocara en algún sitio.
+
+  ⚠️ **La banca es la excepción y sigue en euros**, no en céntimos
+  ([factSaas#442](https://github.com/galeote/factSaas/issues/442)):
+  `BankAccount.opening_balance`, `.balance` y `BankTransaction.amount` siguen
+  siendo `string` decimal, ahora con la descripción que lo dice. Es el sitio
+  donde el MCP ya se equivocó una vez.
+
+- **9 propiedades pasan de `string` a `boolean`** —`is_default`, `is_active`,
+  `is_system`, `aeat_registered`, `enable_portal`, `send_automatically`— y
+  **104 ganan su `| null`**, que antes se prometían siempre presentes y
+  llegaban vacías.
+
+### Añadido
+
+- **42 operaciones**, ninguna retirada. Las que mueven algo:
+
+  - **`GET /crm/assignable-users`** (scope `crm:read`, devuelve
+    `{data: [{id, name}]}`), que es lo que esta issue lleva pidiendo desde la
+    0.6.0: el selector de responsables de tareas y leads deja de tirar de
+    `GET /employees`, porque **una ficha de personal no es una cuenta**.
+  - **El dominio `admin` entero**: `users` (los seis verbos), `roles` y
+    `roles/{role}/abilities`, `GET /abilities`, los módulos de instancia
+    (`GET /tenant-modules`, install y disable) y la configuración de correo
+    (`GET`/`POST /mail/config`, `GET /mail/drivers`, `POST /mail/test`).
+  - **El OCR**: `POST /ocr/extract` y su alias para la app móvil
+    `POST /smart-ocr/process`, los dos con el multiparte **tipado**
+    (`OcrExtractRequest`: campo `document` o `file`, mimes y tope de 10 MB) y
+    scope `ocr:write`, nuevo en el catálogo.
+  - **Las descargas e informes dentro del contrato**: `/exports/*` (facturas,
+    recibidas, gastos, libros registro, catálogo de artículos y su plantilla,
+    remesa SEPA), `/reports/*` y los tres PDF de documento.
+  - **Dos huecos de CRUD** que daban 404 y ahora existen:
+    `DELETE /recurring-invoices/{id}` y `GET /item-categories/{id}`
+    ([#34](https://github.com/Pimia-AI/pimia-sdks/issues/34), en parte).
+
+- **`items.*.time_entry_ids`** en los dos verbos de facturas, con su semántica
+  escrita: es lo que hay que **reenviar en el `PUT`** para que la línea
+  conserve sus partes de tiempo. Sin ese campo, editar una factura le soltaba
+  los partes.
+
+- **`GET /customers/{id}/pending-time-entries` con su forma real**: `entries`
+  era `string` y ahora es la lista de objetos que devuelve —`id`, `date`,
+  `duration_minutes`, `hourly_rate_cents`, `amount_cents`—, y su `item_id`
+  pasa de `string` a `integer | null`.
+
+- **Siete schemas de petición nuevos**: `UserRequest`, `DeleteUserRequest`,
+  `RoleRequest`, `RoleAbilitiesRequest`, `OcrExtractRequest`,
+  `MailEnvironmentRequest`, `TenantModuleInstallRequest`.
+
+- El NIF del cliente se llama **`tax_id`** —la columna se renombró en el
+  núcleo— con `maxLength: 20` y descripción, y en los tres schemas de cliente
+  es `string | null`.
+
+### Corregido
+
+- 🔴 **Las 18 operaciones que publicaban su `200` como un objeto opaco ya no
+  existen: quedan cero.** Entre ellas `POST /invoices`, `PUT /invoices/{id}`,
+  `PUT /customers/{id}`, `POST /estimates/{id}/convert-to-invoice` y
+  `POST /invoices/{id}/credit-note` — o sea, casi todas las escrituras que un
+  integrador hace de verdad, que hasta hoy devolvían un tipo sin una sola
+  propiedad. Se cierran también los dos casos que declaraban `string` y
+  devuelven JSON: **`GET /me/settings`** y `GET /legal-reports/pdf`.
+
+- **45 campos binarios salen como `Blob`** (en la 0.7.0 eran nueve): el
+  `transform` del generador cubre ahora todo el multiparte que entró con las
+  descargas y el OCR.
+
+### Pendiente
+
+- ⚠️ **Los enums y los filtros de banca no entran**, y conviene saberlo porque
+  la [#41](https://github.com/Pimia-AI/pimia-sdks/issues/41) los pedía:
+  medido contra este spec, `BankTransaction.type` y `.status` siguen siendo
+  `string` pelado (los valores son conjuntos cerrados: `credit|debit`,
+  `pending|matched|reconciled|ignored`), y `GET /banking/transactions`,
+  `GET /banking/summary` y `POST /banking/auto-match` siguen **sin declarar un
+  solo parámetro** de consulta, mientras el controlador lee seis. Sigue
+  reportado al núcleo.
+
+- ⚠️ **`InvoiceItemResource.time_entry_ids` se publica como `object`** y lo que
+  viaja es una lista de ids. El campo está y su prosa es correcta; el tipo, no.
+
+- 🔴 **[factSaas#435](https://github.com/galeote/factSaas/issues/435) (el `200`
+  de las creaciones pasando a `201`) NO va en este tren.** Es un cambio que
+  rompe y está esperando decisión sobre si sube. Si se decide que sí, es otra
+  release y con su propia nota — no se cuela en esta.
+
+- El SDK de **PHP** sigue sin `multipart` ni `download()`: `Transport::send`
+  declara `?string $body` y admitirlos cambia una interfaz pública que un
+  partner puede haber implementado. Va aparte.
+
+### Nota para quien actualice desde la 0.7.0
+
+El `tsc` es el que manda aquí: **172 propiedades cambian de tipo** y el
+compilador las señala una a una. El patrón que más va a saltar es comparar un
+`id` con una cadena y formatear un importe con `Number(v)` sobre algo que ya
+es número.
+
+La regla nueva, en una línea: **todo importe de facturación es un entero en
+céntimos, salvo los tres de banca, que son euros decimales en `string`.** Si
+tenías un `parseFloat` genérico para el dinero, ahora divide por 100 en un
+sitio y no en el otro.
+
+Y lo que **no** cambia: `spec/README.md` describía 87 monetarios `string` y
+112 claves `id` como cadena. Ese texto era de la 0.6.0 y se ha reescrito con
+lo que mide este contrato.
+
 ## [0.7.0] — 2026-08-24
 
 Los ficheros. Hasta aquí el cliente **no podía subir ni descargar ninguno**, y
