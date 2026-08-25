@@ -34,10 +34,13 @@ las tres llevan la unidad escrita en su `description`. Es el sitio exacto
 donde el MCP ya se equivocó una vez, así que **no apliques al extracto
 bancario el `/100` que necesita una factura**.
 
-**Quedan nueve importes de facturación sin castear**, y todos son derivados:
-los seis `effective_*` y `credited_*` de `InvoiceResource`, los dos
-`effective_*` de `InvoiceSummaryResource` y `RecurringInvoiceResource.discount`.
-Y una trampa con nombre engañoso:
+**Quedan diez importes de facturación sin castear**, casi todos derivados: los
+seis `effective_*` y `credited_*` de `InvoiceResource`, los dos `effective_*`
+de `InvoiceSummaryResource`, `RecurringInvoiceResource.discount` y
+`InvestmentAssetResource.net_book_value`. Cuidado con los seis primeros: viven
+en el mismo schema que sus hermanos ya enteros, así que `InvoiceResource`
+mezcla `total: 12100` con `effective_total: "121.00"`. Y una trampa con nombre
+engañoso:
 **`TimeEntryResource.amount_cents` se declara `string`** pese a llamarse
 `cents`. Todos son decimales, como los de banca.
 

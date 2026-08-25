@@ -124,7 +124,26 @@ generar, así que desde el 22 de agosto no se podían regenerar los tipos
   reportado al núcleo.
 
 - ⚠️ **`InvoiceItemResource.time_entry_ids` se publica como `object`** y lo que
-  viaja es una lista de ids. El campo está y su prosa es correcta; el tipo, no.
+  viaja es una lista de ids. El campo está y su prosa es correcta; el tipo, no
+  —sale como `Record<string, unknown>` en vez de `number[]`—, así que el
+  round-trip que la propia descripción manda hacer (leer los ids de la ficha y
+  reenviarlos en el `PUT`) **no compila**. En el `POST` y el `PUT` el tipo sí
+  es correcto: es solo la lectura.
+
+- ⚠️ **Diez importes de facturación se quedan en `string`** cuando sus hermanos
+  del mismo schema ya son enteros: los seis `effective_*` y `credited_*` de
+  `InvoiceResource`, los dos `effective_*` de `InvoiceSummaryResource`,
+  `RecurringInvoiceResource.discount` y `InvestmentAssetResource.net_book_value`.
+  O sea que `InvoiceResource` mezcla ahora `total: 12100` con
+  `effective_total: "121.00"` — la misma incoherencia de antes, en un rincón
+  más pequeño.
+
+- ⚠️ **La mitad `delegation` del catálogo OAuth sigue sin abrirse**
+  ([#33](https://github.com/Pimia-AI/pimia-sdks/issues/33)): `ocr:write` entra,
+  pero `delegation:write` sigue fuera de `securitySchemes`,
+  `POST /tasks/{task}/delegate` sigue sin `security` propia, y su descripción
+  sigue diciendo que el Authorization Server no emite ese scope, cuando desde
+  factSaas#431 sí lo emite.
 
 - 🔴 **[factSaas#435](https://github.com/galeote/factSaas/issues/435) (el `200`
   de las creaciones pasando a `201`) NO va en este tren.** Es un cambio que
