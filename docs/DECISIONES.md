@@ -178,6 +178,31 @@ obtiene en el registro de Pimia o en el panel de integrador).
    **Despliegue: una sola instancia del panel** (el refresh token rota; dos
    procesos refrescando = reuse = revocación en cascada), con su almacén de
    grants y candado locales. Todas las pruebas contra `reformas-vera` (dev).
+   **Construido el 2026-08-25** (núcleo galeote/factSaas#481, web
+   pimia-web-shadcn#133), **medido a medias** y conviene saber qué mitad:
+   - ✅ **El eslabón web, medido de punta a punta.** Con la sesión del tenant
+     viva, `/conectar?tenant=reformas-vera` completa la ceremonia **en un solo
+     salto** —sin pantalla de consentimiento— y aterriza en el panel con el
+     seed entero (100 clientes, 362 facturas, 306.558,60 € pendiente), sin
+     teclear la contraseña. Y se confirma lo que este punto ya decía: **basta
+     con la sesión de la INSTANCIA**; no hizo falta ninguna sesión central.
+   - ✅ **Multi-tenant por selección, hecho.** Cae la guarda mono-tenant y el
+     `configuredTenant`; `PIMIA_BASE_URL` pasa a ser el patrón
+     `https://{tenant}.taskai.work`. El `?tenant=` es un **nombre**, nunca una
+     dirección: la dirección la construye la web con su patrón, que es la
+     diferencia entre una lista blanca y una negra.
+   - ⛔ **El `next` del auto-login va con allowlist** (rutas propias + el origen
+     de `panel_web.url`). Es la misma prohibición del punto 3 rev. 2 aplicada
+     al otro extremo: la petición que lleva el `next` es la que acaba de abrir
+     la sesión, así que un redirect libre entrega a un usuario recién
+     autenticado — y encadenado al salto de consentimiento, es el agujero
+     entero.
+   - ⏳ **Falta medir el automatismo**, y falta por dos cosas concretas: el
+     núcleo no está desplegado en dev con `PANEL_WEB_URL` y
+     `PANEL_WEB_LANDING_ENABLED`, y **el alta de una cuenta nueva la tiene que
+     hacer 👤** (crear cuenta y teclear contraseña no son pasos que ejecute un
+     agente de esta casa). Lo que queda por ver es que la cadena se recorra
+     sola, no que el destino funcione: eso ya está medido.
 
 ## Cómo se aplica en este repo (núcleo)
 
