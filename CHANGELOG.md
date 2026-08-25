@@ -8,6 +8,59 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.9.0] — 2026-08-25
+
+**Las altas devuelven `201`, y el contrato ya lo dice.** Sale pegada a la 0.8.0
+—minutos— porque el arreglo del núcleo llegó justo después de tagearla, y no
+merecía la pena que el contrato siguiera mintiendo una versión más.
+
+Nada cambia en el servidor: la API contestaba `201` desde siempre. Lo que
+cambia es el spec, que publicaba `200` porque el generador no puede saber el
+código — lo pone Laravel al ver `wasRecentlyCreated` en el modelo, y eso solo
+se sabe ejecutando la acción
+([factSaas#435](https://github.com/galeote/factSaas/issues/435)).
+
+Spec sincronizado con **factSaas@c232711d** (2026-08-25) — **356 operaciones**,
+las mismas que la 0.8.0: no entra ni sale ninguna, solo cambian los códigos.
+
+### Cambiado
+
+- ⚠️ **31 operaciones pasan de `200` a `201`.** Son las altas que devuelven el
+  recurso recién creado: presupuestos, gastos, tareas, obras, usuarios, roles,
+  series, plantillas, los cinco módulos de RRHH, los tres clonados y el alta de
+  festivo.
+
+  **Qué hacer**: si tipas la respuesta por su código, **regenera** — el cuerpo
+  vive ahora bajo el `201`. Si compruebas `status === 200`, acéptale también el
+  `201`; `PimiaClient` ya trata como éxito cualquier `2xx`, así que quien use el
+  cliente no tiene nada que tocar. **El cuerpo no cambia**: el mismo recurso, en
+  el mismo sobre `{data: …}`.
+
+- 🔬 **Y ocho altas siguen en `200` a propósito**, que es lo que más sorprende:
+  **cliente, factura, artículo, cobro, proveedor, factura recibida**,
+  `item-categories` y `sepa-remittances`. Sus controladores no devuelven el
+  modelo que acaban de crear sino una lectura posterior con las relaciones
+  cargadas, y sobre esa instancia Laravel ya no responde `201`. Ahí el contrato
+  **ya decía la verdad**. Si tu código las trataba como «altas de 201», nunca lo
+  fueron.
+
+- `POST /appointments` publica **los dos** códigos, como ya hacía: devuelve
+  `200` con `duplicate: true` si la cita ya existía y `201` si la crea.
+
+### Corregido
+
+- 🔴 **`Ok<>` miraba solo el `200`, y con el `201` habría degradado a `never`
+  sin un solo error de compilación.** El helper que saca el tipo de la respuesta
+  del OpenAPI llevaba el código escrito a mano, así que `customers.create` y
+  `estimates.create` se habrían quedado sin tipo — y el SDK habría compilado y
+  publicado igual. Un fallo silencioso del peor tipo: no hay nada que leer, solo
+  un editor que deja de autocompletar.
+
+  Comprobado que **no era hipotético**: con `bank-accounts.store`, que ya
+  publicaba `201` desde antes, el helper viejo resolvía a `never`. Llevaba así
+  desde que esa ruta entró en el contrato; no se notó porque `client.ts` no la
+  expone.
+
 ## [0.8.0] — 2026-08-25
 
 El contrato al día, y con él la deuda de tipos saldada. Se sincroniza el spec

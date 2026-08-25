@@ -42,16 +42,32 @@ export type InvoicesRequest = Schemas['InvoicesRequest']
 export type EstimatesRequest = Schemas['EstimatesRequest']
 
 /**
- * El cuerpo JSON del `200` de una operación, sacado del OpenAPI.
+ * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
  *
  * Atarlo al spec y no escribirlo a mano es lo que hace que un cambio de
  * contrato aparezca al regenerar los tipos en vez de en producción.
+ *
+ * ⚠️ **Mira el `201` además del `200`, y esa segunda rama no es un adorno.**
+ * Desde factSaas#435 las altas publican `201` —lo pone Laravel solo, mirando
+ * `wasRecentlyCreated`—, y este helper llevaba el `200` escrito a mano. Con una
+ * sola rama, `customers.create` y `estimates.create` habrían resuelto a `never`
+ * **sin un solo error de compilación**: el SDK habría seguido compilando y
+ * publicándose, y quien lo usara se habría quedado sin tipo de respuesta sin
+ * que nada lo avisara. Es la clase de fallo que no se ve hasta que alguien
+ * pregunta por qué su editor no le autocompleta.
+ *
+ * El orden importa poco —una operación no publica los dos códigos con cuerpos
+ * distintos— pero se prueba el `200` primero porque es el caso mayoritario.
  */
 type Ok<O extends keyof operations> = operations[O] extends {
   responses: { 200: { content: { 'application/json': infer Body } } }
 }
   ? Body
-  : never
+  : operations[O] extends {
+        responses: { 201: { content: { 'application/json': infer Body } } }
+      }
+    ? Body
+    : never
 
 /**
  * El sobre `{ data: … }` de Laravel para las escrituras que el spec **no

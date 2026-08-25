@@ -586,7 +586,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`AbsenceResource`",
                         "content": {
                             "application/json": {
@@ -2777,7 +2777,7 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`EstimateResource`",
                         "content": {
                             "application/json": {
@@ -2830,7 +2830,7 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`InvoiceResource`",
                         "content": {
                             "application/json": {
@@ -3267,7 +3267,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`ContactResource`",
                         "content": {
                             "application/json": {
@@ -3707,7 +3707,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`CustomFieldResource`",
                         "content": {
                             "application/json": {
@@ -5435,7 +5435,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`DeliveryNoteResource`",
                         "content": {
                             "application/json": {
@@ -5779,7 +5779,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`EmployeeProfileResource`",
                         "content": {
                             "application/json": {
@@ -6091,7 +6091,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`EstimateSeriesResource`",
                         "content": {
                             "application/json": {
@@ -6520,7 +6520,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`EstimateResource`",
                         "content": {
                             "application/json": {
@@ -6737,7 +6737,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`ExpenseCategoryResource`",
                         "content": {
                             "application/json": {
@@ -7062,7 +7062,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`ExpenseResource`",
                         "content": {
                             "application/json": {
@@ -8267,7 +8267,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`IncidenceResource`",
                         "content": {
                             "application/json": {
@@ -8713,7 +8713,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`InvestmentAssetResource`",
                         "content": {
                             "application/json": {
@@ -9188,7 +9188,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`InvoiceSeriesResource`",
                         "content": {
                             "application/json": {
@@ -9483,7 +9483,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`InvoiceTemplateResource`",
                         "content": {
                             "application/json": {
@@ -9805,7 +9805,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`InvoiceTemplateResource`",
                         "content": {
                             "application/json": {
@@ -12036,7 +12036,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`LeadResource`",
                         "content": {
                             "application/json": {
@@ -13346,7 +13346,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`NoteResource`",
                         "content": {
                             "application/json": {
@@ -14107,7 +14107,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`PaymentMethodResource`",
                         "content": {
                             "application/json": {
@@ -15101,7 +15101,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`ProjectResource`",
                         "content": {
                             "application/json": {
@@ -16562,7 +16562,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`RecurringInvoiceResource`",
                         "content": {
                             "application/json": {
@@ -17111,7 +17111,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`RoleResource`",
                         "content": {
                             "application/json": {
@@ -20451,7 +20451,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`TaskResource`",
                         "content": {
                             "application/json": {
@@ -20750,7 +20750,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`TaxTypeResource`",
                         "content": {
                             "application/json": {
@@ -21976,7 +21976,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`TimeClockCorrectionResource`",
                         "content": {
                             "application/json": {
@@ -22390,7 +22390,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`TimeEntryResource`",
                         "content": {
                             "application/json": {
@@ -30110,7 +30110,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`UnitResource`",
                         "content": {
                             "application/json": {
@@ -30513,7 +30513,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`UserResource`",
                         "content": {
                             "application/json": {
@@ -31811,7 +31811,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`HolidayResource`",
                         "content": {
                             "application/json": {
@@ -31965,7 +31965,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`WorkCalendarResource`",
                         "content": {
                             "application/json": {
@@ -32240,7 +32240,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`WorkScheduleResource`",
                         "content": {
                             "application/json": {
