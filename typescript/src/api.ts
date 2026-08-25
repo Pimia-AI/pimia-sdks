@@ -376,7 +376,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get available CSV presets */
+        /**
+         * Los formatos de CSV que el importador reconoce, por nombre
+         * @description Son las claves de `CsvBankParser::PRESETS` —cadenas— y es lo que se manda
+         *     en `preset` al importar un extracto. El `@response` está porque
+         *     `array_keys()` devuelve un `array` sin más, y el contrato publicaba
+         *     `data: unknown[]`: un cliente generado no veía siquiera que eran textos.
+         */
         get: operations["bankImport.presets"];
         put?: never;
         post?: never;
@@ -3168,7 +3174,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List bank transactions with filters */
+        /**
+         * Movimientos bancarios, filtrados y paginados
+         * @description Los cinco filtros y el tamaño de página se VALIDAN, y por eso están en el
+         *     contrato: el generador no ve un `$request->bank_account_id` —acceso
+         *     dinámico— y hasta el 2026-08-25 esta operación publicaba `parameters: []`
+         *     mientras el controlador leía seis. Un integrador leyendo el spec no podía
+         *     saber que se puede filtrar.
+         *
+         *     ⚠️ Filtrar por un `status` o un `type` que no existe ya no devuelve la
+         *     lista entera sin filtrar: da 422. Es el mismo criterio que el resto de la
+         *     API y lo que evita el «pedí los pendientes y me los dio todos».
+         *
+         *     La respuesta es el paginador de Laravel PELADO (`data`, `current_page`,
+         *     `total`…), no el sobre `{data, meta}` del resto de la casa. Cada fila
+         *     lleva además `bank_account` y `reconciliations[]`, que el listado carga
+         *     siempre.
+         */
         get: operations["reconciliation.transactions"];
         put?: never;
         post?: never;
@@ -3185,7 +3207,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get summary statistics */
+        /**
+         * Recuento de movimientos por estado, y los dos totales
+         * @description Los cuatro recuentos salen de un `count()` y son ENTEROS. Se declaran a
+         *     mano porque Scramble tipa bien `Builder::count()` pero no sabe resolver
+         *     `(clone $query)->pending()`: el scope local devuelve `mixed` y degradaba
+         *     los cuatro a `string`, mientras `total` —que no pasa por un scope— salía
+         *     `integer` en la misma respuesta. Cuatro cadenas y un número para el mismo
+         *     tipo de dato.
+         *
+         *     ⚠️ `total_credits` y `total_debits` SÍ son cadenas, y a propósito: son
+         *     `SUM(amount)` sobre una columna `decimal(15,2)` que PostgreSQL entrega
+         *     como texto, y van en EUROS con decimales como el resto de la banca —no en
+         *     céntimos como el resto de la API.
+         */
         get: operations["reconciliation.summary"];
         put?: never;
         post?: never;
@@ -5088,11 +5123,19 @@ export interface components {
             value_date: string | null;
             /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             amount: string;
-            type: string;
+            /**
+             * @description Signo del apunte tal y como lo trae el extracto: `credit` entra dinero, `debit` sale. El importe va siempre en positivo, así que el signo es esto.
+             * @enum {string}
+             */
+            type: "credit" | "debit";
             concept: string | null;
             reference: string | null;
             raw_data: string | null;
-            status: string;
+            /**
+             * @description Punto del ciclo de conciliación en el que está el apunte: `pending` recién importado y sin cruzar, `matched` propuesto contra un documento (por `POST /banking/transactions/{id}/match` o por el automático), `reconciled` confirmado, `ignored` apartado a mano porque no corresponde a ninguno.
+             * @enum {string}
+             */
+            status: "pending" | "matched" | "reconciled" | "ignored";
             import_batch: string | null;
             /** Format: date-time */
             created_at: string | null;
@@ -5100,6 +5143,10 @@ export interface components {
             updated_at: string | null;
             /** Format: date-time */
             deleted_at: string | null;
+            /** @description La cuenta del apunte, con `id` y `name` y nada más. Llega en el listado (`GET /banking/transactions`), que la carga siempre; en las respuestas de una operación sobre un apunte suelto no tiene por qué estar. */
+            bank_account?: Record<string, never> | null;
+            /** @description Los cruces del apunte con documentos del ERP, cada uno con su `reconcilable` (la factura, el gasto o la recibida). Como `bank_account`: la trae el listado, que la carga siempre. */
+            reconciliations?: Record<string, never>[] | null;
         };
         /** BulkExchangeRateRequest */
         BulkExchangeRateRequest: {
@@ -6254,9 +6301,9 @@ export interface components {
             residual_value: number;
             useful_life_years: number;
             depreciation_method: string;
-            annual_depreciation: string;
-            accumulated_depreciation: string;
-            net_book_value: string;
+            annual_depreciation: number;
+            accumulated_depreciation: number;
+            net_book_value: number;
             depreciation_schedule: string;
             company_id: number;
             /** Format: date-time */
@@ -6387,9 +6434,7 @@ export interface components {
              *     respuestas de escritura, con `[]` cuando la línea no cobra
              *     ninguno; en el índice no viaja.
              */
-            time_entry_ids?: {
-                [key: string]: unknown;
-            };
+            time_entry_ids?: number[];
             taxes?: components["schemas"]["TaxResource"][];
             fields?: components["schemas"]["CustomFieldValueResource"][];
         };
@@ -6411,10 +6456,10 @@ export interface components {
             discount_val: number;
             sub_total: number;
             total: number;
-            effective_total: string;
+            effective_total: number;
             tax: number;
             due_amount: number;
-            effective_due_amount: string;
+            effective_due_amount: number;
             sent: string;
             viewed: string;
             /**
@@ -6444,10 +6489,11 @@ export interface components {
             creator_id: number | null;
             base_tax: number;
             base_due_amount: number;
-            effective_base_total: string;
-            effective_base_due_amount: string;
-            credited_total: string;
-            credited_base_total: string;
+            effective_base_total: number;
+            /** @description NULL cuando la factura no tiene `base_due_amount` calculado, y entonces es un hueco, no un cero: una factura que no ha calculado su deuda en moneda base no es una factura que no deba nada. */
+            effective_base_due_amount: number | null;
+            credited_total: number;
+            credited_base_total: number;
             currency_id: number | null;
             formatted_created_at: string;
             invoice_pdf_url: string;
@@ -6573,8 +6619,8 @@ export interface components {
              *     que esto no cueste ni una consulta, y que el scope sea
              *     obligatorio en cualquier índice que sirva este recurso.
              */
-            effective_total: string;
-            effective_due_amount: string;
+            effective_total: number;
+            effective_due_amount: number;
             effective_paid_status: string;
             effective_overdue: string;
             currency_id: number | null;
@@ -7563,7 +7609,7 @@ export interface components {
             discount_per_item: string | null;
             notes: string | null;
             discount_type: string | null;
-            discount: string | null;
+            discount: number | null;
             discount_val: number | null;
             sub_total: number | null;
             total: number | null;
@@ -9267,7 +9313,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: unknown[];
+                        data: string[];
                     };
                 };
             };
@@ -15418,7 +15464,14 @@ export interface operations {
     };
     "reconciliation.transactions": {
         parameters: {
-            query?: never;
+            query?: {
+                bank_account_id?: number | null;
+                status?: "pending" | "matched" | "reconciled" | "ignored" | null;
+                type?: "credit" | "debit" | null;
+                from_date?: string | null;
+                to_date?: string | null;
+                per_page?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -15456,11 +15509,14 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "reconciliation.summary": {
         parameters: {
-            query?: never;
+            query?: {
+                bank_account_id?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -15475,16 +15531,17 @@ export interface operations {
                     "application/json": {
                         data: {
                             total: number;
-                            pending: string;
-                            matched: string;
-                            reconciled: string;
-                            ignored: string;
+                            pending: number;
+                            matched: number;
+                            reconciled: number;
+                            ignored: number;
                             total_credits: string;
                             total_debits: string;
                         };
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "reconciliation.autoMatch": {
@@ -15494,7 +15551,13 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    bank_account_id?: number | null;
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -15523,6 +15586,7 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "reconciliation.suggestions": {

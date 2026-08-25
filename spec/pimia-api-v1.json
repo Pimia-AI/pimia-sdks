@@ -2141,7 +2141,8 @@
         "/banking/import/presets": {
             "get": {
                 "operationId": "bankImport.presets",
-                "summary": "Get available CSV presets",
+                "description": "Son las claves de `CsvBankParser::PRESETS` \u2014cadenas\u2014 y es lo que se manda\nen `preset` al importar un extracto. El `@response` est\u00e1 porque\n`array_keys()` devuelve un `array` sin m\u00e1s, y el contrato publicaba\n`data: unknown[]`: un cliente generado no ve\u00eda siquiera que eran textos.",
+                "summary": "Los formatos de CSV que el importador reconoce, por nombre",
                 "tags": [
                     "BankImport"
                 ],
@@ -2155,7 +2156,9 @@
                                     "properties": {
                                         "data": {
                                             "type": "array",
-                                            "items": {}
+                                            "items": {
+                                                "type": "string"
+                                            }
                                         }
                                     },
                                     "required": [
@@ -15818,9 +15821,88 @@
         "/banking/transactions": {
             "get": {
                 "operationId": "reconciliation.transactions",
-                "summary": "List bank transactions with filters",
+                "description": "Los cinco filtros y el tama\u00f1o de p\u00e1gina se VALIDAN, y por eso est\u00e1n en el\ncontrato: el generador no ve un `$request->bank_account_id` \u2014acceso\ndin\u00e1mico\u2014 y hasta el 2026-08-25 esta operaci\u00f3n publicaba `parameters: []`\nmientras el controlador le\u00eda seis. Un integrador leyendo el spec no pod\u00eda\nsaber que se puede filtrar.\n\n\u26a0\ufe0f Filtrar por un `status` o un `type` que no existe ya no devuelve la\nlista entera sin filtrar: da 422. Es el mismo criterio que el resto de la\nAPI y lo que evita el \u00abped\u00ed los pendientes y me los dio todos\u00bb.\n\nLa respuesta es el paginador de Laravel PELADO (`data`, `current_page`,\n`total`\u2026), no el sobre `{data, meta}` del resto de la casa. Cada fila\nlleva adem\u00e1s `bank_account` y `reconciliations[]`, que el listado carga\nsiempre.",
+                "summary": "Movimientos bancarios, filtrados y paginados",
                 "tags": [
                     "Reconciliation"
+                ],
+                "parameters": [
+                    {
+                        "name": "bank_account_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "pending",
+                                "matched",
+                                "reconciled",
+                                "ignored",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "credit",
+                                "debit",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 200
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -15945,6 +16027,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -15959,9 +16044,22 @@
         "/banking/summary": {
             "get": {
                 "operationId": "reconciliation.summary",
-                "summary": "Get summary statistics",
+                "description": "Los cuatro recuentos salen de un `count()` y son ENTEROS. Se declaran a\nmano porque Scramble tipa bien `Builder::count()` pero no sabe resolver\n`(clone $query)->pending()`: el scope local devuelve `mixed` y degradaba\nlos cuatro a `string`, mientras `total` \u2014que no pasa por un scope\u2014 sal\u00eda\n`integer` en la misma respuesta. Cuatro cadenas y un n\u00famero para el mismo\ntipo de dato.\n\n\u26a0\ufe0f `total_credits` y `total_debits` S\u00cd son cadenas, y a prop\u00f3sito: son\n`SUM(amount)` sobre una columna `decimal(15,2)` que PostgreSQL entrega\ncomo texto, y van en EUROS con decimales como el resto de la banca \u2014no en\nc\u00e9ntimos como el resto de la API.",
+                "summary": "Recuento de movimientos por estado, y los dos totales",
                 "tags": [
                     "Reconciliation"
+                ],
+                "parameters": [
+                    {
+                        "name": "bank_account_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -15975,20 +16073,19 @@
                                             "type": "object",
                                             "properties": {
                                                 "total": {
-                                                    "type": "integer",
-                                                    "minimum": 0
+                                                    "type": "integer"
                                                 },
                                                 "pending": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "matched": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "reconciled": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "ignored": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "total_credits": {
                                                     "type": "string"
@@ -16014,6 +16111,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -16032,6 +16132,23 @@
                 "tags": [
                     "Reconciliation"
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "bank_account_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -16125,6 +16242,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -33127,7 +33247,12 @@
                         "description": "EUROS con decimales (`2322.11` = 2.322,11 \u20ac), a diferencia del resto de la API, que cuenta el dinero en c\u00e9ntimos enteros. La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a c\u00e9ntimos enteros perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
                     },
                     "type": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Signo del apunte tal y como lo trae el extracto: `credit` entra dinero, `debit` sale. El importe va siempre en positivo, as\u00ed que el signo es esto.",
+                        "enum": [
+                            "credit",
+                            "debit"
+                        ]
                     },
                     "concept": {
                         "type": [
@@ -33148,7 +33273,14 @@
                         ]
                     },
                     "status": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Punto del ciclo de conciliaci\u00f3n en el que est\u00e1 el apunte: `pending` reci\u00e9n importado y sin cruzar, `matched` propuesto contra un documento (por `POST /banking/transactions/{id}/match` o por el autom\u00e1tico), `reconciled` confirmado, `ignored` apartado a mano porque no corresponde a ninguno.",
+                        "enum": [
+                            "pending",
+                            "matched",
+                            "reconciled",
+                            "ignored"
+                        ]
                     },
                     "import_batch": {
                         "type": [
@@ -33176,6 +33308,23 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "bank_account": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "La cuenta del apunte, con `id` y `name` y nada m\u00e1s. Llega en el listado (`GET /banking/transactions`), que la carga siempre; en las respuestas de una operaci\u00f3n sobre un apunte suelto no tiene por qu\u00e9 estar."
+                    },
+                    "reconciliations": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Los cruces del apunte con documentos del ERP, cada uno con su `reconcilable` (la factura, el gasto o la recibida). Como `bank_account`: la trae el listado, que la carga siempre.",
+                        "items": {
+                            "type": "object"
+                        }
                     }
                 },
                 "required": [
@@ -37349,13 +37498,13 @@
                         "type": "string"
                     },
                     "annual_depreciation": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "accumulated_depreciation": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "net_book_value": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "depreciation_schedule": {
                         "type": "string"
@@ -37968,9 +38117,11 @@
                         ]
                     },
                     "time_entry_ids": {
-                        "type": "object",
+                        "type": "array",
                         "description": "Los partes de tiempo que esta l\u00ednea cobra. Es lo que hay que\nreenviar en el PUT para conservar o reasignar el v\u00ednculo al\neditar la factura; si el PUT no manda la clave, la l\u00ednea de esa\nposici\u00f3n conserva los suyos. Viaja en la ficha y en las\nrespuestas de escritura, con `[]` cuando la l\u00ednea no cobra\nninguno; en el \u00edndice no viaja.",
-                        "additionalProperties": {}
+                        "items": {
+                            "type": "integer"
+                        }
                     },
                     "taxes": {
                         "type": "array",
@@ -38082,7 +38233,7 @@
                         "type": "integer"
                     },
                     "effective_total": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "tax": {
                         "type": "integer"
@@ -38091,7 +38242,7 @@
                         "type": "integer"
                     },
                     "effective_due_amount": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "sent": {
                         "type": "string"
@@ -38183,16 +38334,20 @@
                         "type": "integer"
                     },
                     "effective_base_total": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "effective_base_due_amount": {
-                        "type": "string"
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "NULL cuando la factura no tiene `base_due_amount` calculado, y entonces es un hueco, no un cero: una factura que no ha calculado su deuda en moneda base no es una factura que no deba nada."
                     },
                     "credited_total": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "credited_base_total": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "currency_id": {
                         "type": [
@@ -38687,11 +38842,11 @@
                         "type": "integer"
                     },
                     "effective_total": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Netos de rectificativas, le\u00eddos igual que en InvoiceResource\npara que las dos vistas digan lo mismo del mismo documento.\nOjo: en camelCase el accessor NO lee la columna `effective_*`\nde la consulta, sino que rehace la suma con `credited_total` \u2014\nque `withCreditNoteAdjustments()` tambi\u00e9n precalcula. De ah\u00ed\nque esto no cueste ni una consulta, y que el scope sea\nobligatorio en cualquier \u00edndice que sirva este recurso."
                     },
                     "effective_due_amount": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "effective_paid_status": {
                         "type": "string"
@@ -41955,7 +42110,7 @@
                     },
                     "discount": {
                         "type": [
-                            "string",
+                            "number",
                             "null"
                         ]
                     },
