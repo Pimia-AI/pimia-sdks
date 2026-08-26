@@ -8,6 +8,55 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.11.0] — 2026-08-27
+
+**Las tres aperturas del panel: delegación, asesoría y VeriFactu.** El día en
+que el núcleo ejecutó «nada de lo que hace Vue se pierde en la web»
+(DECISIONES § 10): tres superficies que eran opacas entran en el contrato,
+todas de primera parte.
+
+Spec sincronizado con **factSaas@0fbfcc92** (2026-08-27) — **384 operaciones**,
+veinticuatro más que la 0.10.0. **Ninguna retirada, ningún cambio estructural
+en las ya publicadas** (comprobado operación a operación, resolviendo `$ref`:
+mismos `security`, cuerpos y respuestas; solo se mueve prosa, incluida la de
+`connected-apps` que factSaas#533 tocó tras salir la 0.10.0). Ningún schema
+nuevo ni retirado.
+
+### Añadido
+
+Las 24 operaciones van TODAS con `x-pimia-partner-availability:
+first-party-only`: exigen scopes que el catálogo reserva al client del panel
+web de Pimia. Entran en el documento porque sus tipos salen de aquí; **un
+integrador no puede llamarlas.**
+
+- **Delegación al agente** (factSaas#538, 16 operaciones, `delegation:*`): el
+  catálogo de tareas delegables (`GET /delegable-tasks`, `discover`,
+  `PUT`/`DELETE /delegable-tasks/{task_type}`, `reverify`), delegar y ejecutar
+  (`POST /delegable-tasks/delegate`, `execute`), el ciclo de propuestas
+  (`approve`/`reject`/`needs-changes`) y el lado del ejecutor
+  (`GET /delegated-tasks`, `claim`/`complete`/`fail`/`propose`).
+- **El vínculo con la asesoría** (factSaas#539, 4 operaciones, `admin:*`):
+  `GET /gestoria-link/asesorias` (directorio de despachos, NIF enmascarado),
+  `GET /gestoria-link/status`, y `POST /request` / `DELETE /revoke`, que crean
+  y rompen el vínculo entre la pyme y su gestoría.
+- **La configuración de VeriFactu** (factSaas#543, 4 operaciones, scope nuevo
+  `verifactu:*`): `GET`/`PUT /settings/verifactu` (entorno AEAT y
+  representante), `POST /settings/verifactu/taxpayer` (alta idempotente del
+  contribuyente) y `POST /settings/verifactu/certificate` (el certificado de
+  firma, `multipart/form-data`). El núcleo condicionó la apertura a dos
+  arreglos que ya van dentro: permiso de usuario en las cuatro rutas y un PUT
+  que contesta **502** cuando la API de VeriFactu falla, en vez del 200
+  «guardado localmente» de antes.
+
+### Cambiado
+
+- El flow `oauth2` del spec publica **`verifactu:read` y `verifactu:write`**,
+  con el prefijo «(solo el panel de Pimia)»: son `first_party_only`, como
+  `admin:*` y `delegation:*`. `SCOPES`/`Scopes` **no cambian** — no hay nada
+  nuevo que un integrador pueda pedir — y el guardarraíl
+  (`typescript/test/scopes.test.js`) suma los dos a la lista explícita de
+  reservados, que es donde se decide de qué lado cae cada scope nuevo.
+
 ## [0.10.0] — 2026-08-26
 
 **«Apps conectadas» entra en el contrato y `PUT /me` deja de ser operación de
