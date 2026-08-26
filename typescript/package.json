@@ -1,6 +1,6 @@
 {
   "name": "@pimia/sdk",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Cliente TypeScript de la API de Pimia para apps de partner: OAuth con PKCE, rotación de refresh persistida, reintentos de rate limit y tipos generados del OpenAPI.",
   "license": "MIT",
   "author": "Pimia (https://pimia.es)",
