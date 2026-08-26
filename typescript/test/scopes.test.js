@@ -40,6 +40,12 @@ const RESERVADOS_A_LA_PRIMERA_PARTE = [
   'admin:write',
   'delegation:read',
   'delegation:write',
+  // La capa B de VeriFactu (2026-08-27, factSaas#543): configuración de un
+  // servicio externo con credencial y certificado de firma, con el criterio
+  // de `admin`. Un integrador ve las cuatro operaciones en el spec pero no
+  // puede pedir el scope.
+  'verifactu:read',
+  'verifactu:write',
 ]
 
 test('SCOPES ofrece todo lo que un integrador puede pedir', () => {

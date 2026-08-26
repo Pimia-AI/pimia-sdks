@@ -705,6 +705,10 @@ export interface paths {
          *     `active_tokens` se queda como estaba (cuenta los PAT del client, rotados
          *     aún no caducados incluidos) para no romper a quien ya lo lee; lo que
          *     cuenta dispositivos es `credentials`.
+         *
+         *     El grant del panel de primera parte NO sale: el panel es la casa, no una
+         *     app conectada (ver el docblock de la clase). Solo se listan las
+         *     invitadas — conectores, el escritorio y las apps de integradores.
          */
         get: operations["connectedApps.index"];
         put?: never;
@@ -737,10 +741,11 @@ export interface paths {
          *     que el resto de la pantalla (este usuario, este tenant, sin revocar), así
          *     que la ruta no lo nombra: no hay forma de pedir un par descuadrado.
          *
-         *     404 cuando la credencial no existe, no es de este usuario o ya no está
-         *     viva (rotada, revocada o caducada): quien cierra estaba mirando una lista
-         *     de hace un momento y lo que necesita es recargarla, no un error distinto
-         *     por cada motivo.
+         *     404 cuando la credencial no existe, no es de este usuario, ya no está
+         *     viva (rotada, revocada o caducada) — o es del panel de primera parte,
+         *     que esta superficie no ve (docblock de la clase): quien cierra estaba
+         *     mirando una lista de hace un momento y lo que necesita es recargarla, no
+         *     un error distinto por cada motivo.
          */
         delete: operations["connectedApps.destroyCredential"];
         options?: never;
@@ -762,6 +767,9 @@ export interface paths {
          * Retira el acceso de la app entera: cae el grant, sus refresh tokens y los
          *     PAT que esa app acuñó para este usuario. Todas sus credenciales con él
          * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El grant del panel de primera parte contesta 404: la casa no es una app
+         *     conectada y esta superficie no lo ve (docblock de la clase).
          */
         delete: operations["connectedApps.destroy"];
         options?: never;
@@ -1083,6 +1091,280 @@ export interface paths {
         get: operations["general.dateFormats"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catálogo de operaciones delegables de esta instancia
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Solo las filas del propio tenant: lo que la instancia hereda no se pinta
+         *     aquí, así que un tenant que no ha descubierto nada arranca vacío.
+         *     `hermes_configured` dice si hay instancia de agente operable — sin ella,
+         *     el resto de la pantalla no tiene nada que activar.
+         */
+        get: operations["delegableCatalog.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Las tareas delegadas del tenant: las 20 últimas, y TODAS las que esperan
+         *     decisión
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Las que están pendientes de decidir entran siempre, aunque caigan fuera de
+         *     esas 20: esta es la única superficie donde se aprueban, así que un
+         *     checkpoint abierto no puede quedar enterrado por el volumen.
+         */
+        get: operations["delegableCatalog.delegations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/delegations/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El dueño APRUEBA la propuesta: el checkpoint humano del
+         *     preview-antes-de-aplicar
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Solo sobre una tarea viva con una propuesta en `proposed` o
+         *     `needs_changes`; cualquier otra cosa es `404`. Aprobar no aplica nada por
+         *     sí mismo: el agente recibe el aviso y aplica su propuesta, y la tarea se
+         *     cierra cuando él reporta el resultado. `applied_at` es lo que dice que la
+         *     aplicación ocurrió de verdad.
+         *
+         *     Opcionalmente se reporta lo que costó verificarla —`human_touch_minutes`
+         *     y `verification_outcome` (`pass` si se aprobó tal cual, `edit` si hubo que
+         *     corregir)—: es la medida del coste humano de la delegación.
+         */
+        post: operations["delegableCatalog.approveProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/delegations/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El dueño RECHAZA la propuesta: no se aplica nada y la tarea queda fallida
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Es terminal, y por eso se separa de «pedir cambios»: no habrá otra
+         *     propuesta sobre esta tarea. Admite `reason` —que se guarda como resultado
+         *     de la tarea— y los `human_touch_minutes` que costó decidirlo, porque
+         *     rechazar también es verificar.
+         */
+        post: operations["delegableCatalog.rejectProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/delegations/{id}/needs-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El dueño PIDE CAMBIOS sobre la propuesta, sin cerrarla
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     NO es una decisión, y por eso no es terminal: la tarea sigue en curso, el
+         *     agente re-arranca, lee el `reason` y vuelve a proponer. Desde aquí se
+         *     puede seguir aprobando o rechazando —la propuesta original queda intacta—,
+         *     así que pedir cambios no quema el checkpoint: lo mantiene abierto.
+         */
+        post: operations["delegableCatalog.needsChangesProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/{task_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Alta o activación de una operación delegable
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Sirve para activar una fila existente o para añadir una skill descubierta.
+         *     La activación EXIGE verificación viva contra la instancia: si la skill no
+         *     está montada, se responde `422` con `verified: false` y el catálogo no se
+         *     toca. `201` si la fila se creó, `200` si ya existía.
+         */
+        put: operations["delegableCatalog.upsert"];
+        post?: never;
+        /**
+         * Desactiva una operación delegable. NO la borra
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     La fila se conserva —con su verificación— para poder reactivarla rápido;
+         *     lo que cambia es `enabled`, y con eso deja de ser delegable. Un tipo que
+         *     la instancia hereda y del que este tenant no tiene fila propia se apaga
+         *     igual: se crea el apagado local que lo oculta aquí.
+         */
+        delete: operations["delegableCatalog.disable"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lo que el agente de esta instancia sabe hacer, consultado en vivo
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Devuelve las skills montadas en la instancia del tenant marcando cuáles
+         *     ya están en el catálogo (`in_catalog`) y cuáles están activadas
+         *     (`enabled`). Es la lista sobre la que el dueño activa operaciones.
+         *
+         *     Llamada SALIENTE y síncrona: `409` si el tenant no tiene instancia y
+         *     `502` si no se pudo determinar el inventario (la instancia no responde).
+         *     Un 502 aquí no significa «ninguna skill»: significa que no se sabe.
+         */
+        get: operations["delegableCatalog.discover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/{task_type}/reverify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-comprueba contra la instancia que la skill de una operación sigue
+         *     montada
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Invariante: activa ⇒ verificada. Si la skill ya no verifica, la operación
+         *     se desactiva en la misma llamada, y la respuesta lo dice en `verified`.
+         */
+        post: operations["delegableCatalog.reverify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ejecución SÍNCRONA de prueba: «Probar» una operación y ver la respuesta
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     El dueño manda un prompt en vivo al agente de su instancia y recibe lo que
+         *     conteste. Es la versión síncrona, para probar; la delegación de verdad es
+         *     asíncrona y va por `delegate`.
+         *
+         *     Si se indica `task_type`, la operación debe estar ACTIVADA (`422` si no) y
+         *     se le pide al agente que use esa skill. Fail-closed: `409` sin instancia y
+         *     `502` si no responde.
+         */
+        post: operations["delegableCatalog.execute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/delegate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delega una tarea al agente. Asíncrona: se crea y se entrega
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     La tarea aparece en el Copilot del tenant y el agente la trabaja; el
+         *     resultado vuelve después por sus callbacks, así que lo que se consulta
+         *     luego es `delegable-tasks/delegations`, no esta respuesta. Si se indica
+         *     `task_type`, la operación debe estar ACTIVADA (`422` si no).
+         *
+         *     `201` cuando se entregó. Si la instancia no la acepta, la tarea queda
+         *     creada y `pending`, y se responde `502` con la tarea en el cuerpo: es una
+         *     entrega fallida, no una tarea perdida.
+         */
+        post: operations["delegableCatalog.delegate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1606,6 +1888,81 @@ export interface paths {
          */
         post: operations["fiscalQuarter.toggle"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/gestoria-link/asesorias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List available advisory firms for tenant users to browse.
+         *     Searches across users table AND gestoria_settings (nombre_despacho, nif_despacho, email_despacho)
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["gestoriaLink.asesorias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/gestoria-link/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí. */
+        get: operations["gestoriaLink.status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/gestoria-link/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request linkage: accepts gestoria_id (select from list) or link_code (manual code)
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["gestoriaLink.request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/gestoria-link/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí. */
+        delete: operations["gestoriaLink.revoke"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4317,6 +4674,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/delegated-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El poll del agente: sus tareas delegadas y aún sin resolver
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Solo tareas del propio tenant que estén `pending` o `in_progress`. Cada
+         *     una viaja con su señal de autonomía —`write_effect`, `default_mode` y
+         *     `verifiability_level`—, que es lo que le dice al agente si puede aplicar
+         *     directamente o tiene que proponer y esperar aprobación.
+         */
+        get: operations["tenantDelegationCallback.delegatedIndex"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegated-tasks/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El agente RECLAMA una tarea pendiente y la pone en curso
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Idempotente: reclamar una que ya se tenía devuelve la misma tarea sin
+         *     efecto. Una ya resuelta no se re-reclama (`409`), y una que no es del
+         *     propio tenant no existe (`404`).
+         */
+        post: operations["tenantDelegationCallback.taskClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegated-tasks/{id}/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El agente PROPONE un borrador reversible en vez de aplicarlo
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Preview-antes-de-aplicar: para lo que muta datos, el agente no escribe —
+         *     manda su propuesta (`summary`, `changes[]`, `evals[]`), la tarea sigue en
+         *     curso y el dueño decide. Es el checkpoint reversible.
+         *
+         *     `409` si la propuesta ya fue aprobada: esa decisión no se pisa con un
+         *     re-propose que llega tarde. `422` si la tarea no admite propuesta porque
+         *     ya corre en modo autónomo — ahí lo que toca es `complete`.
+         *
+         *     El sello de verifiabilidad lo deriva el servidor de los `evals`; el que
+         *     venga en el cuerpo se reemplaza.
+         */
+        post: operations["tenantDelegationCallback.taskPropose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegated-tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El agente reporta la tarea COMPLETADA, con un resultado verificable
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Acepta el `result_data` estructurado (preferido) y/o un `result` en prosa;
+         *     al menos uno es obligatorio. Idempotente sobre una tarea ya completada.
+         *
+         *     Lo que puede cerrarse directo depende del modo: en modo autónomo sí, y en
+         *     modo `preview` hace falta una propuesta aprobada — el agente no se salta
+         *     su propio checkpoint (`409`, con `code: proposal_required`).
+         *
+         *     ⚠️ Reportar «completada» no basta para quedar aplicada. Si la tarea
+         *     reclama escrituras, el reporte tiene que traer evidencia —sello `pass`
+         *     derivado de los `evals`—: un reporte que declara fallo, o que llega sin
+         *     esa evidencia, cierra la tarea como `failed`. `applied_at` afirma que las
+         *     escrituras aprobadas ocurrieron, así que no se presume del visto bueno.
+         */
+        post: operations["tenantDelegationCallback.taskComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegated-tasks/{id}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El agente reporta la tarea FALLIDA
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Igual que al completar, hace falta al menos `result` (prosa) o
+         *     `result_data` (estructurado): una tarea fallida también lleva su sello
+         *     derivado por el servidor, para que el panel pinte los `evals` honestos y
+         *     no lo que el agente diga de sí mismo.
+         */
+        post: operations["tenantDelegationCallback.taskFail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenant-modules": {
         parameters: {
             query?: never;
@@ -4890,6 +5385,98 @@ export interface paths {
         put?: never;
         /** Retry sending an invoice to AEAT via VeriFactu */
         post: operations["veriFactu.retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/verifactu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the current VeriFactu configuration (taxpayer data)
+         * @description **Reservada al panel de Pimia.** Exige `verifactu:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     LEE Y NADA MÁS. Hasta 2026-08-22 este GET creaba el contribuyente en
+         *     VeriFactu si no existía: `resolveTaxpayer` intentaba SIEMPRE el
+         *     `createTaxpayer` y además escribía `verifactu_taxpayer_id` en el tenant.
+         *     O sea que abrir la pantalla de ajustes daba de alta a la empresa ante un
+         *     tercero, y un `GET` repetido por un monitor o un prefetch la daba de alta
+         *     sola. Un GET que registra a la empresa en la AEAT no es una lectura.
+         *
+         *     Quien quiera crearlo lo pide explícitamente: `PUT /settings/verifactu`
+         *     (guardar la configuración, que es lo que hace el panel) o el
+         *     `POST /settings/verifactu/taxpayer` de abajo. Mientras no exista, esto
+         *     devuelve el payload vacío, que ya distingue el caso con
+         *     `authorization_status = 'none'`.
+         */
+        get: operations["veriFactuSettings.index"];
+        /**
+         * Update VeriFactu settings (environment, representative mode)
+         * @description **Reservada al panel de Pimia.** Exige `verifactu:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Si hay taxpayer en VeriFactu, actualiza via API. Si el tenant aún no
+         *     tiene credencial, o faltan los datos para crear el contribuyente, guarda
+         *     en local para cuando se configure — ese es el único caso en que «guardado
+         *     localmente» es verdad y no un fallo disfrazado.
+         *
+         *     Hasta 2026-08-27 CUALQUIER excepción caía al guardado local y contestaba
+         *     200 «Configuración guardada localmente»: con VeriFactu caído, el
+         *     formulario decía «guardado» sobre un `is_production` que no llegó a donde
+         *     importa. Ahora un fallo de la API remota contesta 502 con el error.
+         */
+        put: operations["veriFactuSettings.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/verifactu/taxpayer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alta explícita del contribuyente en VeriFactu
+         * @description **Reservada al panel de Pimia.** Exige `verifactu:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Es el POST que se lleva el efecto que tenía el GET. Si ya existe, lo
+         *     devuelve sin crear nada (idempotente); si faltan el NIF o el nombre de la
+         *     empresa responde 422 diciéndolo, en vez de dejar un aviso en el log y
+         *     devolver un payload vacío que no explica por qué está vacío.
+         */
+        post: operations["veriFactuSettings.storeTaxpayer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/verifactu/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a .pfx/.p12 certificate to VeriFactu
+         * @description **Reservada al panel de Pimia.** Exige `verifactu:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["veriFactuSettings.uploadCertificate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10726,6 +11313,512 @@ export interface operations {
             };
         };
     };
+    "delegableCatalog.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hermes_configured: boolean;
+                        slug: string | null;
+                        tasks: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        copilot_url: string | null;
+                        delegations: {
+                            id: number;
+                            title: string;
+                            task_type: string | null;
+                            agent_skill: string | null;
+                            status: string;
+                            hermes_kanban_id: string | null;
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
+                            result: string | null;
+                            result_data: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_status: string | null;
+                            proposed_at: string | null;
+                            applied_at: string | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.approveProposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    human_touch_minutes?: number | null;
+                    /** @enum {string|null} */
+                    verification_outcome?: "pass" | "edit" | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            id: number;
+                            title: string;
+                            task_type: string | null;
+                            agent_skill: string | null;
+                            status: string;
+                            hermes_kanban_id: string | null;
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
+                            result: string | null;
+                            result_data: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_status: string | null;
+                            proposed_at: string | null;
+                            applied_at: string | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.rejectProposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    reason?: string | null;
+                    human_touch_minutes?: number | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            id: number;
+                            title: string;
+                            task_type: string | null;
+                            agent_skill: string | null;
+                            status: string;
+                            hermes_kanban_id: string | null;
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
+                            result: string | null;
+                            result_data: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_status: string | null;
+                            proposed_at: string | null;
+                            applied_at: string | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.needsChangesProposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            id: number;
+                            title: string;
+                            task_type: string | null;
+                            agent_skill: string | null;
+                            status: string;
+                            hermes_kanban_id: string | null;
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
+                            result: string | null;
+                            result_data: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_status: string | null;
+                            proposed_at: string | null;
+                            applied_at: string | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.upsert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    agent_skill: string;
+                    label: string;
+                    write_effect?: boolean;
+                    verifiability_level?: number | null;
+                    icon?: string | null;
+                    color?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                        };
+                        verified: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        slug: string;
+                        skills: {
+                            agent_skill: string;
+                            task_type: string;
+                            label: string;
+                            description: string | null;
+                            disabled_on_hermes: boolean;
+                            write_effect: boolean;
+                            verifiability_level: number | null;
+                            in_catalog: boolean;
+                            enabled: boolean;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.reverify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                        };
+                        verified: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    prompt: string;
+                    task_type?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        skill: string | null;
+                        response: string;
+                        usage: {
+                            [key: string]: unknown;
+                        } | null;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.delegate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    task_type?: string | null;
+                    context?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            id: number;
+                            title: string;
+                            task_type: string | null;
+                            agent_skill: string | null;
+                            status: string;
+                            hermes_kanban_id: string | null;
+                            plane: string;
+                            origin_client_id: string | null;
+                            origin_client_name: string | null;
+                            result: string | null;
+                            result_data: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_status: string | null;
+                            proposed_at: string | null;
+                            applied_at: string | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "deliveryNotes.markDelivered": {
         parameters: {
             query?: never;
@@ -11973,6 +13066,165 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "gestoriaLink.asesorias": {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            nif_masked: string | null;
+                            email: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "gestoriaLink.status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            status: string;
+                            link_code: string;
+                            /** Format: date-time */
+                            requested_at: string | null;
+                            /** Format: date-time */
+                            accepted_at: string | null;
+                            permissions: unknown[] | null | {
+                                read_invoices: boolean;
+                                read_customers: boolean;
+                                read_suppliers: boolean;
+                                export_accounting: boolean;
+                                delete_data: boolean;
+                            };
+                            gestoria: {
+                                id: string | null;
+                                name: string | null;
+                                nif: string | null;
+                                email: string | null;
+                                phone: string | null;
+                            };
+                        } | {
+                            /** @constant */
+                            status: "none";
+                            permissions: {
+                                read_invoices: boolean;
+                                read_customers: boolean;
+                                read_suppliers: boolean;
+                                export_accounting: boolean;
+                                delete_data: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "gestoriaLink.request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    gestoria_id?: number | null;
+                    link_code?: string | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Solicitud enviada a la asesoría.";
+                        data: {
+                            id: number;
+                            status: string;
+                            link_code: string;
+                            /** Format: date-time */
+                            requested_at: string | null;
+                            /** Format: date-time */
+                            accepted_at: string | null;
+                            permissions: unknown[] | null | {
+                                read_invoices: boolean;
+                                read_customers: boolean;
+                                read_suppliers: boolean;
+                                export_accounting: boolean;
+                                delete_data: boolean;
+                            };
+                            gestoria: {
+                                id: string | null;
+                                name: string | null;
+                                nif: string | null;
+                                email: string | null;
+                                phone: string | null;
+                            };
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "gestoriaLink.revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Vinculación revocada.";
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "general.getAllUsedCurrencies": {
@@ -17901,6 +19153,292 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "tenantDelegationCallback.delegatedIndex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        tenant_id: string;
+                        task_type: string | null;
+                        agent_skill: string | null;
+                        title: string;
+                        context: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_status: string;
+                        delegated_at: string | null;
+                        hermes_kanban_id: string | null;
+                        result_data: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_result: string | null;
+                        delegation_proposal: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_proposal_status: string | null;
+                        delegation_proposed_at: string | null;
+                        delegation_applied_at: string | null;
+                        plane: string;
+                        origin_client_id: string | null;
+                        created_at: string | null;
+                        updated_at: string | null;
+                        write_effect: boolean;
+                        default_mode: string;
+                        verifiability_level: number | null;
+                    }[];
+                };
+            };
+        };
+    };
+    "tenantDelegationCallback.taskClaim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        tenant_id: string;
+                        task_type: string | null;
+                        agent_skill: string | null;
+                        title: string;
+                        context: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_status: string;
+                        delegated_at: string | null;
+                        hermes_kanban_id: string | null;
+                        result_data: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_result: string | null;
+                        delegation_proposal: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_proposal_status: string | null;
+                        delegation_proposed_at: string | null;
+                        delegation_applied_at: string | null;
+                        plane: string;
+                        origin_client_id: string | null;
+                        created_at: string | null;
+                        updated_at: string | null;
+                    };
+                };
+            };
+        };
+    };
+    "tenantDelegationCallback.taskPropose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    proposal: {
+                        schema_version?: number | null;
+                        /** @enum {string|null} */
+                        mode?: "applied" | "preview" | null;
+                        agent_trace_id?: string | null;
+                        summary: string;
+                        changes?: {
+                            label: string;
+                            type?: string | null;
+                            action?: string | null;
+                            link?: string | null;
+                            record_id?: string | null;
+                            apply?: string[] | null;
+                        }[] | null;
+                        evals?: {
+                            label: string;
+                            pass: boolean;
+                            detail?: string | null;
+                            nivel?: number | null;
+                            cuenta_para_sello?: boolean | null;
+                        }[] | null;
+                        verifiability?: {
+                            nivel?: number | null;
+                            cuenta_para_sello?: boolean | null;
+                            /** @enum {string|null} */
+                            sello?: "pass" | "fail" | "n/a" | null;
+                        } | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        tenant_id: string;
+                        task_type: string | null;
+                        agent_skill: string | null;
+                        title: string;
+                        context: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_status: string;
+                        delegated_at: string | null;
+                        hermes_kanban_id: string | null;
+                        result_data: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_result: string | null;
+                        delegation_proposal: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_proposal_status: string | null;
+                        delegation_proposed_at: string | null;
+                        delegation_applied_at: string | null;
+                        plane: string;
+                        origin_client_id: string | null;
+                        created_at: string | null;
+                        updated_at: string | null;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "tenantDelegationCallback.taskComplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    result?: string | null;
+                    result_data?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        tenant_id: string;
+                        task_type: string | null;
+                        agent_skill: string | null;
+                        title: string;
+                        context: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_status: string;
+                        delegated_at: string | null;
+                        hermes_kanban_id: string | null;
+                        result_data: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_result: string | null;
+                        delegation_proposal: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_proposal_status: string | null;
+                        delegation_proposed_at: string | null;
+                        delegation_applied_at: string | null;
+                        plane: string;
+                        origin_client_id: string | null;
+                        created_at: string | null;
+                        updated_at: string | null;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "tenantDelegationCallback.taskFail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    result?: string | null;
+                    result_data?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        tenant_id: string;
+                        task_type: string | null;
+                        agent_skill: string | null;
+                        title: string;
+                        context: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_status: string;
+                        delegated_at: string | null;
+                        hermes_kanban_id: string | null;
+                        result_data: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_result: string | null;
+                        delegation_proposal: {
+                            [key: string]: unknown;
+                        } | null;
+                        delegation_proposal_status: string | null;
+                        delegation_proposed_at: string | null;
+                        delegation_applied_at: string | null;
+                        plane: string;
+                        origin_client_id: string | null;
+                        created_at: string | null;
+                        updated_at: string | null;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "tenantModules.index": {
         parameters: {
             query?: never;
@@ -21691,6 +23229,168 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "veriFactuSettings.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: unknown[] | {
+                            id: null;
+                            nif: string;
+                            name: string;
+                            certificate_expires_at: null;
+                            is_production: boolean;
+                            use_representative: boolean;
+                            representative_nif: null;
+                            representative_name: null;
+                            /** @constant */
+                            authorization_status: "none";
+                        };
+                    };
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    "veriFactuSettings.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    is_production?: boolean;
+                    use_representative?: boolean;
+                    representative_nif?: string | null;
+                    representative_name?: string | null;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description Sin contribuyente y sin datos para crearlo (NIF o nombre): local
+             *     hasta que existan.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Configuración guardada localmente. Se sincronizará con VeriFactu cuando se configure el contribuyente.";
+                        data: unknown[];
+                    } | {
+                        /** @constant */
+                        message: "Configuración actualizada correctamente.";
+                        data: unknown[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    "veriFactuSettings.storeTaxpayer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            [key: string]: unknown;
+                        } | null | unknown[];
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    "veriFactuSettings.uploadCertificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Maximum file size: 5120 kilobytes.
+                     */
+                    certificate: Blob;
+                    /** @description 5MB max */
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Certificado subido correctamente.";
+                        data: unknown[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "webhookEndpoints.index": {
