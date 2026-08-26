@@ -215,6 +215,29 @@ obtiene en el registro de Pimia o en el panel de integrador).
      de registro vive en `resources/scripts/central/`, o sea en el bundle de
      Vite: sin `npm run build` el navegador sigue con el SPA anterior y la
      medición mide el código viejo creyendo que mide el nuevo.
+   - ⛔ **El grant del panel es FONTANERÍA, no una «app conectada»**
+     (👤, 2026-08-26). Corolario de que la web sea el panel: su OAuth de
+     primera parte es cómo viaja, no algo que el usuario haya «autorizado».
+     Vue nunca pudo salir en su propia lista de apps conectadas porque entra
+     por sesión; la web, mientras viaje por grant, salía — y salió, con su
+     botón de revocarse a sí mismo, en la primera pasada real de esa pantalla.
+     Así que los grants de clients `first_party` quedan **fuera de esa
+     superficie entera**: ni se listan, ni se revocan, ni se cierran sus
+     credenciales por ahí (404, la misma respuesta que «no existe» — para esa
+     pantalla, un grant de la casa no existe). Hecho y desplegado a dev en
+     galeote/factSaas#533; la pantalla que lo consume es
+     `pimia-web-shadcn#200`.
+
+     **Lo que esto deja abierto, dicho con fecha**: al salir de esa lista,
+     «cerrar las sesiones del panel en otros dispositivos» se queda sin
+     puerta. El día que haga falta será una pantalla de **cuenta**, con
+     lenguaje de sesiones y no de apps — y lo decide 👤.
+
+     ⚠️ Y el reverso, que se confunde fácil: **`pimia-workspace` (con Buzz) SÍ
+     es una app conectada** y sí pasa por autorización. Mismo código portable
+     de `features/pimia/`, dos anfitriones, **dos naturalezas distintas** — el
+     panel es la casa y el escritorio es una invitada. Quien porte esa vista al
+     escritorio no puede heredar de aquí la exclusión.
 
 ## Cómo se aplica en este repo (núcleo)
 
