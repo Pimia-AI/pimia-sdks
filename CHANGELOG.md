@@ -67,12 +67,14 @@ tres más que la 0.9.0. **Ninguna retirada, ningún schema tocado.**
   declarando `settings:write`. Antes exigía además `admin:write` —reservado a
   la primera parte— y un token de integrador recibía `403`.
 
-  ⚠️ **Va con una condición nueva del núcleo que el contrato NO publica**:
-  cambiar el correo o la contraseña exige `current_password`, la vigente del
-  usuario. El `requestBody` de esta operación sale **vacío** en el spec (el
-  generador no lee las reglas de ese `FormRequest`), así que los tipos no te lo
-  van a decir. En la práctica: el **nombre** lo cambias sin más; el correo y la
-  contraseña, solo si la persona te facilita la suya en ese momento.
+  ⚠️ **Va con una condición nueva del núcleo**: cambiar el correo o la
+  contraseña exige `current_password`, la vigente del usuario. El contrato la
+  publica —`ProfileRequest.current_password`, con la condición escrita en la
+  descripción del schema— pero **como campo opcional**, porque es obligatoria
+  solo en ese caso y un tipo estático no expresa un condicional. Es decir: que
+  `tsc` te deje omitirla no significa que el servidor te la deje omitir. En la
+  práctica: el **nombre** lo cambias sin más; el correo y la contraseña, solo
+  si la persona te facilita la suya en ese momento.
 
 - **`POST /tasks/{task}/delegate`** pasa de `owner-only` a `first-party-only` y
   declara `crm:write` + `delegation:write`. No es una apertura: `delegation` lo
