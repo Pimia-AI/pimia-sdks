@@ -76,7 +76,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
    lo de las claves de proveedor y el ajuste por clave arbitraria ya está
    cerrado; siguen abiertos la clave SES sin cifrar y fuera de los patrones,
    el patrón `*_password` que no casa con `_pass`, dos GET con efectos
-   (verifactu crea el taxpayer; estado OAuth del LLM), `default_scope`
+   (verifactu crea el taxpayer — ⚠️ cerrado el 2026-08-22 y verificado el 25 en
+   el estudio de verifactu: el GET ya no crea nada; la frase sobrevivió a la
+   corrección general de abajo y se fecha aquí—; estado OAuth del LLM), `default_scope`
    desconocido → acceso total con registro dinámico abierto, y el modo del
    guard por defecto en «observar». Eslabón 1 antes del 2.
    **Hecho (2026-08-22): la condición se cumplió y el catálogo ya está
@@ -238,6 +240,43 @@ obtiene en el registro de Pimia o en el panel de integrador).
      de `features/pimia/`, dos anfitriones, **dos naturalezas distintas** — el
      panel es la casa y el escritorio es una invitada. Quien porte esa vista al
      escritorio no puede heredar de aquí la exclusión.
+
+10. **Nada de lo que hace el panel Vue se pierde en la web (2026-08-27).**
+    La regla, dicha por 👤 la noche del 26 al 27 con estas palabras: la web
+    sustituye al panel Vue, Vue será deprecado, y **toda función que hoy hace
+    Vue tiene que poder hacerse en la web**. Es el cierre de las decisiones 1
+    y 4: «referencia funcional de lo que la web tiene que igualar» deja de
+    admitir excepciones por superficie. Lo que la regla resolvió, pieza a
+    pieza:
+    - **Los segmentos de primera parte pendientes se publican ENTEROS**:
+      `gestoria-link` (asesoría, galeote/factSaas#513) y
+      `delegable-tasks`/`delegated-tasks` (tareas delegables,
+      galeote/factSaas#535), con `request`/`revoke` y `delegate`/`execute`
+      incluidos. El argumento es **paridad, no ampliación**: sus dominios
+      (`admin`, `delegation`) se emiten `first_party_only`, así que el único
+      actor por esa vía es el panel con su usuario dentro — exactamente el que
+      ya hace todo eso en el Vue por sesión. Un integrador verá las rutas en
+      el spec pero no puede obtener el scope. Y la alternativa (partir los
+      segmentos) rompería al propio Vue sin proteger nada que el modelo de
+      scopes no proteja ya.
+    - **La configuración de VeriFactu (capa B) se abre**, por el camino
+      condicionado de `ESTUDIO-MCP-VERIFACTU.md` § I.7 (repo web): ANTES, las
+      dos condiciones en el núcleo — permiso de usuario en sus cuatro rutas
+      (hoy no tienen ninguno: «solo el dueño» era una propiedad del menú de
+      Vue, no del sistema) y que el `PUT` deje de contestar 200 cuando la API
+      de VeriFactu falla —; DESPUÉS, el par `verifactu:*` `first_party_only`,
+      el `domain_override` a `verifactu` y su entrada en la superficie. El
+      certificado es multiparte y entra aparte, por la puerta multiparte de
+      la web, con su propia issue.
+    - **Lo que la regla NO toca**: acuñar credenciales sigue fuera para todos
+      (decisión 4), y en `mcp` ni siquiera hay mitad abrible — **listar y
+      acuñar son la misma ruta** (`GET` y `POST /mcp/tokens`), medido en
+      § II.2 del estudio, que es el motivo que vale para no volver a
+      estudiarlo desde cero. WhatsApp es de la fase de mensajería, no de esta
+      regla.
+
+    El límite de la regla, dicho para que nadie lo estire: paridad de
+    **funciones de la pyme**, no de credenciales de la casa.
 
 ## Cómo se aplica en este repo (núcleo)
 
