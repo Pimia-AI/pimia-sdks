@@ -104,8 +104,21 @@ export const SCOPES = {
   reportsRead: 'reports:read',
   /** Leer la configuración de la empresa (impuestos, preferencias, series). */
   settingsRead: 'settings:read',
+  /**
+   * Configurar la empresa: impuestos, preferencias, campos personalizados y el
+   * perfil del propio usuario (`PUT /me`). Ojo con ese último: cambiar el
+   * correo o la contraseña exige además `current_password`, que es del usuario
+   * y no tuya.
+   */
+  settingsWrite: 'settings:write',
+  /** Cerrar y reabrir los trimestres fiscales del tenant. */
+  reportsWrite: 'reports:write',
   /** Ver la tienda de módulos y qué tiene contratado el tenant. */
   storeRead: 'store:read',
+  /** Instalar módulos de la tienda en el tenant. */
+  storeWrite: 'store:write',
+  /** Leer documentos con IA (OCR de gastos y de facturas recibidas). */
+  ocrWrite: 'ocr:write',
   /** Leer la gestión de personal: empleados, ausencias, fichajes, calendarios. */
   hrRead: 'hr:read',
   /** Gestionar el personal: altas, ausencias, correcciones de fichaje, horarios. */

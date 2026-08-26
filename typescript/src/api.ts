@@ -168,7 +168,7 @@ export interface paths {
          *       `group_by=customer` añade by_customer; con `group_by=category`, by_category.
          *       Lo consumen las tools MCP de informes (invoice-shelf-mcp).
          *
-         *     Importes en céntimos, como el resto de la API.
+         *     Importes en subunidades enteras de la moneda, como el resto de la API.
          *
          *     QUÉ FACTURAS CUENTAN, que es la clase de cifra que un integrador no puede
          *     verificar por su cuenta y que hasta el 2026-08-24 el contrato no decía:
@@ -583,7 +583,6 @@ export interface paths {
         /**
          * Update the Admin profile.
          *     Includes name, email and (or) password
-         * @description **No disponible para integradores.** Exige `admin:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
          */
         put: operations["company.updateProfile"];
         post?: never;
@@ -676,6 +675,95 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/connected-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Apps a las que este usuario ha autorizado el acceso a su cuenta
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `credentials` son las sesiones vivas del grant: una por dispositivo o
+         *     proceso que completó una ceremonia OAuth. `connected_at` es el instante
+         *     de ESA ceremonia y no el de la última renovación, que es lo que hace que
+         *     la pantalla pueda decir «conectado desde el 25» de una sesión que rota su
+         *     refresh cada día.
+         *
+         *     `last_used_at` sale del PAT emparejado y no del refresh: el grant se toca
+         *     en canje/refresh —una vez al día— y el PAT en CADA petición, así que es
+         *     el único que sabe si esa sesión sigue trabajando. Sale null mientras la
+         *     credencial no haya hecho ninguna petición todavía.
+         *
+         *     `active_tokens` se queda como estaba (cuenta los PAT del client, rotados
+         *     aún no caducados incluidos) para no romper a quien ya lo lee; lo que
+         *     cuenta dispositivos es `credentials`.
+         */
+        get: operations["connectedApps.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/connected-apps/credentials/{credentialId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cierra UNA credencial —un dispositivo— sin tocar las demás ni el grant
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     La app sigue conectada desde donde siga viva; para retirarle el acceso
+         *     entero está `destroy`. Por eso esta operación no emite `app.revoked`: al
+         *     integrador no le ha caído la puerta, se le ha caído una sesión.
+         *
+         *     El grant sale de la propia credencial y se comprueba con el mismo filtro
+         *     que el resto de la pantalla (este usuario, este tenant, sin revocar), así
+         *     que la ruta no lo nombra: no hay forma de pedir un par descuadrado.
+         *
+         *     404 cuando la credencial no existe, no es de este usuario o ya no está
+         *     viva (rotada, revocada o caducada): quien cierra estaba mirando una lista
+         *     de hace un momento y lo que necesita es recargarla, no un error distinto
+         *     por cada motivo.
+         */
+        delete: operations["connectedApps.destroyCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/connected-apps/{authorizationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Retira el acceso de la app entera: cae el grant, sus refresh tokens y los
+         *     PAT que esa app acuñó para este usuario. Todas sus credenciales con él
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["connectedApps.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3248,8 +3336,8 @@ export interface paths {
          *
          *     ⚠️ `total_credits` y `total_debits` SÍ son cadenas, y a propósito: son
          *     `SUM(amount)` sobre una columna `decimal(15,2)` que PostgreSQL entrega
-         *     como texto, y van en EUROS con decimales como el resto de la banca —no en
-         *     céntimos como el resto de la API.
+         *     como texto, y van en la UNIDAD MAYOR de la moneda, con decimales, como el
+         *     resto de la banca —no en subunidades enteras como el resto de la API.
          */
         get: operations["reconciliation.summary"];
         put?: never;
@@ -3290,10 +3378,10 @@ export interface paths {
          *     ordenados por `score` descendente (importe, proximidad de fecha,
          *     referencia y nombre del cliente).
          *
-         *     **`amount` va en céntimos**, como el `total` del que sale y como todo
-         *     importe de documento en esta API. No lo confundas con
-         *     `bank_transactions.amount`, que sí va en euros con decimales por ser el
-         *     reflejo de un extracto bancario. `number` es `null` en los borradores,
+         *     **`amount` va en subunidades enteras**, como el `total` del que sale y como
+         *     todo importe de documento en esta API. No lo confundas con
+         *     `bank_transactions.amount`, que sí va en la unidad mayor con decimales por
+         *     ser el reflejo de un extracto bancario. `number` es `null` en los borradores,
          *     que nacen sin numerar: el identificador estable es `model.id`.
          */
         get: operations["reconciliation.suggestions"];
@@ -4097,7 +4185,7 @@ export interface paths {
         put?: never;
         /**
          * POST tasks/{task}/delegate — delega esta tarea CRM a su agente Pim
-         * @description **No disponible para integradores.** Exige `delegation:write`, que el Authorization Server de Pimia no emite: la acción la realiza el dueño desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea explícito, no para que se llame.
+         * @description **Reservada al panel de Pimia.** Exige `crm:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes —se le rechazan en el registro y no se le anuncian— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Reusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip
          *     delegar→agente→callback→sello): compone un context rico desde la tarea (título,
@@ -5112,7 +5200,7 @@ export interface components {
             name: string;
             iban: string | null;
             bank_name: string | null;
-            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
+            /** @description En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (céntimos, en una moneda de dos decimales). La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a la subunidad perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             opening_balance: string;
             currency_code: string;
             enabled: boolean;
@@ -5122,7 +5210,7 @@ export interface components {
             updated_at: string | null;
             /** Format: date-time */
             deleted_at: string | null;
-            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
+            /** @description En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (céntimos, en una moneda de dos decimales). La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a la subunidad perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             balance: string;
         };
         /** BankImport */
@@ -5151,7 +5239,7 @@ export interface components {
             transaction_date: string;
             /** Format: date-time */
             value_date: string | null;
-            /** @description EUROS con decimales (`2322.11` = 2.322,11 €), a diferencia del resto de la API, que cuenta el dinero en céntimos enteros. La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a céntimos enteros perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
+            /** @description En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (céntimos, en una moneda de dos decimales). La banca es la excepción porque es lo que trae un extracto bancario: redondearlo a la subunidad perdería los decimales del apunte. La conciliación convierte al comparar con facturas y gastos. */
             amount: string;
             /**
              * @description Signo del apunte tal y como lo trae el extracto: `credit` entra dinero, `debit` sale. El importe va siempre en positivo, así que el signo es esto.
@@ -6082,10 +6170,11 @@ export interface components {
             sub_total?: number | null;
             total?: number | null;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             tax?: number | null;
             template_name?: string | null;
@@ -6227,10 +6316,11 @@ export interface components {
             exchange_rate?: string | null;
             payment_method_id?: string | null;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             amount: number;
             customer_id?: string | null;
@@ -6766,10 +6856,11 @@ export interface components {
             sub_total?: number | null;
             total?: number | null;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             tax?: number | null;
             /**
@@ -6947,10 +7038,11 @@ export interface components {
         ItemsRequest: {
             name: string;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             price: number;
             /** @enum {string|null} */
@@ -7249,12 +7341,20 @@ export interface components {
             currency?: components["schemas"]["CurrencyResource"] | null;
             transaction?: components["schemas"]["TransactionResource"] | null;
         };
-        /** ProfileRequest */
+        /**
+         * ProfileRequest
+         * @description `PUT /me` — el nombre, el correo y la contraseña de quien llama.
+         *
+         *     Cambiar el **correo** o la **contraseña** exige `current_password`, la
+         *     vigente. Cambiar solo el nombre no: `name` y `email` son los dos `required`,
+         *     así que reenviar el mismo correo no cuenta como cambio.
+         */
         ProfileRequest: {
             name: string;
             password?: string | null;
             /** Format: email */
             email: string;
+            current_password?: string;
         };
         /** ProjectRequest */
         ProjectRequest: {
@@ -7390,10 +7490,11 @@ export interface components {
             sub_total: number;
             total: number;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             tax: number;
             /**
@@ -7510,10 +7611,11 @@ export interface components {
             sub_total?: number | null;
             total?: number | null;
             /**
-             * @description `integer` porque son CÉNTIMOS. Sin regla de tipo, el contrato
-             *     publicaba este campo como `string` —el generador deduce el tipo
-             *     de las reglas— y la API aceptaba «10.5», que la columna guardaba
-             *     como 10,5 céntimos: medio céntimo, que no significa nada.
+             * @description `integer` porque son SUBUNIDADES enteras de la moneda. Sin regla
+             *     de tipo, el contrato publicaba este campo como `string` —el
+             *     generador deduce el tipo de las reglas— y la API aceptaba «10.5»,
+             *     que la columna guardaba como 10,5: media subunidad, que no
+             *     significa nada.
              */
             tax?: number | null;
             /**
@@ -8802,7 +8904,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        version: null | unknown[] | string | Record<string, never>;
+                        version: string | null;
                         /** @constant */
                         channel: "stable";
                     };
@@ -9766,6 +9868,94 @@ export interface operations {
             };
         };
     };
+    "connectedApps.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                            confidential: boolean;
+                            scopes: string[];
+                            permissions: {
+                                text: string;
+                                write: boolean;
+                            }[];
+                            summary: string;
+                            connected_at: string | null;
+                            last_used_at: string | null;
+                            active_tokens: number;
+                            credentials: {
+                                id: number;
+                                connected_at: string | null;
+                                last_used_at: string | null;
+                                expires_at: string | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "connectedApps.destroyCredential": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credentialId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        revoked_tokens: number;
+                    };
+                };
+            };
+        };
+    };
+    "connectedApps.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                authorizationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        revoked_tokens: number;
+                    };
+                };
+            };
+        };
+    };
     "contact.index": {
         parameters: {
             query: {
@@ -10265,7 +10455,7 @@ export interface operations {
     "customers.index": {
         parameters: {
             query?: {
-                /** @description Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en céntimos y fechas — sin direcciones, campos personalizados, empresa, moneda ni método de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para índices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el índice sin este parámetro. */
+                /** @description Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en subunidades y fechas — sin direcciones, campos personalizados, empresa, moneda ni método de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para índices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
@@ -11146,7 +11336,7 @@ export interface operations {
     "estimates.index": {
         parameters: {
             query?: {
-                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, estado, importes en céntimos, el cliente reducido a `{id, name, email, phone}` y la URL del PDF — sin líneas, impuestos, empresa ni moneda. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
+                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, estado, importes en subunidades, el cliente reducido a `{id, name, email, phone}` y la URL del PDF — sin líneas, impuestos, empresa ni moneda. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
@@ -12965,7 +13155,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: string;
-                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, los tres ejes de estado (documento, cobro y AEAT), importes en céntimos —incluidos los netos de rectificativas—, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin líneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
+                /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, los tres ejes de estado (documento, cobro y AEAT), importes en subunidades —incluidos los netos de rectificativas—, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin líneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;

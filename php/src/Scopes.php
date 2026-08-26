@@ -53,8 +53,25 @@ final class Scopes
     /** Leer la configuración de la empresa (impuestos, preferencias, series). */
     public const SETTINGS_READ = 'settings:read';
 
+    /**
+     * Configurar la empresa: impuestos, preferencias, campos personalizados y el
+     * perfil del propio usuario (`PUT /me`). Ojo con ese último: cambiar el
+     * correo o la contraseña exige además `current_password`, que es del usuario
+     * y no tuya.
+     */
+    public const SETTINGS_WRITE = 'settings:write';
+
+    /** Cerrar y reabrir los trimestres fiscales del tenant. */
+    public const REPORTS_WRITE = 'reports:write';
+
     /** Ver la tienda de módulos y qué tiene contratado el tenant. */
     public const STORE_READ = 'store:read';
+
+    /** Instalar módulos de la tienda en el tenant. */
+    public const STORE_WRITE = 'store:write';
+
+    /** Leer documentos con IA (OCR de gastos y de facturas recibidas). */
+    public const OCR_WRITE = 'ocr:write';
 
     /** Leer la gestión de personal: empleados, ausencias, fichajes, calendarios. */
     public const HR_READ = 'hr:read';

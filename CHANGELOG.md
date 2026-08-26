@@ -8,6 +8,90 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.10.0] — 2026-08-26
+
+**«Apps conectadas» entra en el contrato y `PUT /me` deja de ser operación de
+dueño.** El grueso es que el spec vuelve a estar al día: la 0.9.0 se tageó el
+25 y el núcleo siguió moviéndose ese mismo día y el siguiente.
+
+Spec sincronizado con **factSaas@b998c351** (2026-08-26) — **360 operaciones**,
+tres más que la 0.9.0. **Ninguna retirada, ningún schema tocado.**
+
+### Añadido
+
+- **Las tres operaciones de «Apps conectadas»**, marcadas
+  `x-pimia-partner-availability: first-party-only`: exigen `admin`, que el
+  catálogo reserva al client del panel web de Pimia. Entran en el documento
+  porque la web tiene que sustituir al panel Vue de la pyme y sus tipos salen
+  de aquí; **un integrador no puede llamarlas**.
+
+  | operación | qué hace |
+  |---|---|
+  | `GET /settings/connected-apps` | las apps que el usuario ha autorizado |
+  | `DELETE /settings/connected-apps/{authorizationId}` | retira el acceso de una app entera |
+  | `DELETE /settings/connected-apps/credentials/{credentialId}` | cierra UNA credencial |
+
+  Lo nuevo del núcleo es `credentials[]`: un grant OAuth es único por
+  `(client_id, tenant_id, user_id)`, así que autorizar la misma app desde el
+  móvil y desde el portátil **suma credenciales a la misma fila** en vez de
+  sustituirlas. Cada una trae desde cuándo está conectada —la ceremonia, no la
+  última rotación del refresh—, su último uso real y cuándo caduca, y se puede
+  cerrar sola.
+
+  ⚠️ **Si tu app guarda el refresh en varios sitios, esto se nota aunque no
+  llames a estas rutas.** Una credencial cerrada devuelve `invalid_grant` en el
+  siguiente refresco mientras las otras siguen vivas; antes o caían todas o no
+  caía ninguna. La reacción correcta es la de siempre: volver a pedir
+  autorización **desde ese dispositivo**, no desde todos. Y cerrar una
+  credencial **no emite `app.revoked`** — ese aviso sigue significando que te
+  han retirado el acceso entero.
+
+- **Cuatro scopes que el catálogo emite a partners y `SCOPES` no ofrecía**:
+  `settings:write`, `reports:write`, `store:write` y `ocr:write`. En los dos
+  SDKs (`SCOPES` en TypeScript, `Scopes` en PHP).
+
+  No es cosmético: `settings:write` es **justo el que `PUT /me` exige** desde
+  que dejó de ser operación de dueño (ver abajo), así que sin él la novedad de
+  esta versión no se podía usar. Los otros tres llevaban desde el 2026-08-22 en
+  el catálogo del Authorization Server sin llegar aquí.
+
+- **Guardarraíl contra esa misma deriva** (`typescript/test/scopes.test.js`):
+  compara `SCOPES` con el flow del spec commiteado y se pone rojo si el
+  catálogo gana un scope que nadie ha clasificado. La 0.6.0 ya tuvo que añadir
+  cinco que faltaban y esta otros cuatro; hasta ahora nada avisaba y se
+  descubría al necesitarlo.
+
+### Cambiado
+
+- 🔴 **`PUT /me` deja de ser `owner-only` y pasa a ser contrato de partner**,
+  declarando `settings:write`. Antes exigía además `admin:write` —reservado a
+  la primera parte— y un token de integrador recibía `403`.
+
+  ⚠️ **Va con una condición nueva del núcleo que el contrato NO publica**:
+  cambiar el correo o la contraseña exige `current_password`, la vigente del
+  usuario. El `requestBody` de esta operación sale **vacío** en el spec (el
+  generador no lee las reglas de ese `FormRequest`), así que los tipos no te lo
+  van a decir. En la práctica: el **nombre** lo cambias sin más; el correo y la
+  contraseña, solo si la persona te facilita la suya en ese momento.
+
+- **`POST /tasks/{task}/delegate`** pasa de `owner-only` a `first-party-only` y
+  declara `crm:write` + `delegation:write`. No es una apertura: `delegation` lo
+  reserva la primera parte. Lo que cambia es que el documento ya no dice «exige
+  un scope que nadie emite», que era falso desde el 2026-08-22.
+
+- **`GET /app/version`** tipa `version` como `string | null`. Antes era un
+  `anyOf` de cuatro ramas (`null | array | string | object`) que el generador
+  producía por no saber qué devolvía; si tu código ramificaba sobre esas ramas,
+  el tipo se estrecha.
+
+- **Prosa: «céntimos» → «subunidades»** en las descripciones de los tres
+  índices con `view=summary`, la banca y el resumen contable. La moneda la
+  declara cada instancia y no siempre es el euro; el dato no cambia.
+
+### Quitado
+
+Nada.
+
 ## [0.9.0] — 2026-08-25
 
 **Las altas devuelven `201`, y la deuda de banca queda cerrada.** Sale pegada a

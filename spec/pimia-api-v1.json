@@ -682,7 +682,7 @@
         "/reports/accounting-summary": {
             "get": {
                 "operationId": "accountingSummary.index",
-                "description": "- `year` (solo): array de 4 trimestres con revenue/expenses/vat/irpf/result.\n  Lo consume AccountingSummaryReport.vue \u2014 su shape es contrato estable.\n- `from_date`+`to_date` (o `quarter`+`year`): objeto agregado del rango con\n  total_sales, total_received, total_expenses, net_profit, vat_collected,\n  vat_paid, vat_balance, irpf, counts y tax_breakdown. Con\n  `group_by=customer` a\u00f1ade by_customer; con `group_by=category`, by_category.\n  Lo consumen las tools MCP de informes (invoice-shelf-mcp).\n\nImportes en c\u00e9ntimos, como el resto de la API.\n\nQU\u00c9 FACTURAS CUENTAN, que es la clase de cifra que un integrador no puede\nverificar por su cuenta y que hasta el 2026-08-24 el contrato no dec\u00eda:\n**solo las EMITIDAS**, o sea las que tienen n\u00famero (`invoice_number`), que\nes lo que se asigna al publicar. Un BORRADOR no cuenta ni en la base\nimponible ni en el IVA repercutido: no tiene n\u00famero, no est\u00e1 en VeriFactu\ny no existe para la AEAT. Las RECTIFICATIVAS tampoco entran: no se restan,\nsimplemente no cuentan.\n\nAntes no hab\u00eda filtro de estado ninguno (#450) y eso no era un n\u00famero de\nadorno: es la pantalla desde la que se mira lo que se le debe a Hacienda y\ndesde la que se cierra un trimestre. Y pasaba mucho, porque cada\npresupuesto o albar\u00e1n convertido deja un borrador: en un tenant que\ntrabaje as\u00ed, el \u00abIVA a pagar\u00bb estaba inflado todo el rato.",
+                "description": "- `year` (solo): array de 4 trimestres con revenue/expenses/vat/irpf/result.\n  Lo consume AccountingSummaryReport.vue \u2014 su shape es contrato estable.\n- `from_date`+`to_date` (o `quarter`+`year`): objeto agregado del rango con\n  total_sales, total_received, total_expenses, net_profit, vat_collected,\n  vat_paid, vat_balance, irpf, counts y tax_breakdown. Con\n  `group_by=customer` a\u00f1ade by_customer; con `group_by=category`, by_category.\n  Lo consumen las tools MCP de informes (invoice-shelf-mcp).\n\nImportes en subunidades enteras de la moneda, como el resto de la API.\n\nQU\u00c9 FACTURAS CUENTAN, que es la clase de cifra que un integrador no puede\nverificar por su cuenta y que hasta el 2026-08-24 el contrato no dec\u00eda:\n**solo las EMITIDAS**, o sea las que tienen n\u00famero (`invoice_number`), que\nes lo que se asigna al publicar. Un BORRADOR no cuenta ni en la base\nimponible ni en el IVA repercutido: no tiene n\u00famero, no est\u00e1 en VeriFactu\ny no existe para la AEAT. Las RECTIFICATIVAS tampoco entran: no se restan,\nsimplemente no cuentan.\n\nAntes no hab\u00eda filtro de estado ninguno (#450) y eso no era un n\u00famero de\nadorno: es la pantalla desde la que se mira lo que se le debe a Hacienda y\ndesde la que se cierra un trimestre. Y pasaba mucho, porque cada\npresupuesto o albar\u00e1n convertido deja un borrador: en un tenant que\ntrabaje as\u00ed, el \u00abIVA a pagar\u00bb estaba inflado todo el rato.",
                 "summary": "Accounting summary. Two modes:",
                 "tags": [
                     "AccountingSummary"
@@ -988,20 +988,9 @@
                                     "type": "object",
                                     "properties": {
                                         "version": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "null"
-                                                },
-                                                {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "object"
-                                                }
+                                            "type": [
+                                                "string",
+                                                "null"
                                             ]
                                         },
                                         "channel": {
@@ -2942,7 +2931,6 @@
             },
             "put": {
                 "operationId": "company.updateProfile",
-                "description": "**No disponible para integradores.** Exige `admin:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.",
                 "summary": "Update the Admin profile.\nIncludes name, email and (or) password",
                 "tags": [
                     "Company"
@@ -2980,10 +2968,12 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 },
-                "x-pimia-partner-availability": "owner-only",
-                "x-pimia-required-scopes": [
-                    "settings:write",
-                    "admin:write"
+                "security": [
+                    {
+                        "oauth2": [
+                            "settings:write"
+                        ]
+                    }
                 ]
             }
         },
@@ -3206,6 +3196,260 @@
                     }
                 },
                 "x-pimia-partner-availability": "any-token"
+            }
+        },
+        "/settings/connected-apps": {
+            "get": {
+                "operationId": "connectedApps.index",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`credentials` son las sesiones vivas del grant: una por dispositivo o\nproceso que complet\u00f3 una ceremonia OAuth. `connected_at` es el instante\nde ESA ceremonia y no el de la \u00faltima renovaci\u00f3n, que es lo que hace que\nla pantalla pueda decir \u00abconectado desde el 25\u00bb de una sesi\u00f3n que rota su\nrefresh cada d\u00eda.\n\n`last_used_at` sale del PAT emparejado y no del refresh: el grant se toca\nen canje/refresh \u2014una vez al d\u00eda\u2014 y el PAT en CADA petici\u00f3n, as\u00ed que es\nel \u00fanico que sabe si esa sesi\u00f3n sigue trabajando. Sale null mientras la\ncredencial no haya hecho ninguna petici\u00f3n todav\u00eda.\n\n`active_tokens` se queda como estaba (cuenta los PAT del client, rotados\na\u00fan no caducados incluidos) para no romper a quien ya lo lee; lo que\ncuenta dispositivos es `credentials`.",
+                "summary": "Apps a las que este usuario ha autorizado el acceso a su cuenta",
+                "tags": [
+                    "ConnectedApps"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "confidential": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "scopes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "permissions": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "text": {
+                                                                    "type": "string"
+                                                                },
+                                                                "write": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "text",
+                                                                "write"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "summary": {
+                                                        "type": "string"
+                                                    },
+                                                    "connected_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "last_used_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "active_tokens": {
+                                                        "type": "integer"
+                                                    },
+                                                    "credentials": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "connected_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "last_used_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "expires_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "connected_at",
+                                                                "last_used_at",
+                                                                "expires_at"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "confidential",
+                                                    "scopes",
+                                                    "permissions",
+                                                    "summary",
+                                                    "connected_at",
+                                                    "last_used_at",
+                                                    "active_tokens",
+                                                    "credentials"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:read"
+                ]
+            }
+        },
+        "/settings/connected-apps/credentials/{credentialId}": {
+            "delete": {
+                "operationId": "connectedApps.destroyCredential",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLa app sigue conectada desde donde siga viva; para retirarle el acceso\nentero est\u00e1 `destroy`. Por eso esta operaci\u00f3n no emite `app.revoked`: al\nintegrador no le ha ca\u00eddo la puerta, se le ha ca\u00eddo una sesi\u00f3n.\n\nEl grant sale de la propia credencial y se comprueba con el mismo filtro\nque el resto de la pantalla (este usuario, este tenant, sin revocar), as\u00ed\nque la ruta no lo nombra: no hay forma de pedir un par descuadrado.\n\n404 cuando la credencial no existe, no es de este usuario o ya no est\u00e1\nviva (rotada, revocada o caducada): quien cierra estaba mirando una lista\nde hace un momento y lo que necesita es recargarla, no un error distinto\npor cada motivo.",
+                "summary": "Cierra UNA credencial \u2014un dispositivo\u2014 sin tocar las dem\u00e1s ni el grant",
+                "tags": [
+                    "ConnectedApps"
+                ],
+                "parameters": [
+                    {
+                        "name": "credentialId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "revoked_tokens": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "revoked_tokens"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:write"
+                ]
+            }
+        },
+        "/settings/connected-apps/{authorizationId}": {
+            "delete": {
+                "operationId": "connectedApps.destroy",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Retira el acceso de la app entera: cae el grant, sus refresh tokens y los\nPAT que esa app acu\u00f1\u00f3 para este usuario. Todas sus credenciales con \u00e9l",
+                "tags": [
+                    "ConnectedApps"
+                ],
+                "parameters": [
+                    {
+                        "name": "authorizationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "revoked_tokens": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "revoked_tokens"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:write"
+                ]
             }
         },
         "/contacts": {
@@ -4316,7 +4560,7 @@
                     {
                         "name": "view",
                         "in": "query",
-                        "description": "Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en c\u00e9ntimos y fechas \u2014 sin direcciones, campos personalizados, empresa, moneda ni m\u00e9todo de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para \u00edndices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
+                        "description": "Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en subunidades y fechas \u2014 sin direcciones, campos personalizados, empresa, moneda ni m\u00e9todo de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para \u00edndices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
                         "schema": {
                             "type": "string",
                             "const": "summary"
@@ -6421,7 +6665,7 @@
                     {
                         "name": "view",
                         "in": "query",
-                        "description": "Con `summary`, cada fila trae solo los campos del listado: fechas, n\u00famero, estado, importes en c\u00e9ntimos, el cliente reducido a `{id, name, email, phone}` y la URL del PDF \u2014 sin l\u00edneas, impuestos, empresa ni moneda. Pensado para \u00edndices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
+                        "description": "Con `summary`, cada fila trae solo los campos del listado: fechas, n\u00famero, estado, importes en subunidades, el cliente reducido a `{id, name, email, phone}` y la URL del PDF \u2014 sin l\u00edneas, impuestos, empresa ni moneda. Pensado para \u00edndices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
                         "schema": {
                             "type": "string",
                             "const": "summary"
@@ -10344,7 +10588,7 @@
                     {
                         "name": "view",
                         "in": "query",
-                        "description": "Con `summary`, cada fila trae solo los campos del listado: fechas, n\u00famero, los tres ejes de estado (documento, cobro y AEAT), importes en c\u00e9ntimos \u2014incluidos los netos de rectificativas\u2014, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin l\u00edneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para \u00edndices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
+                        "description": "Con `summary`, cada fila trae solo los campos del listado: fechas, n\u00famero, los tres ejes de estado (documento, cobro y AEAT), importes en subunidades \u2014incluidos los netos de rectificativas\u2014, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin l\u00edneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para \u00edndices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
                         "schema": {
                             "type": "string",
                             "const": "summary"
@@ -16129,7 +16373,7 @@
         "/banking/summary": {
             "get": {
                 "operationId": "reconciliation.summary",
-                "description": "Los cuatro recuentos salen de un `count()` y son ENTEROS. Se declaran a\nmano porque Scramble tipa bien `Builder::count()` pero no sabe resolver\n`(clone $query)->pending()`: el scope local devuelve `mixed` y degradaba\nlos cuatro a `string`, mientras `total` \u2014que no pasa por un scope\u2014 sal\u00eda\n`integer` en la misma respuesta. Cuatro cadenas y un n\u00famero para el mismo\ntipo de dato.\n\n\u26a0\ufe0f `total_credits` y `total_debits` S\u00cd son cadenas, y a prop\u00f3sito: son\n`SUM(amount)` sobre una columna `decimal(15,2)` que PostgreSQL entrega\ncomo texto, y van en EUROS con decimales como el resto de la banca \u2014no en\nc\u00e9ntimos como el resto de la API.",
+                "description": "Los cuatro recuentos salen de un `count()` y son ENTEROS. Se declaran a\nmano porque Scramble tipa bien `Builder::count()` pero no sabe resolver\n`(clone $query)->pending()`: el scope local devuelve `mixed` y degradaba\nlos cuatro a `string`, mientras `total` \u2014que no pasa por un scope\u2014 sal\u00eda\n`integer` en la misma respuesta. Cuatro cadenas y un n\u00famero para el mismo\ntipo de dato.\n\n\u26a0\ufe0f `total_credits` y `total_debits` S\u00cd son cadenas, y a prop\u00f3sito: son\n`SUM(amount)` sobre una columna `decimal(15,2)` que PostgreSQL entrega\ncomo texto, y van en la UNIDAD MAYOR de la moneda, con decimales, como el\nresto de la banca \u2014no en subunidades enteras como el resto de la API.",
                 "summary": "Recuento de movimientos por estado, y los dos totales",
                 "tags": [
                     "Reconciliation"
@@ -16344,7 +16588,7 @@
         "/banking/transactions/{id}/suggestions": {
             "get": {
                 "operationId": "reconciliation.suggestions",
-                "description": "Devuelve hasta cinco documentos que podr\u00edan corresponder al movimiento,\nordenados por `score` descendente (importe, proximidad de fecha,\nreferencia y nombre del cliente).\n\n**`amount` va en c\u00e9ntimos**, como el `total` del que sale y como todo\nimporte de documento en esta API. No lo confundas con\n`bank_transactions.amount`, que s\u00ed va en euros con decimales por ser el\nreflejo de un extracto bancario. `number` es `null` en los borradores,\nque nacen sin numerar: el identificador estable es `model.id`.",
+                "description": "Devuelve hasta cinco documentos que podr\u00edan corresponder al movimiento,\nordenados por `score` descendente (importe, proximidad de fecha,\nreferencia y nombre del cliente).\n\n**`amount` va en subunidades enteras**, como el `total` del que sale y como\ntodo importe de documento en esta API. No lo confundas con\n`bank_transactions.amount`, que s\u00ed va en la unidad mayor con decimales por\nser el reflejo de un extracto bancario. `number` es `null` en los borradores,\nque nacen sin numerar: el identificador estable es `model.id`.",
                 "summary": "Get suggestions for a specific transaction",
                 "tags": [
                     "Reconciliation"
@@ -20210,7 +20454,7 @@
         "/tasks/{task}/delegate": {
             "post": {
                 "operationId": "task.delegate",
-                "description": "**No disponible para integradores.** Exige `delegation:write`, que el Authorization Server de Pimia no emite: la acci\u00f3n la realiza el due\u00f1o desde su panel y un token de partner recibe `403`. Aparece en el contrato para que el hueco sea expl\u00edcito, no para que se llame.\n\nReusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
+                "description": "**Reservada al panel de Pimia.** Exige `crm:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes \u2014se le rechazan en el registro y no se le anuncian\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nReusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
                 "summary": "POST tasks/{task}/delegate \u2014 delega esta tarea CRM a su agente Pim",
                 "tags": [
                     "Task"
@@ -20552,7 +20796,15 @@
                         "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
-                "x-pimia-partner-availability": "owner-only",
+                "security": [
+                    {
+                        "oauth2": [
+                            "crm:write",
+                            "delegation:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
                 "x-pimia-required-scopes": [
                     "crm:write",
                     "delegation:write"
@@ -32692,7 +32944,9 @@
                             "approvals:write": "proponerte cambios para aprobar",
                             "approvals:submit": "proponerte cambios para aprobar",
                             "admin:read": "(solo el panel de Pimia) ver la administraci\u00f3n de tu empresa",
-                            "admin:write": "(solo el panel de Pimia) administrar tu empresa"
+                            "admin:write": "(solo el panel de Pimia) administrar tu empresa",
+                            "delegation:read": "(solo el panel de Pimia) ver lo que delegas a tu agente",
+                            "delegation:write": "(solo el panel de Pimia) delegar tareas a tu agente"
                         }
                     }
                 }
@@ -33188,7 +33442,7 @@
                     },
                     "opening_balance": {
                         "type": "string",
-                        "description": "EUROS con decimales (`2322.11` = 2.322,11 \u20ac), a diferencia del resto de la API, que cuenta el dinero en c\u00e9ntimos enteros. La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a c\u00e9ntimos enteros perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
+                        "description": "En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (c\u00e9ntimos, en una moneda de dos decimales). La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a la subunidad perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
                     },
                     "currency_code": {
                         "type": "string"
@@ -33219,7 +33473,7 @@
                     },
                     "balance": {
                         "type": "string",
-                        "description": "EUROS con decimales (`2322.11` = 2.322,11 \u20ac), a diferencia del resto de la API, que cuenta el dinero en c\u00e9ntimos enteros. La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a c\u00e9ntimos enteros perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
+                        "description": "En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (c\u00e9ntimos, en una moneda de dos decimales). La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a la subunidad perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
                     }
                 },
                 "required": [
@@ -33329,7 +33583,7 @@
                     },
                     "amount": {
                         "type": "string",
-                        "description": "EUROS con decimales (`2322.11` = 2.322,11 \u20ac), a diferencia del resto de la API, que cuenta el dinero en c\u00e9ntimos enteros. La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a c\u00e9ntimos enteros perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
+                        "description": "En la UNIDAD MAYOR de la moneda de la cuenta, con decimales (`2322.11` son 2.322,11 de la moneda que declare su `currency_code`), a diferencia del resto de la API, que cuenta el dinero en SUBUNIDADES enteras (c\u00e9ntimos, en una moneda de dos decimales). La banca es la excepci\u00f3n porque es lo que trae un extracto bancario: redondearlo a la subunidad perder\u00eda los decimales del apunte. La conciliaci\u00f3n convierte al comparar con facturas y gastos."
                     },
                     "type": {
                         "type": "string",
@@ -36779,7 +37033,7 @@
                             "integer",
                             "null"
                         ],
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "template_name": {
                         "type": [
@@ -37122,7 +37376,7 @@
                     },
                     "amount": {
                         "type": "integer",
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "customer_id": {
                         "type": [
@@ -39218,7 +39472,7 @@
                             "integer",
                             "null"
                         ],
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "template_name": {
                         "type": [
@@ -39759,7 +40013,7 @@
                     },
                     "price": {
                         "type": "integer",
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "item_type": {
                         "type": [
@@ -40913,6 +41167,7 @@
             },
             "ProfileRequest": {
                 "type": "object",
+                "description": "`PUT /me` \u2014 el nombre, el correo y la contrase\u00f1a de quien llama.\n\nCambiar el **correo** o la **contrase\u00f1a** exige `current_password`, la\nvigente. Cambiar solo el nombre no: `name` y `email` son los dos `required`,\nas\u00ed que reenviar el mismo correo no cuenta como cambio.",
                 "properties": {
                     "name": {
                         "type": "string"
@@ -40927,6 +41182,9 @@
                     "email": {
                         "type": "string",
                         "format": "email"
+                    },
+                    "current_password": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -41464,7 +41722,7 @@
                     },
                     "tax": {
                         "type": "integer",
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "notes": {
                         "type": [
@@ -41862,7 +42120,7 @@
                             "integer",
                             "null"
                         ],
-                        "description": "`integer` porque son C\u00c9NTIMOS. Sin regla de tipo, el contrato\npublicaba este campo como `string` \u2014el generador deduce el tipo\nde las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb, que la columna guardaba\ncomo 10,5 c\u00e9ntimos: medio c\u00e9ntimo, que no significa nada."
+                        "description": "`integer` porque son SUBUNIDADES enteras de la moneda. Sin regla\nde tipo, el contrato publicaba este campo como `string` \u2014el\ngenerador deduce el tipo de las reglas\u2014 y la API aceptaba \u00ab10.5\u00bb,\nque la columna guardaba como 10,5: media subunidad, que no\nsignifica nada."
                     },
                     "template_name": {
                         "type": [
