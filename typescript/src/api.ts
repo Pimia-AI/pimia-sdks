@@ -193,6 +193,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contracts/{contract}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["contract.activateContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/version": {
         parameters: {
             query?: never;
@@ -449,6 +465,22 @@ export interface paths {
          *     generador dedujera; sin él, este `200` se publicaba como un objeto opaco.
          */
         post: operations["general.bulkExchangeRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/{contract}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["contract.cancelContract"];
         delete?: never;
         options?: never;
         head?: never;
@@ -804,6 +836,79 @@ export interface paths {
         put: operations["contact.update"];
         post?: never;
         delete: operations["contact.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/{contract}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["contractDocument.upload"];
+        delete: operations["contractDocument.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Borrado en lote (`POST /contracts/delete`). Fail-loud: un id no
+         *     borrable aborta el lote entero antes de borrar nada
+         */
+        post: operations["contracts.delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["contracts.index"];
+        put?: never;
+        post: operations["contracts.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/{contract}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["contracts.show"];
+        put: operations["contracts.update"];
+        post?: never;
+        /**
+         * Borra UN contrato, el de la ruta. Solo en borrador: lo activo se
+         *     cancela, no se borra (decisión 8) — y eso es un 422 con el porqué, no
+         *     un 500 ni un borrado a medias
+         */
+        delete: operations["contracts.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2677,7 +2782,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retrieve a list of existing Items */
+        /**
+         * Retrieve a list of existing Items
+         * @description El `@return` de JsonResponse se retira como en el índice de facturas:
+         *     nunca fue el tipo real y, con dos returns, dejaba la respuesta sin forma
+         *     en el spec.
+         */
         get: operations["items.index"];
         put?: never;
         /** Create Item */
@@ -3941,6 +4051,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contracts/{contract}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["contract.renewContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/roles/{role}/abilities": {
         parameters: {
             query?: never;
@@ -4273,6 +4399,54 @@ export interface paths {
         post?: never;
         /** Delete a remittance (only drafts) */
         delete: operations["sepa-remittances.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice}/shared-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["invoice.sharedLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/{contract}/shared-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["contract.sharedLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/estimates/{estimate}/shared-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["estimate.sharedLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5711,6 +5885,23 @@ export interface components {
                 name: string;
             } | null;
         };
+        /**
+         * ActivateContractRequest
+         * @description Activación de un contrato (`POST /contracts/{contract}/activate`).
+         *
+         *     Sin cuerpo, el contrato CREA su recurrente gobernada; con
+         *     `recurring_invoice_id`, ADOPTA esa — heredándole los límites del periodo
+         *     pero sin pisar su frecuencia, sus líneas ni sus impuestos, que son
+         *     configuración humana (Contract::activate()).
+         *
+         *     El `exists` va acotado por empresa por la misma lección de siempre (#395):
+         *     dentro de una instancia conviven varias empresas, y el id a secas casaría
+         *     la recurrente de otra. El modelo lo re-comprueba (empresa Y cliente), pero
+         *     el 422 de aquí llega antes y dice qué falla.
+         */
+        ActivateContractRequest: {
+            recurring_invoice_id?: number | null;
+        };
         /** AddressResource */
         AddressResource: {
             id: number;
@@ -5955,6 +6146,102 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+        };
+        /**
+         * ContractRequest
+         * @description Alta y edición de un contrato (`POST /contracts`, `PUT /contracts/{id}`).
+         *
+         *     Dos decisiones que no son costumbre sino contrato (#583):
+         *
+         *      - **`status` NO se acepta aquí.** El ciclo de vida va por sus acciones
+         *        (`activate`/`cancel`/`renew`), que son las que gobiernan las recurrentes;
+         *        aceptar `status` en el PUT sería un contrato ACTIVE sin recurrente o
+         *        CANCELLED sin pausar nada — el estado mentiría. La lista blanca del
+         *        payload son estas reglas (ContractFields), así que no declararlo ya es
+         *        excluirlo.
+         *      - **Los cerrados llevan `Rule::in`**, y no solo por validar: el generador
+         *        del spec deduce el enum de la regla, y el estudio dejó medido lo que pasa
+         *        cuando no se hace — `frequency`/`status`/`limit_by` de la recurrente son
+         *        `string` sin enum en el contrato público y el SDK hereda esa opacidad.
+         */
+        ContractRequest: {
+            title: string;
+            description?: string | null;
+            contract_number?: string | null;
+            customer_id: number;
+            /** Format: date-time */
+            starts_at: string;
+            /**
+             * Format: date-time
+             * @description Nullable = contrato indefinido: la recurrente gobernada hereda
+             *     `limit_by = NONE`.
+             */
+            ends_at?: string | null;
+            /**
+             * @description Céntimos, enteros — la convención monetaria de la casa. El tope
+             *     es el mismo que el de `total` en documentos.
+             */
+            amount: number;
+            currency_id?: number | null;
+            /** @enum {string} */
+            billing_every: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "ANNUAL";
+            /**
+             * @description 1..31 y no 1..28: el 29-31 es entrada legítima («factúrame a fin
+             *     de mes») que la compilación fija al 28 — rechazarla aquí obligaría
+             *     al cliente a conocer una limitación de cron que es nuestra.
+             */
+            billing_anchor_day?: number | null;
+            /** @enum {string|null} */
+            renewal_mode?: "NONE" | "MANUAL" | "TACIT" | null;
+            /**
+             * @description Nullable = «usa el default del catálogo regional» (#584). El tope
+             *     corta los disparates sin opinar sobre ninguna legislación.
+             */
+            notice_days?: number | null;
+            /**
+             * @description El presupuesto de origen, acotado por empresa — la lección del
+             *     `item_id` de las recurrentes (#395): sin el `where`, un contrato
+             *     podía quedar apuntando al presupuesto de OTRA empresa del tenant.
+             */
+            estimate_id?: number | null;
+        };
+        /** ContractResource */
+        ContractResource: {
+            id: number;
+            title: string;
+            description: string | null;
+            contract_number: string | null;
+            customer_id: number | null;
+            company_id: number | null;
+            creator_id: number | null;
+            currency_id: number | null;
+            status: string;
+            ha_vencido: boolean;
+            starts_at: string | null;
+            ends_at: string | null;
+            amount: number | null;
+            billing_every: string;
+            billing_anchor_day: number | null;
+            renewal_mode: string;
+            notice_days: number | null;
+            /**
+             * @description El efectivo: el del contrato o el default del catálogo regional
+             *     (config/contracts.php). La pantalla enseña este, no el crudo.
+             */
+            notice_days_effective: number;
+            /**
+             * @description ¿Hay firmado adjunto? El fichero se sube por su POST multiparte
+             *     dedicado (#584) y se pisa al resubir.
+             */
+            has_document: boolean;
+            estimate_id: number | null;
+            /** Format: date-time */
+            cancelled_at: string | null;
+            fields?: components["schemas"]["CustomFieldValueResource"][];
+            customer?: components["schemas"]["CustomerResource"] | null;
+            estimate?: components["schemas"]["EstimateResource"] | null;
+            recurring_invoices?: components["schemas"]["RecurringInvoiceResource"][];
+            invoices?: components["schemas"]["InvoiceResource"][];
         };
         /**
          * ConvertEstimateRequest
@@ -6297,6 +6584,19 @@ export interface components {
              *     siempre presente para que el tipo del SDK no alterne.
              */
             external_ref: string | null;
+        };
+        /**
+         * DeleteContractsRequest
+         * @description Borrado múltiple de contratos (`POST /contracts/delete`). Mismo patrón que
+         *     DeleteRecurringInvoicesRequest: el `exists` convierte el id inexistente en
+         *     un 422 que dice cuál falla, en vez del 500 de iterar sobre un `find()` nulo.
+         *
+         *     Lo que NO valida esto: que cada contrato esté en borrador. Esa es la regla
+         *     de negocio (decisión 8: lo activo se cancela, no se borra) y vive en
+         *     `Contract::deleteContracts()`, que aborta el lote entero en voz alta.
+         */
+        DeleteContractsRequest: {
+            ids: number[];
         };
         /** DeleteCustomersRequest */
         DeleteCustomersRequest: {
@@ -7083,6 +7383,7 @@ export interface components {
             sent_at: string | null;
             /** Format: date-time */
             viewed_at: string | null;
+            contract_id: number | null;
         };
         /** InvoiceItem */
         InvoiceItem: {
@@ -7620,6 +7921,54 @@ export interface components {
             company?: components["schemas"]["CompanyResource"] | null;
             taxes?: components["schemas"]["TaxResource"][];
             currency?: components["schemas"]["CurrencyResource"] | null;
+        };
+        /** ItemSummaryResource */
+        ItemSummaryResource: {
+            id: number;
+            name: string;
+            item_type: string;
+            sku: string | null;
+            supplier_reference: string | null;
+            description: string | null;
+            price: number;
+            purchase_price: number | null;
+            default_discount: number;
+            category_id: number | null;
+            category?: {
+                id: number;
+                name: string;
+            };
+            unit_id: number | null;
+            /**
+             * @description Del `leftJoin` del índice, no de la relación: es el único dato de
+             *     la unidad que los listados pintan.
+             */
+            unit_name: string | null;
+            company_id: number | null;
+            currency_id: number | null;
+            tax_per_item: string;
+            purchase_tax_type_id: number | null;
+            is_active: boolean;
+            is_time_trackable: boolean;
+            opening_stock: number;
+            stock_alert_qty: number | null;
+            allow_sale_without_stock: boolean;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+            taxes?: {
+                id: number;
+                tax_type_id: number | null;
+                item_id: number | null;
+                company_id: number | null;
+                name: string;
+                amount: number;
+                percent: number;
+                base_amount: number;
+                currency_id: number | null;
+                type: string | null;
+            }[];
         };
         /** ItemsRequest */
         ItemsRequest: {
@@ -8351,6 +8700,18 @@ export interface components {
             creator?: components["schemas"]["UserResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
         };
+        /**
+         * RenewContractRequest
+         * @description Renovación manual de un contrato (`POST /contracts/{contract}/renew`).
+         *
+         *     Solo la fecha nueva: que sea POSTERIOR al fin actual —renovar es extender—
+         *     lo comprueba `Contract::renew()`, porque depende del estado del contrato y
+         *     no del cuerpo. La renovación tácita no pasa por aquí: es el job de fase 2.
+         */
+        RenewContractRequest: {
+            /** Format: date-time */
+            ends_at: string;
+        };
         /** Role */
         Role: {
             id: number;
@@ -8391,7 +8752,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract")[];
         };
         /**
          * RoleRequest
@@ -8416,7 +8777,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract";
             }[] | null;
         };
         /** RoleResource */
@@ -9476,6 +9837,38 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "contract.activateContract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActivateContractRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     appVersion: {
         parameters: {
             query?: never;
@@ -10124,6 +10517,44 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "contract.cancelContract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
     "estimate.changeEstimateStatus": {
         parameters: {
             query?: never;
@@ -10680,6 +11111,248 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contractDocument.upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Maximum file size: 10240 kilobytes.
+                     */
+                    document: Blob;
+                };
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contractDocument.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contracts.delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteContractsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contracts.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"][];
+                        meta: {
+                            contract_total_count: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "contracts.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contracts.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contracts.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contracts.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "estimate.convertEstimate": {
@@ -14844,14 +15517,21 @@ export interface operations {
     };
     "items.index": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Con `summary`, cada fila trae solo lo que los listados leen: identidad, precios y banderas, la categoría reducida a `{id, name}`, el nombre de la unidad y los impuestos del artículo (enteros, con la misma forma que la vista completa). Sin empresa, sin moneda y sin la unidad como objeto — el recurso completo arrastra la empresa entera por fila, roles incluidos, y contra un catálogo de 200 artículos eso son ~4 s y ~900 KB de los que el 86 % es ese lastre. El artículo completo sigue en el detalle y en el índice sin este parámetro. */
+                view?: "summary";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `ItemResource` */
+            /**
+             * @description Array of `ItemResource`
+             *
+             *     Array of `ItemSummaryResource`
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -14859,6 +15539,12 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ItemResource"][];
+                        meta: {
+                            tax_types: components["schemas"]["TaxType"][];
+                            item_total_count: number;
+                        };
+                    } | {
+                        data: (components["schemas"]["ItemSummaryResource"] & Record<string, never>)[];
                         meta: {
                             tax_types: components["schemas"]["TaxType"][];
                             item_total_count: number;
@@ -17476,6 +18162,38 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "contract.renewContract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenewContractRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "roles.getAbilities": {
         parameters: {
             query?: never;
@@ -18107,6 +18825,126 @@ export interface operations {
                 content: {
                     "application/json": {
                         success: boolean;
+                    };
+                };
+            };
+        };
+    };
+    "invoice.sharedLink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The invoice ID */
+                invoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                            expires_at: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Un borrador no tiene enlace: publica la factura primero.";
+                    };
+                };
+            };
+        };
+    };
+    "contract.sharedLink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                            expires_at: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Un contrato sin activar no tiene enlace todavía.";
+                    };
+                };
+            };
+        };
+    };
+    "estimate.sharedLink": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The estimate ID */
+                estimate: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                            expires_at: string;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Un presupuesto sin número no tiene enlace todavía.";
                     };
                 };
             };

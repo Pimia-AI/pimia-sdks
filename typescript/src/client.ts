@@ -33,6 +33,8 @@ export type CustomerResource = Schemas['CustomerResource']
 export type InvoiceResource = Schemas['InvoiceResource']
 /** Presupuesto tal y como lo devuelve la API. */
 export type EstimateResource = Schemas['EstimateResource']
+/** Contrato de servicio tal y como lo devuelve la API. */
+export type ContractResource = Schemas['ContractResource']
 
 /** Cuerpo de alta/edición de cliente. Incluye `customFields`. */
 export type CustomerRequest = Schemas['CustomerRequest']
@@ -40,6 +42,11 @@ export type CustomerRequest = Schemas['CustomerRequest']
 export type InvoicesRequest = Schemas['InvoicesRequest']
 /** Cuerpo de alta/edición de presupuesto. Incluye `customFields`. */
 export type EstimatesRequest = Schemas['EstimatesRequest']
+/**
+ * Cuerpo de alta/edición de contrato. Sin `status` a propósito: el ciclo de
+ * vida va por sus acciones (`activate`/`cancel`/`renew`), nunca por el PUT.
+ */
+export type ContractRequest = Schemas['ContractRequest']
 
 /**
  * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
@@ -329,6 +336,88 @@ export class PimiaClient {
           resto,
         )
       },
+    }
+  }
+
+  /**
+   * Contratos de servicio. Exige `contracts:read` / `contracts:write`.
+   *
+   * Un contrato GOBIERNA facturas recurrentes: su periodo se vuelve los
+   * límites de la recurrente. El ciclo de vida va por sus acciones — el
+   * `PUT` no acepta `status`, y fuera de borrador solo toca lo descriptivo
+   * (el periodo se cambia con `renew`, que sí propaga).
+   */
+  get contracts() {
+    return {
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'contracts.index'>>('/contracts', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'contracts.show'>>(`/contracts/${id}`, undefined, options),
+      create: (body: ContractRequest, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<ContractResource>>('/contracts', body, options),
+      update: (id: number | string, body: ContractRequest, options?: WriteOptions) =>
+        this.put<ResourceEnvelope<ContractResource>>(`/contracts/${id}`, body, options),
+
+      /**
+       * Activa el contrato: DRAFT → ACTIVE, lo numera, y crea la recurrente
+       * gobernada — o adopta la de `recurringInvoiceId` (misma empresa y
+       * mismo cliente; sus líneas e impuestos no se tocan).
+       *
+       * Exige `contracts:write` **e** `invoices:write`: la recurrente que
+       * nace emitirá facturas por su cuenta. Manda `idempotencyKey` —una
+       * clave estable del estilo `contract:{id}:activate`— y el reintento
+       * tras un timeout no te creará una segunda recurrente.
+       */
+      activate: (
+        id: number | string,
+        options?: WriteOptions & { recurringInvoiceId?: number | string },
+      ) => {
+        const { recurringInvoiceId, ...resto } = options ?? {}
+
+        return this.post<ResourceEnvelope<ContractResource>>(
+          `/contracts/${id}/activate`,
+          recurringInvoiceId === undefined ? {} : { recurring_invoice_id: recurringInvoiceId },
+          resto,
+        )
+      },
+
+      /**
+       * Cancela: sus recurrentes quedan en pausa (`ON_HOLD`) y las facturas
+       * emitidas conservan el rastro entero.
+       */
+      cancel: (id: number | string, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<ContractResource>>(`/contracts/${id}/cancel`, {}, options),
+
+      /**
+       * Renovación manual: extiende `ends_at` (posterior al fin actual) y lo
+       * propaga a las recurrentes gobernadas, reviviendo las completadas por
+       * el límite viejo.
+       */
+      renew: (id: number | string, endsAt: string, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<ContractResource>>(
+          `/contracts/${id}/renew`,
+          { ends_at: endsAt },
+          options,
+        ),
+
+      /**
+       * El enlace del PDF para el cliente final: URL FIRMADA con caducidad.
+       * Un contrato en borrador —sin número— es un 422.
+       */
+      sharedLink: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'contract.sharedLink'>>(`/contracts/${id}/shared-link`, undefined, options),
+
+      /**
+       * Sube (o reemplaza: un fichero por colección) el contrato FIRMADO —
+       * el papel escaneado. Multiparte por `POST` dedicado; el `FormData` lo
+       * arma el atajo, no le pongas `content-type`.
+       */
+      uploadDocument: (id: number | string, document: Blob, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<ContractResource>>(
+          `/contracts/${id}/document`,
+          toFormData({ document }),
+          options,
+        ),
     }
   }
 

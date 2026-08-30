@@ -971,6 +971,71 @@
                 ]
             }
         },
+        "/contracts/{contract}/activate": {
+            "post": {
+                "operationId": "contract.activateContract",
+                "tags": [
+                    "ActivateContract"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActivateContractRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write",
+                            "invoices:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/app/version": {
             "get": {
                 "operationId": "appVersion",
@@ -2556,6 +2621,80 @@
                 ]
             }
         },
+        "/contracts/{contract}/cancel": {
+            "post": {
+                "operationId": "contract.cancelContract",
+                "tags": [
+                    "CancelContract"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/estimates/{estimate}/status": {
             "post": {
                 "operationId": "estimate.changeEstimateStatus",
@@ -3715,6 +3854,475 @@
                     {
                         "oauth2": [
                             "customers:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts/{contract}/document": {
+            "post": {
+                "operationId": "contractDocument.upload",
+                "tags": [
+                    "ContractDocument"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "document": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Maximum file size: 10240 kilobytes."
+                                    }
+                                },
+                                "required": [
+                                    "document"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "contractDocument.destroy",
+                "tags": [
+                    "ContractDocument"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts/delete": {
+            "post": {
+                "operationId": "contracts.delete",
+                "summary": "Borrado en lote (`POST /contracts/delete`). Fail-loud: un id no\nborrable aborta el lote entero antes de borrar nada",
+                "tags": [
+                    "Contracts"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeleteContractsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts": {
+            "get": {
+                "operationId": "contracts.index",
+                "tags": [
+                    "Contracts"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ContractResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "contract_total_count": {
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "contract_total_count"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:read"
+                        ]
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "contracts.store",
+                "tags": [
+                    "Contracts"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts/{contract}": {
+            "get": {
+                "operationId": "contracts.show",
+                "tags": [
+                    "Contracts"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:read"
+                        ]
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "contracts.update",
+                "tags": [
+                    "Contracts"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContractRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "contracts.destroy",
+                "summary": "Borra UN contrato, el de la ruta. Solo en borrador: lo activo se\ncancela, no se borra (decisi\u00f3n 8) \u2014 y eso es un 422 con el porqu\u00e9, no\nun 500 ni un borrado a medias",
+                "tags": [
+                    "Contracts"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
                         ]
                     }
                 ]
@@ -13802,47 +14410,107 @@
         "/items": {
             "get": {
                 "operationId": "items.index",
+                "description": "El `@return` de JsonResponse se retira como en el \u00edndice de facturas:\nnunca fue el tipo real y, con dos returns, dejaba la respuesta sin forma\nen el spec.",
                 "summary": "Retrieve a list of existing Items",
                 "tags": [
                     "Items"
                 ],
+                "parameters": [
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "description": "Con `summary`, cada fila trae solo lo que los listados leen: identidad, precios y banderas, la categor\u00eda reducida a `{id, name}`, el nombre de la unidad y los impuestos del art\u00edculo (enteros, con la misma forma que la vista completa). Sin empresa, sin moneda y sin la unidad como objeto \u2014 el recurso completo arrastra la empresa entera por fila, roles incluidos, y contra un cat\u00e1logo de 200 art\u00edculos eso son ~4 s y ~900 KB de los que el 86 % es ese lastre. El art\u00edculo completo sigue en el detalle y en el \u00edndice sin este par\u00e1metro.",
+                        "schema": {
+                            "type": "string",
+                            "const": "summary"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Array of `ItemResource`",
+                        "description": "Array of `ItemResource`\n\nArray of `ItemSummaryResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/ItemResource"
-                                            }
-                                        },
-                                        "meta": {
+                                    "anyOf": [
+                                        {
                                             "type": "object",
                                             "properties": {
-                                                "tax_types": {
+                                                "data": {
                                                     "type": "array",
                                                     "items": {
-                                                        "$ref": "#/components/schemas/TaxType"
+                                                        "$ref": "#/components/schemas/ItemResource"
                                                     }
                                                 },
-                                                "item_total_count": {
-                                                    "type": "integer",
-                                                    "minimum": 0
+                                                "meta": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "tax_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/TaxType"
+                                                            }
+                                                        },
+                                                        "item_total_count": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "tax_types",
+                                                        "item_total_count"
+                                                    ]
                                                 }
                                             },
                                             "required": [
-                                                "tax_types",
-                                                "item_total_count"
+                                                "data",
+                                                "meta"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "allOf": [
+                                                            {
+                                                                "$ref": "#/components/schemas/ItemSummaryResource"
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "taxes"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "tax_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/TaxType"
+                                                            }
+                                                        },
+                                                        "item_total_count": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "tax_types",
+                                                        "item_total_count"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "data",
+                                                "meta"
                                             ]
                                         }
-                                    },
-                                    "required": [
-                                        "data",
-                                        "meta"
                                     ]
                                 }
                             }
@@ -19679,6 +20347,71 @@
                 ]
             }
         },
+        "/contracts/{contract}/renew": {
+            "post": {
+                "operationId": "contract.renewContract",
+                "tags": [
+                    "RenewContract"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RenewContractRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/roles/{role}/abilities": {
             "get": {
                 "operationId": "roles.getAbilities",
@@ -21219,6 +21952,255 @@
                     {
                         "oauth2": [
                             "payments:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/invoices/{invoice}/shared-link": {
+            "get": {
+                "operationId": "invoice.sharedLink",
+                "tags": [
+                    "SharedLink"
+                ],
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "description": "The invoice ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "url": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "url",
+                                                "expires_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Un borrador no tiene enlace: publica la factura primero."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "invoices:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts/{contract}/shared-link": {
+            "get": {
+                "operationId": "contract.sharedLink",
+                "tags": [
+                    "SharedLink"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "url": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "url",
+                                                "expires_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Un contrato sin activar no tiene enlace todav\u00eda."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/estimates/{estimate}/shared-link": {
+            "get": {
+                "operationId": "estimate.sharedLink",
+                "tags": [
+                    "SharedLink"
+                ],
+                "parameters": [
+                    {
+                        "name": "estimate",
+                        "in": "path",
+                        "required": true,
+                        "description": "The estimate ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "url": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "url",
+                                                "expires_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Un presupuesto sin n\u00famero no tiene enlace todav\u00eda."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "estimates:read"
                         ]
                     }
                 ]
@@ -36689,6 +37671,8 @@
                             "invoices:write": "gestionar tu facturaci\u00f3n",
                             "estimates:read": "leer tus presupuestos",
                             "estimates:write": "gestionar tus presupuestos",
+                            "contracts:read": "leer tus contratos",
+                            "contracts:write": "gestionar tus contratos",
                             "customers:read": "leer tus clientes",
                             "customers:write": "gestionar tus clientes",
                             "expenses:read": "leer tus gastos",
@@ -36890,6 +37874,19 @@
                     "created_at"
                 ],
                 "title": "AbsenceResource"
+            },
+            "ActivateContractRequest": {
+                "type": "object",
+                "description": "Activaci\u00f3n de un contrato (`POST /contracts/{contract}/activate`).\n\nSin cuerpo, el contrato CREA su recurrente gobernada; con\n`recurring_invoice_id`, ADOPTA esa \u2014 hered\u00e1ndole los l\u00edmites del periodo\npero sin pisar su frecuencia, sus l\u00edneas ni sus impuestos, que son\nconfiguraci\u00f3n humana (Contract::activate()).\n\nEl `exists` va acotado por empresa por la misma lecci\u00f3n de siempre (#395):\ndentro de una instancia conviven varias empresas, y el id a secas casar\u00eda\nla recurrente de otra. El modelo lo re-comprueba (empresa Y cliente), pero\nel 422 de aqu\u00ed llega antes y dice qu\u00e9 falla.",
+                "properties": {
+                    "recurring_invoice_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    }
+                },
+                "title": "ActivateContractRequest"
             },
             "AddressResource": {
                 "type": "object",
@@ -37798,6 +38795,282 @@
                     "updated_at"
                 ],
                 "title": "ContactResource"
+            },
+            "ContractRequest": {
+                "type": "object",
+                "description": "Alta y edici\u00f3n de un contrato (`POST /contracts`, `PUT /contracts/{id}`).\n\nDos decisiones que no son costumbre sino contrato (#583):\n\n - **`status` NO se acepta aqu\u00ed.** El ciclo de vida va por sus acciones\n   (`activate`/`cancel`/`renew`), que son las que gobiernan las recurrentes;\n   aceptar `status` en el PUT ser\u00eda un contrato ACTIVE sin recurrente o\n   CANCELLED sin pausar nada \u2014 el estado mentir\u00eda. La lista blanca del\n   payload son estas reglas (ContractFields), as\u00ed que no declararlo ya es\n   excluirlo.\n - **Los cerrados llevan `Rule::in`**, y no solo por validar: el generador\n   del spec deduce el enum de la regla, y el estudio dej\u00f3 medido lo que pasa\n   cuando no se hace \u2014 `frequency`/`status`/`limit_by` de la recurrente son\n   `string` sin enum en el contrato p\u00fablico y el SDK hereda esa opacidad.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "contract_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "customer_id": {
+                        "type": "integer"
+                    },
+                    "starts_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "ends_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Nullable = contrato indefinido: la recurrente gobernada hereda\n`limit_by = NONE`."
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "description": "C\u00e9ntimos, enteros \u2014 la convenci\u00f3n monetaria de la casa. El tope\nes el mismo que el de `total` en documentos.",
+                        "minimum": 0,
+                        "maximum": 999999999999
+                    },
+                    "currency_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "billing_every": {
+                        "type": "string",
+                        "enum": [
+                            "MONTHLY",
+                            "QUARTERLY",
+                            "SEMIANNUAL",
+                            "ANNUAL"
+                        ]
+                    },
+                    "billing_anchor_day": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "1..31 y no 1..28: el 29-31 es entrada leg\u00edtima (\u00abfact\u00farame a fin\nde mes\u00bb) que la compilaci\u00f3n fija al 28 \u2014 rechazarla aqu\u00ed obligar\u00eda\nal cliente a conocer una limitaci\u00f3n de cron que es nuestra.",
+                        "minimum": 1,
+                        "maximum": 31
+                    },
+                    "renewal_mode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "NONE",
+                            "MANUAL",
+                            "TACIT",
+                            null
+                        ]
+                    },
+                    "notice_days": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Nullable = \u00abusa el default del cat\u00e1logo regional\u00bb (#584). El tope\ncorta los disparates sin opinar sobre ninguna legislaci\u00f3n.",
+                        "minimum": 0,
+                        "maximum": 365
+                    },
+                    "estimate_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "El presupuesto de origen, acotado por empresa \u2014 la lecci\u00f3n del\n`item_id` de las recurrentes (#395): sin el `where`, un contrato\npod\u00eda quedar apuntando al presupuesto de OTRA empresa del tenant."
+                    }
+                },
+                "required": [
+                    "title",
+                    "customer_id",
+                    "starts_at",
+                    "amount",
+                    "billing_every"
+                ],
+                "title": "ContractRequest"
+            },
+            "ContractResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "contract_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "customer_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "company_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "creator_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "currency_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "ha_vencido": {
+                        "type": "boolean"
+                    },
+                    "starts_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ends_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "amount": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "billing_every": {
+                        "type": "string"
+                    },
+                    "billing_anchor_day": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "renewal_mode": {
+                        "type": "string"
+                    },
+                    "notice_days": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "notice_days_effective": {
+                        "type": "integer",
+                        "description": "El efectivo: el del contrato o el default del cat\u00e1logo regional\n(config/contracts.php). La pantalla ense\u00f1a este, no el crudo."
+                    },
+                    "has_document": {
+                        "type": "boolean",
+                        "description": "\u00bfHay firmado adjunto? El fichero se sube por su POST multiparte\ndedicado (#584) y se pisa al resubir."
+                    },
+                    "estimate_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "cancelled_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CustomFieldValueResource"
+                        }
+                    },
+                    "customer": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/CustomerResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "estimate": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EstimateResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "recurring_invoices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RecurringInvoiceResource"
+                        }
+                    },
+                    "invoices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InvoiceResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "description",
+                    "contract_number",
+                    "customer_id",
+                    "company_id",
+                    "creator_id",
+                    "currency_id",
+                    "status",
+                    "ha_vencido",
+                    "starts_at",
+                    "ends_at",
+                    "amount",
+                    "billing_every",
+                    "billing_anchor_day",
+                    "renewal_mode",
+                    "notice_days",
+                    "notice_days_effective",
+                    "has_document",
+                    "estimate_id",
+                    "cancelled_at"
+                ],
+                "title": "ContractResource"
             },
             "ConvertEstimateRequest": {
                 "type": "object",
@@ -39054,6 +40327,22 @@
                     "external_ref"
                 ],
                 "title": "CustomerSummaryResource"
+            },
+            "DeleteContractsRequest": {
+                "type": "object",
+                "description": "Borrado m\u00faltiple de contratos (`POST /contracts/delete`). Mismo patr\u00f3n que\nDeleteRecurringInvoicesRequest: el `exists` convierte el id inexistente en\nun 422 que dice cu\u00e1l falla, en vez del 500 de iterar sobre un `find()` nulo.\n\nLo que NO valida esto: que cada contrato est\u00e9 en borrador. Esa es la regla\nde negocio (decisi\u00f3n 8: lo activo se cancela, no se borra) y vive en\n`Contract::deleteContracts()`, que aborta el lote entero en voz alta.",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "required": [
+                    "ids"
+                ],
+                "title": "DeleteContractsRequest"
             },
             "DeleteCustomersRequest": {
                 "type": "object",
@@ -41949,6 +43238,12 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "contract_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -42010,7 +43305,8 @@
                     "discount_per_item",
                     "reference_number",
                     "sent_at",
-                    "viewed_at"
+                    "viewed_at",
+                    "contract_id"
                 ],
                 "title": "Invoice"
             },
@@ -43777,6 +45073,228 @@
                     "formatted_created_at"
                 ],
                 "title": "ItemResource"
+            },
+            "ItemSummaryResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "item_type": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "supplier_reference": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "price": {
+                        "type": "integer"
+                    },
+                    "purchase_price": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "default_discount": {
+                        "type": "number"
+                    },
+                    "category_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "category": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "name"
+                        ]
+                    },
+                    "unit_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "unit_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Del `leftJoin` del \u00edndice, no de la relaci\u00f3n: es el \u00fanico dato de\nla unidad que los listados pintan."
+                    },
+                    "company_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "currency_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "tax_per_item": {
+                        "type": "string"
+                    },
+                    "purchase_tax_type_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "is_time_trackable": {
+                        "type": "boolean"
+                    },
+                    "opening_stock": {
+                        "type": "integer"
+                    },
+                    "stock_alert_qty": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "allow_sale_without_stock": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "taxes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "tax_type_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "item_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "company_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "amount": {
+                                    "type": "integer"
+                                },
+                                "percent": {
+                                    "type": "number"
+                                },
+                                "base_amount": {
+                                    "type": "integer"
+                                },
+                                "currency_id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "type": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "tax_type_id",
+                                "item_id",
+                                "company_id",
+                                "name",
+                                "amount",
+                                "percent",
+                                "base_amount",
+                                "currency_id",
+                                "type"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "item_type",
+                    "sku",
+                    "supplier_reference",
+                    "description",
+                    "price",
+                    "purchase_price",
+                    "default_discount",
+                    "category_id",
+                    "unit_id",
+                    "unit_name",
+                    "company_id",
+                    "currency_id",
+                    "tax_per_item",
+                    "purchase_tax_type_id",
+                    "is_active",
+                    "is_time_trackable",
+                    "opening_stock",
+                    "stock_alert_qty",
+                    "allow_sale_without_stock",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ItemSummaryResource"
             },
             "ItemsRequest": {
                 "type": "object",
@@ -46366,6 +47884,20 @@
                 ],
                 "title": "RecurringInvoiceResource"
             },
+            "RenewContractRequest": {
+                "type": "object",
+                "description": "Renovaci\u00f3n manual de un contrato (`POST /contracts/{contract}/renew`).\n\nSolo la fecha nueva: que sea POSTERIOR al fin actual \u2014renovar es extender\u2014\nlo comprueba `Contract::renew()`, porque depende del estado del contrato y\nno del cuerpo. La renovaci\u00f3n t\u00e1cita no pasa por aqu\u00ed: es el job de fase 2.",
+                "properties": {
+                    "ends_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "ends_at"
+                ],
+                "title": "RenewContractRequest"
+            },
             "Role": {
                 "type": "object",
                 "properties": {
@@ -46526,7 +48058,11 @@
                                 "view-appointment",
                                 "create-appointment",
                                 "edit-appointment",
-                                "delete-appointment"
+                                "delete-appointment",
+                                "view-contract",
+                                "create-contract",
+                                "edit-contract",
+                                "delete-contract"
                             ]
                         }
                     }
@@ -46658,7 +48194,11 @@
                                         "view-appointment",
                                         "create-appointment",
                                         "edit-appointment",
-                                        "delete-appointment"
+                                        "delete-appointment",
+                                        "view-contract",
+                                        "create-contract",
+                                        "edit-contract",
+                                        "delete-contract"
                                     ]
                                 }
                             },
