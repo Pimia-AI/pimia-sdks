@@ -9,6 +9,26 @@ Necesita un client ya registrado en el tenant y **una autorización real de un
 usuario** (hay pantalla de consentimiento: no se puede automatizar, y es lo
 correcto).
 
+> ⚠️ **Corrección fechada, 2026-08-30 — el nombre dice «dev» y los hosts de
+> abajo dicen prod.** Este directorio se llama `e2e-dev` y el párrafo de arriba
+> habla del «entorno de desarrollo», pero **todos los comandos de esta página
+> usan `TENANT.pimia.es`, que es PRODUCCIÓN**. El dominio de desarrollo es
+> `taskai.work`, como declara el propio contrato de este repo
+> (`spec/pimia-api-v1.json`: `https://{tenant}.taskai.work/api/v1`).
+>
+> Seguirlos al pie de la letra **registra un client OAuth en producción**.
+> Elige el dominio a conciencia:
+>
+> - desarrollo → `https://TENANT.taskai.work`
+> - producción → `https://TENANT.pimia.es`
+>
+> Cuál de los dos se usó el 2026-07-29 ya no se puede saber: la etiqueta dice
+> uno y los comandos dicen el otro. No cambia el hallazgo que salió de aquel
+> ejercicio —el `invalid_grant` que escapaba como `OAuthError` en vez de
+> `UnauthorizedError` es un fallo de mapeo del cliente, idéntico en las dos
+> cajas—, pero sí obliga a no citar este ejemplo como prueba de que algo se
+> midió en dev.
+
 ## 1. Registrar el client (una vez)
 
 ```bash
