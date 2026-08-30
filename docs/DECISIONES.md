@@ -98,6 +98,22 @@ obtiene en el registro de Pimia o en el panel de integrador).
    podía redirigir el correo del tenant a otro servidor. Las tres exigen ahora
    `admin` o se rechazan; la lección es que **partir un dominio se hace
    mirando sus rutas una a una**, no por su nombre.
+   **Rev. 2026-08-27: la capa B de VeriFactu (configuración) se abre.**
+   Decisión de 👤 (2026-08-26): la web sustituye al panel Vue y la pantalla de
+   ajustes de VeriFactu no puede perderse. Es la opción C del estudio que
+   midió la capa ruta a ruta (`ESTUDIO-MCP-VERIFACTU.md` § I.5-I.7, repo web),
+   tomada por su camino condicionado y en su orden: primero las dos
+   condiciones (permiso `manage company` en las cuatro rutas — «solo el
+   dueño» era una propiedad del menú de Vue, no del sistema — y un
+   `PUT /settings/verifactu` que ya no contesta 200 cuando la API falla), y
+   entonces la apertura con los DOS cambios que la rev. 2 exige juntos: par
+   `verifactu:read`/`verifactu:write` en el catálogo con **`first_party_only`**
+   (el criterio de `admin`; dominio PROPIO y restringido, no colgado de
+   `admin` ni de `settings`) y entrada en la lista blanca de
+   `partner_surface`. Lo que NO cambia: `settings:read`, `admin:*` y el
+   `api:read` genérico siguen sin alcanzarla, y un integrador no puede pedir
+   el scope. El certificado es multiparte: entra en el contrato, y su
+   pantalla web entra después por la puerta multiparte con su propia issue.
 
 5. **Toda funcionalidad nueva del núcleo nace con ruta en `/api/v1` y tipo en
    el spec**, o no existe para nadie. Regenerar el OpenAPI y los tipos es un
@@ -309,6 +325,36 @@ obtiene en el registro de Pimia o en el panel de integrador).
   `dashboard/` React es un arranque huérfano sin ruta y no se retoma por
   iniciativa propia.
 
+11. **Hermes Desktop es el tercer anfitrión del ERP: el escritorio del
+    autónomo (fase 1a verificada en vivo el 2026-08-30).** Buzz
+    (pimia-workspace) sigue siendo el escritorio del equipo —empleados y
+    agentes—; para el autónomo sin plantilla, el ERP se sirve dentro de
+    Hermes Desktop (NousResearch/hermes-agent, MIT) como **plugin por su
+    puerta de disco**, sin fork: las vistas de `features/pimia/` entran
+    VERBATIM desde pimia-web-shadcn —tercer consumidor del dialecto portable
+    del punto 7— y las costuras del anfitrión viven en el plugin (repo
+    `pimia-hermes-plugin`): transporte por el REST namespaced del plugin,
+    auth y shell sobre su backend Python, y la navegación como router
+    interno, porque las rutas contribuidas de Hermes no llevan parámetros.
+    Lo que no se negocia: **el token jamás entra en el renderer** —la
+    custodia vive en el backend Python del plugin (client público RFC 7591 +
+    PKCE + loopback de puerto fijo, refresh serializado y persistido antes
+    de reintentar), el mismo modelo que Rust en el escritorio—; las vistas
+    se editan SOLO en pimia-web-shadcn (el plugin consume, no bifurca); y el
+    catálogo OAuth sigue mandando (punto 4): Hermes pide scopes del catálogo
+    de partner, con consentimiento, sin privilegio nuevo alguno.
+    Coste medido de la 1a: cero ediciones en vistas, ~400 líneas de
+    costuras, y dos peculiaridades del loader de Hermes resueltas para
+    siempre en el build del plugin (su escáner de imports lee el TEXTO
+    entero del bundle; react-dom exige un `require` léxico). El tema salió
+    gratis: Hermes publica la paleta shadcn mapeada a su tema y las vistas
+    la heredan, claro/oscuro y portales incluidos.
+    Pendiente, por fases: **1b** —Panel/Clientes/Presupuestos/Facturas en
+    lectura, el `PimiaConnectDialog` real, cambio de empresa—; **2**
+    —escritura, llavero del SO (hoy vault JSON 0600), revocación al
+    desconectar—. La 2 no empieza sin decidir qué scopes de escritura pide
+    Hermes, que vuelve a ser el punto 4.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
@@ -328,3 +374,6 @@ obtiene en el registro de Pimia o en el panel de integrador).
   de CRUD (#444, desde pimia-sdks#34).
 - Dirección fiscal de empresa, bloquea «ajustes → empresa»: galeote/factSaas#414.
 - Plan y bitácora del porte web: `pimia-web-shadcn/docs/PLAN-BITACORA.md`.
+- El anfitrión Hermes: plugin en `pimia-hermes-plugin` (local, sin remoto
+  todavía); la receta del build y los tropiezos del loader, en su README y
+  sus commits.
