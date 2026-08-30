@@ -354,3 +354,12 @@ canje, `invoices:read`/`customers:read` en 200, `expenses` en 403 tipado,
 refresco con rotación persistida y revocación. Ese ejercicio destapó un fallo
 de contrato que ya está corregido: un refresco fallido escapaba como
 `OAuthError` en vez de `UnauthorizedError`.
+
+> 🔬 **Corrección fechada, 2026-08-30: el «(dev de Pimia)» de ahí arriba no lo
+> sostiene nada.** Todos los comandos escritos en `examples/e2e-dev/README.md`
+> usan `TENANT.pimia.es`, que es producción, mientras el dominio de desarrollo
+> es `taskai.work` (`spec/pimia-api-v1.json`). Contra cuál se corrió aquel día
+> ya no se puede saber. **El hallazgo no depende del plano** —el mapeo de
+> errores del cliente es el mismo código en las dos cajas—, así que la
+> validación sigue en pie; lo que no vale es citar esta línea como prueba de
+> que el SDK se ejercitó en dev.
