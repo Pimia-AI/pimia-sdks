@@ -47,6 +47,16 @@ final class Scopes
 
     public const AGENDA_WRITE = 'agenda:write';
 
+    /** Leer contratos de servicio: periodo, estado, sus recurrentes. */
+    public const CONTRACTS_READ = 'contracts:read';
+
+    /**
+     * Gestionar contratos: crear, activar, renovar y cancelar — pueden
+     * comprometer periodos de facturación futuros. Activar exige además
+     * `invoices:write` (la recurrente que nace emitirá facturas).
+     */
+    public const CONTRACTS_WRITE = 'contracts:write';
+
     /** Solo lectura: el dominio incluye escrituras que no son de partner. */
     public const REPORTS_READ = 'reports:read';
 

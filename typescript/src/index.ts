@@ -8,6 +8,8 @@
 
 export { PimiaClient, toFormData } from './client.js'
 export type {
+  ContractRequest,
+  ContractResource,
   CustomerRequest,
   CustomerResource,
   EstimateResource,
@@ -87,6 +89,14 @@ export const SCOPES = {
   invoicesWrite: 'invoices:write',
   estimatesRead: 'estimates:read',
   estimatesWrite: 'estimates:write',
+  /** Leer contratos de servicio: periodo, estado, sus recurrentes. */
+  contractsRead: 'contracts:read',
+  /**
+   * Gestionar contratos: crear, activar, renovar y cancelar — pueden
+   * comprometer periodos de facturación futuros. Activar exige además
+   * `invoices:write` (la recurrente que nace emitirá facturas por su cuenta).
+   */
+  contractsWrite: 'contracts:write',
   customersRead: 'customers:read',
   customersWrite: 'customers:write',
   expensesRead: 'expenses:read',

@@ -8,6 +8,46 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.12.0] — 2026-08-30
+
+**Contratos: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue
+delante.** Un contrato de servicio GOBIERNA facturas recurrentes: su periodo
+se vuelve los límites de la recurrente, y el ciclo de vida va por acciones —
+el `PUT` no acepta `status`. Estudio ratificado el 2026-08-30
+(`pimia-web-shadcn/docs/ESTUDIO-CONTRATOS.md`); núcleo en galeote/factSaas#585
+y #586.
+
+Spec sincronizado con **factSaas@f0655568** (2026-08-30) — **398 operaciones**
+(catorce más que la 0.11.0) y **136 schemas** (seis más). Ninguna retirada.
+Además del bloque de contratos, la 0.11.0→0.12.0 arrastra los retoques del
+propio núcleo sobre esquemas existentes (`contract_id` nullable en la factura
+y las cuatro abilities de contratos en su enum).
+
+### Añadido
+
+- **Contratos** (12 operaciones, dominio propio `contracts:read`/`write`, de
+  partner con consentimiento): CRUD (índice, alta con **201**, ficha, edición,
+  borrado individual y en lote), las tres acciones del ciclo de vida
+  (`activate`/`cancel`/`renew`), el documento firmado (`POST`/`DELETE
+  /contracts/{id}/document`, multiparte) y el enlace firmado del PDF
+  (`shared-link`). Tres cosas que el contrato dice y conviene tener delante:
+  - **activar exige `contracts:write` E `invoices:write`** (la recurrente que
+    nace emitirá facturas por su cuenta) — publicado en el `security` de la
+    operación, el segundo caso de doble scope tras `convert-to-invoice`;
+  - **el número llega al activar**: `contract_number` es `null` en borrador;
+  - los cerrados (`status`, `renewal_mode`, `billing_every`) van con **enum
+    declarado** en el request — la opacidad de `frequency`/`limit_by` de la
+    recurrente no se hereda.
+- **`client.contracts`** en `@pimia/sdk` y **`$client->contracts`** en
+  `pimia/pimia-php`: `list`/`get`/`create`/`update`/`activate` (con
+  `recurringInvoiceId` para adoptar una recurrente existente)/`cancel`/
+  `renew`/`sharedLink`; `uploadDocument` solo en TS — en PHP el multiparte va
+  por ruta cruda hasta su helper (asimetría anotada, como manda la checklist).
+  Tipos `ContractResource`/`ContractRequest` re-exportados.
+- **`SCOPES.contractsRead`/`contractsWrite`** (TS) y
+  **`Scopes::CONTRACTS_READ`/`CONTRACTS_WRITE`** (PHP), con el aviso del doble
+  scope en el docblock del write.
+
 ## [0.11.0] — 2026-08-27
 
 **Las tres aperturas del panel: delegación, asesoría y VeriFactu.** El día en

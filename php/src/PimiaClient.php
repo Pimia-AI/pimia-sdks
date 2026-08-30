@@ -15,6 +15,7 @@ use Pimia\Http\Transport;
 use Pimia\OAuth\OAuthClient;
 use Pimia\OAuth\TokenSet;
 use Pimia\OAuth\TokenStore;
+use Pimia\Resource\Contracts;
 use Pimia\Resource\Customers;
 use Pimia\Resource\Estimates;
 use Pimia\Resource\Invoices;
@@ -38,6 +39,8 @@ final class PimiaClient
 
     public readonly Estimates $estimates;
 
+    public readonly Contracts $contracts;
+
     /** @var array{limit: ?int, remaining: ?int} */
     private array $rateLimit = ['limit' => null, 'remaining' => null];
 
@@ -52,6 +55,7 @@ final class PimiaClient
         $this->invoices = new Invoices($this);
         $this->customers = new Customers($this);
         $this->estimates = new Estimates($this);
+        $this->contracts = new Contracts($this);
     }
 
     /** Cabeceras `X-RateLimit-*` de la última respuesta. */
