@@ -16,6 +16,7 @@ export type {
   EstimatesRequest,
   InvoiceResource,
   InvoicesRequest,
+  ItemWarehouseStockResource,
   PimiaClientOptions,
   RateLimit,
   ReadOptions,
@@ -23,6 +24,8 @@ export type {
   ResourceEnvelope,
   ResponseMeta,
   ResponseWithMeta,
+  WarehouseRequest,
+  WarehouseResource,
   WriteOptions,
 } from './client.js'
 

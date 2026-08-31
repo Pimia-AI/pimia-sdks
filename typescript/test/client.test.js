@@ -370,6 +370,50 @@ test('los helpers de dominio pegan en las rutas correctas', async () => {
   assert.equal(calls[2].init.headers['content-type'], 'application/json')
 })
 
+test('los almacenes pegan en sus cinco rutas, con su verbo', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+
+  await client.warehouses.list({ is_active: 1 })
+  await client.warehouses.create({ name: 'Tienda', is_default: true })
+  await client.warehouses.update(3, { name: 'Nave' })
+  await client.warehouses.delete(3)
+  await client.warehouses.stock(3, { only_with_stock: 1 })
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/warehouses?is_active=1`)
+  assert.equal(calls[1].url, `${BASE}/api/v1/warehouses`)
+  assert.equal(calls[1].init.method, 'POST')
+  assert.equal(calls[2].init.method, 'PUT')
+  assert.equal(calls[3].init.method, 'DELETE')
+  assert.equal(calls[4].url, `${BASE}/api/v1/warehouses/3/stock?only_with_stock=1`)
+})
+
+// El módulo `stock` es opt-in, así que la respuesta esperable en un tenant que
+// no lo ha instalado es un 403 `module_not_installed` — que NO es falta de
+// scope. Si el SDK lo tradujera a MissingScopeError, un integrador se pasaría
+// la tarde pidiendo un permiso que ya tiene.
+test('el 403 de módulo no instalado no se disfraza de falta de scope', async () => {
+  const { client } = clientWith(
+    () =>
+      json(
+        {
+          error: 'module_not_installed',
+          message: 'El módulo «stock» no está instalado para esta empresa.',
+          module: 'stock',
+        },
+        403,
+      ),
+    { accessToken: 'at-1' },
+  )
+
+  await assert.rejects(client.warehouses.list(), (error) => {
+    assert.ok(!(error instanceof MissingScopeError), 'un módulo apagado no es un scope que falte')
+    assert.equal(error.status, 403)
+    assert.equal(error.body.error, 'module_not_installed')
+
+    return true
+  })
+})
+
 // ── Idempotencia ───────────────────────────────────────────────────────────
 //
 // El contrato dice que un reintento devuelve la MISMA respuesta que la

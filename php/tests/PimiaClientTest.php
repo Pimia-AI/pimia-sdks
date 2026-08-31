@@ -358,6 +358,26 @@ final class PimiaClientTest extends TestCase
         $this->assertSame('application/json', $transport->calls[2]['headers']['content-type']);
     }
 
+    public function test_los_almacenes_pegan_en_sus_cinco_rutas(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json([]),
+            new TokenSet('at-1'),
+        );
+
+        $client->warehouses->list(['is_active' => 1]);
+        $client->warehouses->create(['name' => 'Tienda', 'is_default' => true]);
+        $client->warehouses->update(3, ['name' => 'Nave']);
+        $client->warehouses->delete(3);
+        $client->warehouses->stock(3, ['only_with_stock' => 1]);
+
+        $this->assertSame(self::BASE.'/api/v1/warehouses?is_active=1', $transport->calls[0]['url']);
+        $this->assertSame('POST', $transport->calls[1]['method']);
+        $this->assertSame('PUT', $transport->calls[2]['method']);
+        $this->assertSame('DELETE', $transport->calls[3]['method']);
+        $this->assertSame(self::BASE.'/api/v1/warehouses/3/stock?only_with_stock=1', $transport->calls[4]['url']);
+    }
+
     public function test_una_respuesta_sin_cuerpo_no_revienta(): void
     {
         [$client] = $this->client(

@@ -19,6 +19,7 @@ use Pimia\Resource\Contracts;
 use Pimia\Resource\Customers;
 use Pimia\Resource\Estimates;
 use Pimia\Resource\Invoices;
+use Pimia\Resource\Warehouses;
 
 /**
  * Cliente de la API de Pimia.
@@ -41,6 +42,8 @@ final class PimiaClient
 
     public readonly Contracts $contracts;
 
+    public readonly Warehouses $warehouses;
+
     /** @var array{limit: ?int, remaining: ?int} */
     private array $rateLimit = ['limit' => null, 'remaining' => null];
 
@@ -56,6 +59,7 @@ final class PimiaClient
         $this->customers = new Customers($this);
         $this->estimates = new Estimates($this);
         $this->contracts = new Contracts($this);
+        $this->warehouses = new Warehouses($this);
     }
 
     /** Cabeceras `X-RateLimit-*` de la última respuesta. */
