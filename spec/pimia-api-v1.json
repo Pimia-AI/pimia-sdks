@@ -46584,13 +46584,21 @@
                     },
                     "quantity": {
                         "type": "integer"
+                    },
+                    "item_committed_quantity": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Lo que el ART\u00cdCULO tiene comprometido \u2014 global, no de este\nalmac\u00e9n (N2 \u00b7 pieza 3). El nombre lleva el `item_` delante por\neso: en una fila que habla de una nave, \u00abcomprometido\u00bb a secas\nse leer\u00eda como \u00abcomprometido aqu\u00ed\u00bb, y de los dos documentos que\ncomprometen solo el albar\u00e1n declara almac\u00e9n. `null` = no se\nest\u00e1 calculando; nunca es cero."
                     }
                 },
                 "required": [
                     "item_id",
                     "item_name",
                     "warehouse_id",
-                    "quantity"
+                    "quantity",
+                    "item_committed_quantity"
                 ],
                 "title": "ItemWarehouseStockResource"
             },

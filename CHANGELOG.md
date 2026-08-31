@@ -15,7 +15,7 @@ dónde está; desde hoy sabe además **cuánto de eso ya tiene dueño** — y po
 tanto cuánto puedes vender de verdad. Pieza 3 y última de la fase N2 del
 estudio de stock; núcleo en galeote/factSaas#596.
 
-Spec sincronizado con **factSaas@0fd7c70b** (2026-08-31) — **415 operaciones**,
+Spec sincronizado con **factSaas@869b4deb** (2026-08-31) — **415 operaciones**,
 las mismas: la pieza no estrena ni una ruta. Ninguna retirada.
 
 ### Añadido
@@ -27,6 +27,9 @@ las mismas: la pieza no estrena ni una ruta. Ninguna retirada.
   **disponible** (saldo − comprometido) y el **desglose documento a
   documento** — qué albaranes y qué facturas lo comprometen, con su número,
   su cliente y su fecha.
+- **`item_committed_quantity`** en las filas de
+  `GET /warehouses/{warehouse}/stock`. El `item_` del nombre no es adorno: la
+  fila habla de una nave y la cifra es del ARTÍCULO entero.
 - **`client.stockMovements`** en `@pimia/sdk` y **`$client->stockMovements`**
   en `pimia/pimia-php`: `list`, `forItem` y `adjust`. El libro llevaba desde
   N1 sin atajo en los SDKs, y es donde vive el comprometido.

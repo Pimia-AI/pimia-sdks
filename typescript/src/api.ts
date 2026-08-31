@@ -8287,6 +8287,15 @@ export interface components {
             item_name: string;
             warehouse_id: number;
             quantity: number;
+            /**
+             * @description Lo que el ARTÍCULO tiene comprometido — global, no de este
+             *     almacén (N2 · pieza 3). El nombre lleva el `item_` delante por
+             *     eso: en una fila que habla de una nave, «comprometido» a secas
+             *     se leería como «comprometido aquí», y de los dos documentos que
+             *     comprometen solo el albarán declara almacén. `null` = no se
+             *     está calculando; nunca es cero.
+             */
+            item_committed_quantity: number | null;
         };
         /** ItemsRequest */
         ItemsRequest: {
