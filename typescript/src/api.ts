@@ -3752,6 +3752,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/received-invoices/{id}/mark-goods-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marca la mercancía de la factura recibida como RECIBIDA y suma sus líneas
+         *     al almacén — el espejo exacto del `mark-delivered` del albarán de venta
+         *     (estudio de stock, decisión S3)
+         * @description Es una acción explícita y no el alta de la factura a propósito: el OCR
+         *     crea borradores que se corrigen, y un borrador no es mercancía en la
+         *     estantería. El candado es `stock_added_at` —un instante, como el
+         *     `stock_deducted_at` del albarán (#473)— y hace la acción idempotente:
+         *     la segunda llamada es un 422, no una segunda suma.
+         *
+         *     Reglas espejo del albarán, también a propósito: solo mueven almacén las
+         *     líneas con `item_id`, y un artículo con `opening_stock` NULL («nunca ha
+         *     llevado stock») no se estrena por una compra — se estrena en su ficha o
+         *     con un ajuste, que son los gestos que significan «declaro existencias».
+         */
+        post: operations["receivedInvoices.markGoodsReceived"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/banking/transactions": {
         parameters: {
             query?: never;
@@ -4559,6 +4590,60 @@ export interface paths {
          *     primero), replicando el bloque "otros módulos" de la UX heredada.
          */
         get: operations["specializations.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/items/{item}/stock-adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ajusta las existencias de un artículo y devuelve el asiento */
+        post: operations["item.stockAdjustments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Los movimientos de stock de la empresa, del más nuevo al más viejo */
+        get: operations["stockMovements.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/items/{item}/stock-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los movimientos de stock de UN artículo — la pestaña «Movimientos» de su
+         *     ficha, la que responde «¿por qué tengo 47?»
+         */
+        get: operations["stockMovements.forItem"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5657,6 +5742,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/warehouses/{warehouse}/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Las existencias de UN almacén, artículo a artículo
+         * @description La pregunta que la dimensión vino a contestar: «¿cuántos me quedan en la
+         *     tienda?». Sale de `item_warehouse_stock`, que es el reparto del contador
+         *     global y no una segunda cuenta: la suma por artículo de todos los
+         *     almacenes es exactamente `items.opening_stock`.
+         */
+        get: operations["warehouses.stock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Los almacenes de la empresa */
+        get: operations["warehouses.index"];
+        put?: never;
+        /** Da de alta un almacén */
+        post: operations["warehouses.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/warehouses/{warehouse}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["warehouses.show"];
+        /**
+         * Edita un almacén
+         * @description ⚠️ El por defecto no se puede APAGAR desde aquí: se cambia encendiendo
+         *     otro, que apaga este en la misma transacción. Un `is_default: false`
+         *     sobre el único que lo tiene dejaría a la empresa sin sitio donde anotar
+         *     lo que no elige, y el 422 lo dice en vez de aceptarlo y romperse luego.
+         */
+        put: operations["warehouses.update"];
+        post?: never;
+        /**
+         * Borra un almacén VACÍO y sin historia
+         * @description Tres negativas, y las tres con su código: el por defecto no se borra
+         *     (`default_warehouse_required`), uno con asientos tampoco
+         *     (`stock_movements_attached` — el asiento lo nombra, y la historia del
+         *     almacén es lo que hace de fiar el saldo), y uno con existencias, menos
+         *     (`stock_attached`: borrarlo evaporaría un saldo que sí está en el
+         *     contador global). Para el que ya no se usa está `is_active: false`.
+         */
+        delete: operations["warehouses.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/webhooks": {
         parameters: {
             query?: never;
@@ -6680,6 +6838,16 @@ export interface components {
             delivery_note_number: string | null;
             delivery_note_date: string;
             status: string;
+            /**
+             * Format: date-time
+             * @description Cuándo movió el almacén este albarán (NULL = aún no). El #473 lo
+             *     creó sin publicarlo y los clientes lo INFERÍAN del estado — que
+             *     es justo lo que `convertToInvoice` rompe al pisar `DELIVERED`
+             *     con `INVOICED`. Con el libro (estudio de stock, S1) deja de ser
+             *     contabilidad interna: es lo que la pantalla del albarán necesita
+             *     para contar lo que hizo.
+             */
+            stock_deducted_at: string | null;
             sub_total: number;
             total: number;
             tax: number;
@@ -7896,6 +8064,12 @@ export interface components {
             notes: string | null;
             price: number;
             purchase_price: number | null;
+            /**
+             * @description Coste medio ponderado en céntimos (S8, informativo): lo
+             *     recalcula cada compra recibida; NULL = aún no hay entradas con
+             *     coste anotadas.
+             */
+            average_cost_cents: number | null;
             default_discount: number;
             unit_id: number | null;
             company_id: number | null;
@@ -7932,6 +8106,7 @@ export interface components {
             description: string | null;
             price: number;
             purchase_price: number | null;
+            average_cost_cents: number | null;
             default_discount: number;
             category_id: number | null;
             category?: {
@@ -7970,6 +8145,13 @@ export interface components {
                 type: string | null;
             }[];
         };
+        /** ItemWarehouseStockResource */
+        ItemWarehouseStockResource: {
+            item_id: number;
+            item_name: string;
+            warehouse_id: number;
+            quantity: number;
+        };
         /** ItemsRequest */
         ItemsRequest: {
             name: string;
@@ -7992,11 +8174,19 @@ export interface components {
             description?: string | null;
             notes?: string | null;
             is_active?: boolean | null;
+            /**
+             * @description Saldo de existencias del artículo. Pese al nombre NO es el
+             *     inicial: es el contador vivo que mueven albaranes, facturas,
+             *     compras y ajustes (el detalle, en `GET /items/{item}/stock-movements`).
+             *     En el alta se guarda 0 si no llega; en la actualización se
+             *     conserva el que había. Escribirlo aquí pisa el saldo (queda
+             *     anotado como `manual_edit`); para corregir con motivo está
+             *     `POST /items/{item}/stock-adjustments`.
+             */
+            opening_stock?: number | null;
             stock_alert_qty?: number | null;
             allow_sale_without_stock?: boolean | null;
             purchase_tax_type_id?: number | null;
-            /** @description Existencias iniciales del artículo. En el alta se guarda 0 si no llega; en la actualización se conserva el valor que ya tenía. */
-            opening_stock?: number | null;
         };
         /** LeadActivity */
         LeadActivity: {
@@ -8478,6 +8668,14 @@ export interface components {
             received_invoice_number: string | null;
             reference_number: string | null;
             status: string;
+            /**
+             * Format: date-time
+             * @description Cuándo se sumó la mercancía al almacén (mark-goods-received);
+             *     NULL si aún no. Se publica —al contrario que en su día el
+             *     `stock_deducted_at` del albarán— porque es lo que permite a un
+             *     cliente pintar el botón «Mercancía recibida» solo cuando toca.
+             */
+            stock_added_at: string | null;
             paid_status: string;
             tax_per_item: string | null;
             discount_per_item: string | null;
@@ -8752,7 +8950,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse")[];
         };
         /**
          * RoleRequest
@@ -8777,7 +8975,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse";
             }[] | null;
         };
         /** RoleResource */
@@ -8855,6 +9053,62 @@ export interface components {
         /** SettingRequest */
         SettingRequest: {
             settings: string;
+        };
+        /** StockAdjustmentRequest */
+        StockAdjustmentRequest: {
+            /**
+             * @description Cantidad FIRMADA que se aplica al contador: positiva repone,
+             *     negativa retira. Decimal a propósito (litros, kg); el contador
+             *     redondea y el asiento guarda la cantidad exacta.
+             */
+            quantity: number;
+            /**
+             * @description El motivo es obligatorio: un ajuste sin porqué es el contador
+             *     pisado de siempre, que es justo lo que el libro viene a retirar.
+             */
+            note: string;
+        };
+        /** StockMovementResource */
+        StockMovementResource: {
+            id: number;
+            item_id: number | null;
+            /**
+             * @description El nombre del artículo, para que el índice GLOBAL del libro sea
+             *     legible sin cruzarlo con el catálogo en el cliente. NULL cuando
+             *     el artículo ya no existe (`item_id` es nullOnDelete: el asiento
+             *     sobrevive al artículo y su nombre no — el cliente lo enseña como
+             *     «artículo borrado», que es la verdad). Los dos índices lo cargan
+             *     con `with('item:id,name')`: sin eso sería un N+1 por fila.
+             */
+            item_name: string | null;
+            /**
+             * @description DÓNDE pasó (N2). Los asientos anteriores a la dimensión están
+             *     todos en el «Principal» que estrenó la migración: es la única
+             *     respuesta verdadera, porque nadie declaró jamás dónde estaban.
+             *     NULL solo si el almacén desapareció (`nullOnDelete`), igual que
+             *     `item_name` — y con el mismo eager load, `warehouse:id,name`.
+             */
+            warehouse_id: number | null;
+            warehouse_name: string | null;
+            /**
+             * @description Cantidad FIRMADA que trajo la causa (decimal: hay artículos en
+             *     litros y kg). El contador redondea; la diferencia se ve en la
+             *     cadena de `balance_after`.
+             */
+            quantity: number;
+            balance_after: number;
+            /**
+             * @description El coste unitario de una ENTRADA, en céntimos (S8). NULL en las
+             *     salidas y en las entradas sin coste conocido.
+             */
+            unit_cost_cents: number | null;
+            reason: string;
+            document_type: string | null;
+            document_id: number | null;
+            note: string | null;
+            creator_id: number | null;
+            /** Format: date-time */
+            created_at: string;
         };
         /**
          * StoreApprovalRequest
@@ -9392,6 +9646,37 @@ export interface components {
                 roles: components["schemas"]["RoleResource"][];
                 role: string | null;
             }[];
+        };
+        /** WarehouseRequest */
+        WarehouseRequest: {
+            name: string;
+            code?: string | null;
+            address?: string | null;
+            is_default?: boolean | null;
+            is_active?: boolean | null;
+        };
+        /** WarehouseResource */
+        WarehouseResource: {
+            id: number;
+            name: string;
+            code: string | null;
+            address: string | null;
+            /**
+             * @description Exactamente uno por empresa lo lleva puesto: es el que hereda
+             *     todo movimiento que no elige almacén, que hoy son casi todos
+             *     (solo albarán y recepción preguntan).
+             */
+            is_default: boolean;
+            /**
+             * @description Un almacén con historia no se borra —el asiento lo nombra—: se
+             *     desactiva. Desactivado no se ofrece para movimientos nuevos y
+             *     sigue explicando los viejos.
+             */
+            is_active: boolean;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** WorkCalendarRequest */
         WorkCalendarRequest: {
@@ -17659,6 +17944,43 @@ export interface operations {
             };
         };
     };
+    "receivedInvoices.markGoodsReceived": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ReceivedInvoiceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReceivedInvoiceResource"];
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "goods_already_received";
+                        /** @constant */
+                        message: "La mercancía de esta factura recibida ya se sumó al almacén.";
+                    };
+                };
+            };
+        };
+    };
     "reconciliation.transactions": {
         parameters: {
             query?: {
@@ -19174,6 +19496,123 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "item.stockAdjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description `StockMovementResource` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockMovementResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "stockMovements.index": {
+        parameters: {
+            query?: {
+                /** @description Solo los asientos de este artículo. */
+                item_id?: number;
+                /** @description Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`). */
+                reason?: string;
+                /** @description Solo los asientos de este almacén. */
+                warehouse_id?: number;
+                /** @description Desde esta fecha (YYYY-MM-DD). */
+                from_date?: string;
+                /** @description Hasta esta fecha (YYYY-MM-DD). */
+                to_date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `StockMovementResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockMovementResource"][];
+                        meta: {
+                            stock_movement_total_count: number;
+                            /**
+                             * @description S8, informativo: lo que vale el almacén hoy, en céntimos —
+                             *     existencias × coste medio aprendido, con el precio de compra
+                             *     de la ficha como respaldo cuando aún no hay medio. Los
+                             *     artículos sin ninguno de los dos cuentan 0: la cifra no se
+                             *     inventa costes, y por eso puede quedarse corta — nunca
+                             *     larga. NO es un asiento contable ni una valoración de
+                             *     cierre (estudio de stock §6).
+                             */
+                            stock_value_cents: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "stockMovements.forItem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `StockMovementResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockMovementResource"][];
+                        meta: {
+                            opening_stock: number | null;
+                            /**
+                             * @description El reparto del saldo por almacén (N2). Su suma es
+                             *     exactamente `opening_stock` de arriba — es el mismo número
+                             *     contado por sitios, no una segunda cuenta. Se sirve entero
+                             *     (una pyme tiene almacenes de contar con los dedos) y sin
+                             *     paginar: es cabecera de la pestaña, no listado.
+                             */
+                            warehouse_stock: {
+                                warehouse_id: number;
+                                warehouse_name: string;
+                                quantity: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "storeModules.index": {
@@ -24229,6 +24668,180 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "warehouses.stock": {
+        parameters: {
+            query?: {
+                /** @description Filtra por nombre del artículo. */
+                search?: string;
+                /** @description Solo los artículos con saldo distinto de cero (`1`). */
+                only_with_stock?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description The warehouse ID */
+                warehouse: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `ItemWarehouseStockResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ItemWarehouseStockResource"][];
+                        meta: {
+                            warehouse: components["schemas"]["WarehouseResource"];
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "warehouses.index": {
+        parameters: {
+            query?: {
+                /** @description Filtra por nombre o código. */
+                search?: string;
+                /** @description Solo los activos (`1`) o solo los desactivados (`0`). */
+                is_active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `WarehouseResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WarehouseResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "warehouses.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseRequest"];
+            };
+        };
+        responses: {
+            /** @description El recurso recién creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "warehouses.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The warehouse ID */
+                warehouse: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `WarehouseResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WarehouseResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "warehouses.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The warehouse ID */
+                warehouse: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseRequest"];
+            };
+        };
+        responses: {
+            /** @description `WarehouseResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WarehouseResource"];
+                    } | string;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "warehouses.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The warehouse ID */
+                warehouse: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "webhookEndpoints.index": {

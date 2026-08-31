@@ -35,6 +35,10 @@ export type InvoiceResource = Schemas['InvoiceResource']
 export type EstimateResource = Schemas['EstimateResource']
 /** Contrato de servicio tal y como lo devuelve la API. */
 export type ContractResource = Schemas['ContractResource']
+/** Almacén tal y como lo devuelve la API. */
+export type WarehouseResource = Schemas['WarehouseResource']
+/** El saldo de un artículo EN un almacén. */
+export type ItemWarehouseStockResource = Schemas['ItemWarehouseStockResource']
 
 /** Cuerpo de alta/edición de cliente. Incluye `customFields`. */
 export type CustomerRequest = Schemas['CustomerRequest']
@@ -47,6 +51,12 @@ export type EstimatesRequest = Schemas['EstimatesRequest']
  * vida va por sus acciones (`activate`/`cancel`/`renew`), nunca por el PUT.
  */
 export type ContractRequest = Schemas['ContractRequest']
+/**
+ * Cuerpo de alta/edición de almacén. `is_default` se manda como INTENCIÓN
+ * («que este sea el de por defecto»): el servidor apaga el anterior en la
+ * misma transacción, porque la empresa necesita exactamente uno.
+ */
+export type WarehouseRequest = Schemas['WarehouseRequest']
 
 /**
  * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
@@ -418,6 +428,48 @@ export class PimiaClient {
           toFormData({ document }),
           options,
         ),
+    }
+  }
+
+  /**
+   * Almacenes: la DIMENSIÓN del stock. Exige `items:read` / `items:write` —
+   * el almacén cuelga del catálogo que dimensiona, sin scope propio.
+   *
+   * ⚠️ **Vive tras el módulo `stock`, que es opt-in**: si la empresa no lo ha
+   * instalado, estas rutas responden `403` con `error: module_not_installed`,
+   * y eso NO es un problema de permisos. El libro de movimientos, el ajuste
+   * con motivo y la mercancía recibida son de todos y no pasan por aquí.
+   *
+   * Exactamente un almacén lleva `is_default`, y es el que hereda todo
+   * movimiento que no elige otro. El saldo por almacén es el REPARTO del
+   * contador global: su suma por artículo es exactamente `opening_stock`.
+   */
+  get warehouses() {
+    return {
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'warehouses.index'>>('/warehouses', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'warehouses.show'>>(`/warehouses/${id}`, undefined, options),
+      create: (body: WarehouseRequest, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<WarehouseResource>>('/warehouses', body, options),
+      update: (id: number | string, body: WarehouseRequest, options?: WriteOptions) =>
+        this.put<ResourceEnvelope<WarehouseResource>>(`/warehouses/${id}`, body, options),
+
+      /**
+       * Borra un almacén VACÍO y sin historia. Tres negativas con su código:
+       * `default_warehouse_required`, `stock_movements_attached` (su pasado
+       * explica saldos de hoy) y `stock_attached`. Para el que ya no se usa,
+       * `update` con `is_active: false`.
+       */
+      delete: (id: number | string, options?: ReadOptions) =>
+        this.delete<{ success: string }>(`/warehouses/${id}`, options),
+
+      /**
+       * Las existencias de UN almacén, artículo a artículo — la pregunta que
+       * la dimensión vino a contestar. `only_with_stock` deja fuera los ceros.
+       */
+      stock: (id: number | string, query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'warehouses.stock'>>(`/warehouses/${id}/stock`, query, options),
     }
   }
 

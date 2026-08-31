@@ -8,6 +8,65 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.13.0] — 2026-08-31
+
+**El almacén se vuelve una DIMENSIÓN.** Hasta aquí el inventario sabía CUÁNTO
+(el contador de cada artículo) y, desde el libro de movimientos, QUIÉN lo
+movió. No sabía **DÓNDE**: una pyme con tienda y nave no podía responder
+«¿cuántos me quedan en la tienda?». Es la pieza 1 de la fase N2 del estudio de
+stock, con sus seis decisiones ratificadas el 2026-08-31
+(`pimia-web-shadcn/docs/ESTUDIO-STOCK.md` § 8); núcleo en galeote/factSaas#593.
+
+Spec sincronizado con **factSaas@5dfc6991** (2026-08-31) — **408 operaciones**
+(diez más que la 0.12.0: las seis de almacenes y las que trajo de camino el
+cierre de S6-S8 del mismo estudio). Ninguna retirada.
+
+### Añadido
+
+- **Almacenes** (6 operaciones): el CRUD (`GET|POST /warehouses`,
+  `GET|PUT|DELETE /warehouses/{id}`, con el alta en **201**) y las existencias
+  de un almacén artículo a artículo (`GET /warehouses/{id}/stock`). Cuatro
+  cosas que el contrato dice y conviene tener delante:
+  - 🔴 **viven tras el módulo `stock`, que es OPT-IN**: un tenant que no lo ha
+    instalado recibe `403` con `error: module_not_installed`, y eso **no es
+    falta de scope** — es una capacidad que la pyme no ha pedido. El libro de
+    movimientos, el ajuste con motivo y la mercancía recibida NO pasan por ahí
+    y siguen siendo de todos;
+  - **sin scope propio**: `items:read` / `items:write`, los mismos del
+    catálogo que dimensionan. Quien ya puede reescribir el contador entero de
+    un artículo no necesita otra llave para decir en qué nave está;
+  - **exactamente uno lleva `is_default`** y hereda todo movimiento que no
+    elige almacén. Mandarlo es declarar una intención: el servidor apaga el
+    anterior en la misma transacción, y el único que hay no se puede apagar ni
+    desactivar (`422 default_warehouse_required`);
+  - **el borrado solo se lleva los vacíos y sin historia**
+    (`stock_movements_attached`, `stock_attached`): un almacén con pasado
+    explica saldos de hoy, y para el que ya no se usa está `is_active: false`.
+- **`warehouse_id` y `warehouse_name` en `StockMovementResource`**, y
+  `warehouse_id` como filtro del índice del libro: cada asiento dice dónde
+  pasó. Los anteriores a la dimensión quedaron todos en el «Principal» que
+  estrenó la migración — la única respuesta verdadera, porque nadie declaró
+  jamás dónde estaban.
+- **`meta.warehouse_stock`** en el libro de un artículo: el reparto de su
+  contador entre almacenes. ⛔ **Su suma es exactamente `opening_stock`** — es
+  el mismo número contado por sitios, no una segunda cuenta. Puede ser
+  negativo en un almacén (se entregó desde donde no había): aplicar ahí el
+  suelo en 0 cuadraría la fila y descuadraría la suma.
+- **`client.warehouses`** en `@pimia/sdk` y **`$client->warehouses`** en
+  `pimia/pimia-php`: `list`/`get`/`create`/`update`/`delete`/`stock`, con la
+  misma forma en los dos — sin asimetrías esta vez. Con tests en los dos
+  SDKs, incluido uno que fija que el **403 de módulo no instalado no se
+  disfraza de falta de scope**: confundirlos manda a un integrador a pedir un
+  permiso que ya tiene.
+
+### Sin cambios de scope
+
+Nada que añadir a `SCOPES` ni a `Scopes`: los almacenes cuelgan de `items:*`,
+que ya estaban. Es la decisión N2-3 del estudio —la reapertura que S5 dejó
+anunciada, resuelta en «no»—: un scope nuevo protegería una puerta que
+`items:write` ya tiene abierta, y costaría catálogo, consentimiento,
+superficie, SDK y **reconexión de todos los grants**.
+
 ## [0.12.0] — 2026-08-30
 
 **Contratos: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue

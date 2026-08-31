@@ -19121,6 +19121,77 @@
                 ]
             }
         },
+        "/received-invoices/{id}/mark-goods-received": {
+            "post": {
+                "operationId": "receivedInvoices.markGoodsReceived",
+                "description": "Es una acci\u00f3n expl\u00edcita y no el alta de la factura a prop\u00f3sito: el OCR\ncrea borradores que se corrigen, y un borrador no es mercanc\u00eda en la\nestanter\u00eda. El candado es `stock_added_at` \u2014un instante, como el\n`stock_deducted_at` del albar\u00e1n (#473)\u2014 y hace la acci\u00f3n idempotente:\nla segunda llamada es un 422, no una segunda suma.\n\nReglas espejo del albar\u00e1n, tambi\u00e9n a prop\u00f3sito: solo mueven almac\u00e9n las\nl\u00edneas con `item_id`, y un art\u00edculo con `opening_stock` NULL (\u00abnunca ha\nllevado stock\u00bb) no se estrena por una compra \u2014 se estrena en su ficha o\ncon un ajuste, que son los gestos que significan \u00abdeclaro existencias\u00bb.",
+                "summary": "Marca la mercanc\u00eda de la factura recibida como RECIBIDA y suma sus l\u00edneas\nal almac\u00e9n \u2014 el espejo exacto del `mark-delivered` del albar\u00e1n de venta\n(estudio de stock, decisi\u00f3n S3)",
+                "tags": [
+                    "ReceivedInvoices"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ReceivedInvoiceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReceivedInvoiceResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "goods_already_received"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "La mercanc\u00eda de esta factura recibida ya se sum\u00f3 al almac\u00e9n."
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "expenses:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/banking/transactions": {
             "get": {
                 "operationId": "reconciliation.transactions",
@@ -22755,6 +22826,261 @@
                     {
                         "oauth2": [
                             "store:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/items/{item}/stock-adjustments": {
+            "post": {
+                "operationId": "item.stockAdjustments",
+                "summary": "Ajusta las existencias de un art\u00edculo y devuelve el asiento",
+                "tags": [
+                    "StockAdjustments"
+                ],
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StockAdjustmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`StockMovementResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/StockMovementResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/stock-movements": {
+            "get": {
+                "operationId": "stockMovements.index",
+                "summary": "Los movimientos de stock de la empresa, del m\u00e1s nuevo al m\u00e1s viejo",
+                "tags": [
+                    "StockMovements"
+                ],
+                "parameters": [
+                    {
+                        "name": "item_id",
+                        "in": "query",
+                        "description": "Solo los asientos de este art\u00edculo.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "reason",
+                        "in": "query",
+                        "description": "Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "warehouse_id",
+                        "in": "query",
+                        "description": "Solo los asientos de este almac\u00e9n.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "description": "Desde esta fecha (YYYY-MM-DD).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "description": "Hasta esta fecha (YYYY-MM-DD).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `StockMovementResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StockMovementResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "stock_movement_total_count": {
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                },
+                                                "stock_value_cents": {
+                                                    "type": "integer",
+                                                    "description": "S8, informativo: lo que vale el almac\u00e9n hoy, en c\u00e9ntimos \u2014\nexistencias \u00d7 coste medio aprendido, con el precio de compra\nde la ficha como respaldo cuando a\u00fan no hay medio. Los\nart\u00edculos sin ninguno de los dos cuentan 0: la cifra no se\ninventa costes, y por eso puede quedarse corta \u2014 nunca\nlarga. NO es un asiento contable ni una valoraci\u00f3n de\ncierre (estudio de stock \u00a76)."
+                                                }
+                                            },
+                                            "required": [
+                                                "stock_movement_total_count",
+                                                "stock_value_cents"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/items/{item}/stock-movements": {
+            "get": {
+                "operationId": "stockMovements.forItem",
+                "summary": "Los movimientos de stock de UN art\u00edculo \u2014 la pesta\u00f1a \u00abMovimientos\u00bb de su\nficha, la que responde \u00ab\u00bfpor qu\u00e9 tengo 47?\u00bb",
+                "tags": [
+                    "StockMovements"
+                ],
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `StockMovementResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StockMovementResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "opening_stock": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "warehouse_stock": {
+                                                    "type": "array",
+                                                    "description": "El reparto del saldo por almac\u00e9n (N2). Su suma es\nexactamente `opening_stock` de arriba \u2014 es el mismo n\u00famero\ncontado por sitios, no una segunda cuenta. Se sirve entero\n(una pyme tiene almacenes de contar con los dedos) y sin\npaginar: es cabecera de la pesta\u00f1a, no listado.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "warehouse_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "warehouse_name": {
+                                                                "type": "string"
+                                                            },
+                                                            "quantity": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "warehouse_id",
+                                                            "warehouse_name",
+                                                            "quantity"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "opening_stock",
+                                                "warehouse_stock"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
                         ]
                     }
                 ]
@@ -36338,6 +36664,370 @@
                 ]
             }
         },
+        "/warehouses/{warehouse}/stock": {
+            "get": {
+                "operationId": "warehouses.stock",
+                "description": "La pregunta que la dimensi\u00f3n vino a contestar: \u00ab\u00bfcu\u00e1ntos me quedan en la\ntienda?\u00bb. Sale de `item_warehouse_stock`, que es el reparto del contador\nglobal y no una segunda cuenta: la suma por art\u00edculo de todos los\nalmacenes es exactamente `items.opening_stock`.",
+                "summary": "Las existencias de UN almac\u00e9n, art\u00edculo a art\u00edculo",
+                "tags": [
+                    "Warehouses"
+                ],
+                "parameters": [
+                    {
+                        "name": "warehouse",
+                        "in": "path",
+                        "required": true,
+                        "description": "The warehouse ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Filtra por nombre del art\u00edculo.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "only_with_stock",
+                        "in": "query",
+                        "description": "Solo los art\u00edculos con saldo distinto de cero (`1`).",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ItemWarehouseStockResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ItemWarehouseStockResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "warehouse": {
+                                                    "$ref": "#/components/schemas/WarehouseResource"
+                                                }
+                                            },
+                                            "required": [
+                                                "warehouse"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/warehouses": {
+            "get": {
+                "operationId": "warehouses.index",
+                "summary": "Los almacenes de la empresa",
+                "tags": [
+                    "Warehouses"
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Filtra por nombre o c\u00f3digo.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Solo los activos (`1`) o solo los desactivados (`0`).",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `WarehouseResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WarehouseResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "warehouses.store",
+                "summary": "Da de alta un almac\u00e9n",
+                "tags": [
+                    "Warehouses"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WarehouseRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/warehouses/{warehouse}": {
+            "get": {
+                "operationId": "warehouses.show",
+                "tags": [
+                    "Warehouses"
+                ],
+                "parameters": [
+                    {
+                        "name": "warehouse",
+                        "in": "path",
+                        "required": true,
+                        "description": "The warehouse ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`WarehouseResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/WarehouseResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "warehouses.update",
+                "description": "\u26a0\ufe0f El por defecto no se puede APAGAR desde aqu\u00ed: se cambia encendiendo\notro, que apaga este en la misma transacci\u00f3n. Un `is_default: false`\nsobre el \u00fanico que lo tiene dejar\u00eda a la empresa sin sitio donde anotar\nlo que no elige, y el 422 lo dice en vez de aceptarlo y romperse luego.",
+                "summary": "Edita un almac\u00e9n",
+                "tags": [
+                    "Warehouses"
+                ],
+                "parameters": [
+                    {
+                        "name": "warehouse",
+                        "in": "path",
+                        "required": true,
+                        "description": "The warehouse ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WarehouseRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`WarehouseResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/WarehouseResource"
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "warehouses.destroy",
+                "description": "Tres negativas, y las tres con su c\u00f3digo: el por defecto no se borra\n(`default_warehouse_required`), uno con asientos tampoco\n(`stock_movements_attached` \u2014 el asiento lo nombra, y la historia del\nalmac\u00e9n es lo que hace de fiar el saldo), y uno con existencias, menos\n(`stock_attached`: borrarlo evaporar\u00eda un saldo que s\u00ed est\u00e1 en el\ncontador global). Para el que ya no se usa est\u00e1 `is_active: false`.",
+                "summary": "Borra un almac\u00e9n VAC\u00cdO y sin historia",
+                "tags": [
+                    "Warehouses"
+                ],
+                "parameters": [
+                    {
+                        "name": "warehouse",
+                        "in": "path",
+                        "required": true,
+                        "description": "The warehouse ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/settings/webhooks": {
             "get": {
                 "operationId": "webhookEndpoints.index",
@@ -40628,6 +41318,14 @@
                     "status": {
                         "type": "string"
                     },
+                    "stock_deducted_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Cu\u00e1ndo movi\u00f3 el almac\u00e9n este albar\u00e1n (NULL = a\u00fan no). El #473 lo\ncre\u00f3 sin publicarlo y los clientes lo INFER\u00cdAN del estado \u2014 que\nes justo lo que `convertToInvoice` rompe al pisar `DELIVERED`\ncon `INVOICED`. Con el libro (estudio de stock, S1) deja de ser\ncontabilidad interna: es lo que la pantalla del albar\u00e1n necesita\npara contar lo que hizo."
+                    },
                     "sub_total": {
                         "type": "number"
                     },
@@ -40783,6 +41481,7 @@
                     "delivery_note_number",
                     "delivery_note_date",
                     "status",
+                    "stock_deducted_at",
                     "sub_total",
                     "total",
                     "tax",
@@ -44919,6 +45618,13 @@
                             "null"
                         ]
                     },
+                    "average_cost_cents": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Coste medio ponderado en c\u00e9ntimos (S8, informativo): lo\nrecalcula cada compra recibida; NULL = a\u00fan no hay entradas con\ncoste anotadas."
+                    },
                     "default_discount": {
                         "type": "number"
                     },
@@ -45056,6 +45762,7 @@
                     "notes",
                     "price",
                     "purchase_price",
+                    "average_cost_cents",
                     "default_discount",
                     "unit_id",
                     "company_id",
@@ -45108,6 +45815,12 @@
                         "type": "integer"
                     },
                     "purchase_price": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "average_cost_cents": {
                         "type": [
                             "integer",
                             "null"
@@ -45278,6 +45991,7 @@
                     "description",
                     "price",
                     "purchase_price",
+                    "average_cost_cents",
                     "default_discount",
                     "category_id",
                     "unit_id",
@@ -45295,6 +46009,30 @@
                     "updated_at"
                 ],
                 "title": "ItemSummaryResource"
+            },
+            "ItemWarehouseStockResource": {
+                "type": "object",
+                "properties": {
+                    "item_id": {
+                        "type": "integer"
+                    },
+                    "item_name": {
+                        "type": "string"
+                    },
+                    "warehouse_id": {
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "item_id",
+                    "item_name",
+                    "warehouse_id",
+                    "quantity"
+                ],
+                "title": "ItemWarehouseStockResource"
             },
             "ItemsRequest": {
                 "type": "object",
@@ -45376,6 +46114,14 @@
                             "null"
                         ]
                     },
+                    "opening_stock": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Saldo de existencias del art\u00edculo. Pese al nombre NO es el\ninicial: es el contador vivo que mueven albaranes, facturas,\ncompras y ajustes (el detalle, en `GET /items/{item}/stock-movements`).\nEn el alta se guarda 0 si no llega; en la actualizaci\u00f3n se\nconserva el que hab\u00eda. Escribirlo aqu\u00ed pisa el saldo (queda\nanotado como `manual_edit`); para corregir con motivo est\u00e1\n`POST /items/{item}/stock-adjustments`.",
+                        "minimum": 0
+                    },
                     "stock_alert_qty": {
                         "type": [
                             "integer",
@@ -45394,13 +46140,6 @@
                             "integer",
                             "null"
                         ]
-                    },
-                    "opening_stock": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "description": "Existencias iniciales del art\u00edculo. En el alta se guarda 0 si no llega; en la actualizaci\u00f3n se conserva el valor que ya ten\u00eda."
                     }
                 },
                 "required": [
@@ -47156,6 +47895,14 @@
                     "status": {
                         "type": "string"
                     },
+                    "stock_added_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Cu\u00e1ndo se sum\u00f3 la mercanc\u00eda al almac\u00e9n (mark-goods-received);\nNULL si a\u00fan no. Se publica \u2014al contrario que en su d\u00eda el\n`stock_deducted_at` del albar\u00e1n\u2014 porque es lo que permite a un\ncliente pintar el bot\u00f3n \u00abMercanc\u00eda recibida\u00bb solo cuando toca."
+                    },
                     "paid_status": {
                         "type": "string"
                     },
@@ -47315,6 +48062,7 @@
                     "received_invoice_number",
                     "reference_number",
                     "status",
+                    "stock_added_at",
                     "paid_status",
                     "tax_per_item",
                     "discount_per_item",
@@ -48062,7 +48810,11 @@
                                 "view-contract",
                                 "create-contract",
                                 "edit-contract",
-                                "delete-contract"
+                                "delete-contract",
+                                "view-warehouse",
+                                "create-warehouse",
+                                "edit-warehouse",
+                                "delete-warehouse"
                             ]
                         }
                     }
@@ -48198,7 +48950,11 @@
                                         "view-contract",
                                         "create-contract",
                                         "edit-contract",
-                                        "delete-contract"
+                                        "delete-contract",
+                                        "view-warehouse",
+                                        "create-warehouse",
+                                        "edit-warehouse",
+                                        "delete-warehouse"
                                     ]
                                 }
                             },
@@ -48472,6 +49228,121 @@
                     "settings"
                 ],
                 "title": "SettingRequest"
+            },
+            "StockAdjustmentRequest": {
+                "type": "object",
+                "properties": {
+                    "quantity": {
+                        "type": "number",
+                        "description": "Cantidad FIRMADA que se aplica al contador: positiva repone,\nnegativa retira. Decimal a prop\u00f3sito (litros, kg); el contador\nredondea y el asiento guarda la cantidad exacta."
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "El motivo es obligatorio: un ajuste sin porqu\u00e9 es el contador\npisado de siempre, que es justo lo que el libro viene a retirar.",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "quantity",
+                    "note"
+                ],
+                "title": "StockAdjustmentRequest"
+            },
+            "StockMovementResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "item_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "item_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "El nombre del art\u00edculo, para que el \u00edndice GLOBAL del libro sea\nlegible sin cruzarlo con el cat\u00e1logo en el cliente. NULL cuando\nel art\u00edculo ya no existe (`item_id` es nullOnDelete: el asiento\nsobrevive al art\u00edculo y su nombre no \u2014 el cliente lo ense\u00f1a como\n\u00abart\u00edculo borrado\u00bb, que es la verdad). Los dos \u00edndices lo cargan\ncon `with('item:id,name')`: sin eso ser\u00eda un N+1 por fila."
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "D\u00d3NDE pas\u00f3 (N2). Los asientos anteriores a la dimensi\u00f3n est\u00e1n\ntodos en el \u00abPrincipal\u00bb que estren\u00f3 la migraci\u00f3n: es la \u00fanica\nrespuesta verdadera, porque nadie declar\u00f3 jam\u00e1s d\u00f3nde estaban.\nNULL solo si el almac\u00e9n desapareci\u00f3 (`nullOnDelete`), igual que\n`item_name` \u2014 y con el mismo eager load, `warehouse:id,name`."
+                    },
+                    "warehouse_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "description": "Cantidad FIRMADA que trajo la causa (decimal: hay art\u00edculos en\nlitros y kg). El contador redondea; la diferencia se ve en la\ncadena de `balance_after`."
+                    },
+                    "balance_after": {
+                        "type": "integer"
+                    },
+                    "unit_cost_cents": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "El coste unitario de una ENTRADA, en c\u00e9ntimos (S8). NULL en las\nsalidas y en las entradas sin coste conocido."
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "document_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "document_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "creator_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "item_id",
+                    "item_name",
+                    "warehouse_id",
+                    "warehouse_name",
+                    "quantity",
+                    "balance_after",
+                    "unit_cost_cents",
+                    "reason",
+                    "document_type",
+                    "document_id",
+                    "note",
+                    "creator_id",
+                    "created_at"
+                ],
+                "title": "StockMovementResource"
             },
             "StoreApprovalRequest": {
                 "type": "object",
@@ -50771,6 +51642,101 @@
                     "formatted_created_at"
                 ],
                 "title": "UserResource"
+            },
+            "WarehouseRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 191
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 32
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "is_default": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "is_active": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "WarehouseRequest"
+            },
+            "WarehouseResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "Exactamente uno por empresa lo lleva puesto: es el que hereda\ntodo movimiento que no elige almac\u00e9n, que hoy son casi todos\n(solo albar\u00e1n y recepci\u00f3n preguntan)."
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "description": "Un almac\u00e9n con historia no se borra \u2014el asiento lo nombra\u2014: se\ndesactiva. Desactivado no se ofrece para movimientos nuevos y\nsigue explicando los viejos."
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "address",
+                    "is_default",
+                    "is_active",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "WarehouseResource"
             },
             "WorkCalendarRequest": {
                 "type": "object",
