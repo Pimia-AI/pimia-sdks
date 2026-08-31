@@ -8079,6 +8079,13 @@
                                             ]
                                         },
                                         "minItems": 1
+                                    },
+                                    "warehouse_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "description": "DE D\u00d3NDE se entrega (N2). Opcional: sin \u00e9l, el almac\u00e9n por\ndefecto. Se valida contra los almacenes de ESTA empresa \u2014 un id\najeno no es un error de tipo, es escribir en el almac\u00e9n de otro."
                                     }
                                 },
                                 "required": [
@@ -8233,6 +8240,13 @@
                                             ]
                                         },
                                         "minItems": 1
+                                    },
+                                    "warehouse_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "description": "DE D\u00d3NDE se entrega (N2). Opcional: sin \u00e9l, el almac\u00e9n por\ndefecto. Se valida contra los almacenes de ESTA empresa \u2014 un id\najeno no es un error de tipo, es escribir en el almac\u00e9n de otro."
                                     }
                                 },
                                 "required": [
@@ -41326,6 +41340,13 @@
                         "format": "date-time",
                         "description": "Cu\u00e1ndo movi\u00f3 el almac\u00e9n este albar\u00e1n (NULL = a\u00fan no). El #473 lo\ncre\u00f3 sin publicarlo y los clientes lo INFER\u00cdAN del estado \u2014 que\nes justo lo que `convertToInvoice` rompe al pisar `DELIVERED`\ncon `INVOICED`. Con el libro (estudio de stock, S1) deja de ser\ncontabilidad interna: es lo que la pantalla del albar\u00e1n necesita\npara contar lo que hizo."
                     },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "DE D\u00d3NDE se entrega (N2). NULL = del almac\u00e9n por defecto, que se\nresuelve al entregar y no al guardar: cambiar el por defecto no\nreescribe la intenci\u00f3n de un albar\u00e1n viejo."
+                    },
                     "sub_total": {
                         "type": "number"
                     },
@@ -41482,6 +41503,7 @@
                     "delivery_note_date",
                     "status",
                     "stock_deducted_at",
+                    "warehouse_id",
                     "sub_total",
                     "total",
                     "tax",
@@ -47851,6 +47873,13 @@
                             ]
                         },
                         "minItems": 1
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "D\u00d3NDE entra la mercanc\u00eda (N2). Opcional: sin \u00e9l, el almac\u00e9n por\ndefecto de la empresa. Se lee al marcar la mercanc\u00eda como\nrecibida \u2014no al guardar la factura\u2014, porque el OCR crea\nborradores que se corrigen antes de que llegue nada."
                     }
                 },
                 "required": [
@@ -47902,6 +47931,13 @@
                         ],
                         "format": "date-time",
                         "description": "Cu\u00e1ndo se sum\u00f3 la mercanc\u00eda al almac\u00e9n (mark-goods-received);\nNULL si a\u00fan no. Se publica \u2014al contrario que en su d\u00eda el\n`stock_deducted_at` del albar\u00e1n\u2014 porque es lo que permite a un\ncliente pintar el bot\u00f3n \u00abMercanc\u00eda recibida\u00bb solo cuando toca."
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "D\u00d3NDE entra la mercanc\u00eda (N2). NULL = el almac\u00e9n por defecto,\nresuelto al marcarla recibida."
                     },
                     "paid_status": {
                         "type": "string"
@@ -48063,6 +48099,7 @@
                     "reference_number",
                     "status",
                     "stock_added_at",
+                    "warehouse_id",
                     "paid_status",
                     "tax_per_item",
                     "discount_per_item",
@@ -49240,6 +49277,13 @@
                         "type": "string",
                         "description": "El motivo es obligatorio: un ajuste sin porqu\u00e9 es el contador\npisado de siempre, que es justo lo que el libro viene a retirar.",
                         "maxLength": 255
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "D\u00d3NDE (N2). Opcional: sin \u00e9l, el ajuste cae en el almac\u00e9n por\ndefecto de la empresa \u2014 que es lo que hac\u00eda antes de que la\ndimensi\u00f3n existiera. Se valida contra los almacenes de ESTA\nempresa: un id ajeno no es un error de tipo, es un intento de\nescribir en el almac\u00e9n de otro."
                     }
                 },
                 "required": [

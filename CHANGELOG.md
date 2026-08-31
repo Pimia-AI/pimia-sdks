@@ -8,6 +8,43 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.14.0] — 2026-08-31
+
+**Los documentos dicen a qué almacén.** La 0.13.0 trajo la dimensión; con ella
+se podían crear almacenes y **ninguno podía recibir nada**, porque ningún
+documento tenía dónde declarar otra cosa que el por defecto. Lo destapó medir
+la pantalla. Núcleo en galeote/factSaas#594.
+
+Spec sincronizado con **factSaas@81180946** (2026-08-31) — **408 operaciones**,
+las mismas: esto no añade rutas, añade un campo a tres cuerpos.
+
+### Añadido
+
+- **`warehouse_id` (opcional) en tres sitios**, los tres gestos cuyo
+  significado ES mover mercancía:
+  - `POST /items/{id}/stock-adjustments` — el ajuste, que es además el único
+    gesto que declara existencias en un almacén concreto sin documento de por
+    medio;
+  - el albarán (`POST|PUT /delivery-notes…`), de dónde salen al entregar;
+  - `POST /received-invoices/{id}/mark-goods-received` — **y aquí está el
+    matiz que conviene leer**: el almacén se declara al RECIBIR y no al
+    teclear la factura, porque es al descargar el camión cuando se sabe dónde
+    va. Lo que se manda ahí manda sobre lo que declarase el documento, y el
+    servidor lo escribe en él.
+- **`warehouse_id` publicado** en `DeliveryNoteResource` y
+  `ReceivedInvoiceResource`.
+
+### Lo que hay que saber
+
+- **Omitirlo no es mandarlo a `null`**: sin el campo, el servidor resuelve su
+  almacén por defecto **en el momento de moverse**, no al guardar. Por eso
+  cambiar el almacén por defecto de la empresa no reescribe la intención de un
+  documento viejo.
+- **Un id de otra empresa es un `422`**, no un id que se ignora en silencio.
+- ⚠️ **Cambiar el almacén de un albarán ya entregado no mueve nada**: el
+  asiento está escrito con el almacén de entonces y el libro no se reescribe.
+  Lo que corrige un movimiento del almacén equivocado es un ajuste con motivo.
+
 ## [0.13.0] — 2026-08-31
 
 **El almacén se vuelve una DIMENSIÓN.** Hasta aquí el inventario sabía CUÁNTO
