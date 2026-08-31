@@ -8,6 +8,53 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.16.0] — 2026-08-31
+
+**El stock comprometido.** El almacén ya sabía cuánto tienes, quién lo movió y
+dónde está; desde hoy sabe además **cuánto de eso ya tiene dueño** — y por
+tanto cuánto puedes vender de verdad. Pieza 3 y última de la fase N2 del
+estudio de stock; núcleo en galeote/factSaas#596.
+
+Spec sincronizado con **factSaas@0fd7c70b** (2026-08-31) — **415 operaciones**,
+las mismas: la pieza no estrena ni una ruta. Ninguna retirada.
+
+### Añadido
+
+- **`committed_quantity`** en el artículo (`ItemResource` e
+  `ItemSummaryResource`): lo que ese artículo tiene comprometido por documentos
+  que aún no han movido el almacén.
+- **`meta.committed`** en `GET /items/{item}/stock-movements`: la cantidad, el
+  **disponible** (saldo − comprometido) y el **desglose documento a
+  documento** — qué albaranes y qué facturas lo comprometen, con su número,
+  su cliente y su fecha.
+- **`client.stockMovements`** en `@pimia/sdk` y **`$client->stockMovements`**
+  en `pimia/pimia-php`: `list`, `forItem` y `adjust`. El libro llevaba desde
+  N1 sin atajo en los SDKs, y es donde vive el comprometido.
+
+### Lo que hay que tener delante para integrarlo
+
+- ⛔ **Es una cifra DERIVADA. No hay nada que escribir.** No existe un endpoint
+  para reservar ni una columna que pisar: el comprometido se calcula leyendo
+  los documentos cada vez que se pregunta. Si tu integración necesita
+  «reservar», lo que crea es un **albarán o una factura en borrador**.
+- **Qué compromete, exactamente**: el albarán en borrador y la factura en
+  borrador. Los dos dejan de comprometer **solos** en cuanto mueven el almacén
+  (al marcar entregado y al publicar). El **presupuesto aceptado NO
+  compromete**: nada en el núcleo dice cuándo se cumplió, así que contarlo
+  sería una cifra que solo sube.
+- ⚠️ **`null` NO es cero**, ni en `committed_quantity` ni en `meta.committed`.
+  Es «no se está calculando»: la empresa no tiene instalado el módulo `stock`
+  (opt-in) o tiene el ciclo de inventario apagado. Pintar un 0 ahí afirma
+  «nada comprometido», que es justo lo que no se sabe.
+- **Es GLOBAL por artículo, sin dimensión de almacén.** De los dos documentos
+  que comprometen solo el albarán declara almacén, así que un reparto tendría
+  la mitad resuelta al «por defecto» en el momento de leer — y se movería solo
+  al cambiar ese por defecto.
+- **Una factura borrador no compromete lo que su albarán ya entregó.** El
+  servidor hace la misma resta que hará al publicarla; no la repitas tú.
+- El libro (`stockMovements`) es **N1 y es de todos**: no va tras el módulo
+  `stock`, a diferencia de `warehouses` y `stockCounts`.
+
 ## [0.15.0] — 2026-08-31
 
 **El recuento de inventario.** Cuadrar el almacén con la realidad eran

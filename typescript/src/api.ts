@@ -8203,6 +8203,15 @@ export interface components {
             is_active: boolean;
             is_time_trackable: boolean;
             opening_stock: number;
+            /**
+             * @description Lo COMPROMETIDO por documentos que aún no han movido el almacén
+             *     (N2 · pieza 3, cifra derivada — nadie la escribe). ⚠️ `null` NO
+             *     es cero: es «no se está calculando» (módulo `stock` sin
+             *     instalar, o el ciclo de inventario apagado). Pintar un 0 ahí
+             *     afirmaría «nada comprometido», que es lo que no se sabe.
+             *     El porqué entero, en {@see \App\Support\StockCommitments}.
+             */
+            committed_quantity: number | null;
             stock_alert_qty: number | null;
             allow_sale_without_stock: boolean;
             purchase_tax_type_id: number | null;
@@ -8246,6 +8255,13 @@ export interface components {
             is_active: boolean;
             is_time_trackable: boolean;
             opening_stock: number;
+            /**
+             * @description Igual que en el recurso completo: `null` es «no se está
+             *     calculando», no cero (N2 · pieza 3). La celda de stock del
+             *     listado del panel lo lee de aquí — el índice del catálogo va
+             *     por `?view=summary`.
+             */
+            committed_quantity: number | null;
             stock_alert_qty: number | null;
             allow_sale_without_stock: boolean;
             /** Format: date-time */
@@ -20029,6 +20045,46 @@ export interface operations {
                                 warehouse_name: string;
                                 quantity: number;
                             }[];
+                            /**
+                             * @description Lo COMPROMETIDO y lo DISPONIBLE (N2 · pieza 3). Cifra
+                             *     derivada: nadie la escribe, se calcula al preguntarla.
+                             *     `null` ENTERO = no se está calculando (módulo `stock` sin
+                             *     instalar o ciclo de inventario apagado); un cero ahí
+                             *     afirmaría «nada comprometido», que es lo que no se sabe. El desglose viaja entero y sin paginar, como
+                             *     `warehouse_stock`: es cabecera de pestaña, y son los
+                             *     borradores vivos de UN artículo, que en una pyme se cuentan
+                             *     con los dedos. Va aquí y no en un endpoint aparte porque la
+                             *     pregunta es la misma que abre el libro — «¿por qué tengo
+                             *     47?» y «¿por qué solo puedo vender 35?» se responden en la
+                             *     misma pantalla.
+                             */
+                            committed: {
+                                quantity: number;
+                                /**
+                                 * @description ⚠️ `null` cuando el artículo NUNCA ha llevado stock
+                                 *     (`opening_stock` NULL, la distinción que la migración se
+                                 *     esforzó en preservar): de ese no hay disponible que
+                                 *     calcular, y un «−4» ahí sería una alarma inventada.
+                                 */
+                                available: number | null;
+                                documents: ({
+                                    /** @constant */
+                                    document_type: "delivery_note";
+                                    document_id: number;
+                                    document_number: string;
+                                    customer_name: string;
+                                    date: string;
+                                    quantity: number;
+                                } | {
+                                    /** @constant */
+                                    document_type: "invoice";
+                                    document_id: number;
+                                    document_number: string;
+                                    customer_name: string;
+                                    date: string;
+                                    quantity: number;
+                                })[];
+                            } | null;
                         };
                     };
                 };

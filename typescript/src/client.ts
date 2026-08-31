@@ -542,6 +542,77 @@ export class PimiaClient {
     }
   }
 
+  /**
+   * El libro del almacén: por qué un artículo tiene el saldo que tiene. Exige
+   * `items:read` — leer el libro es leer el catálogo que explica— y, a
+   * diferencia de almacenes y recuentos, **NO va tras el módulo `stock`**: el
+   * libro es N1 y N1 es de todos.
+   *
+   * ## El COMPROMETIDO, en la cabecera de `forItem`
+   *
+   * `meta.committed` responde la otra mitad de la pregunta: no «cuánto tengo»
+   * sino **«cuánto de lo que tengo puedo vender»**. Trae la cantidad, el
+   * disponible (saldo − comprometido) y el DESGLOSE de los documentos que lo
+   * comprometen.
+   *
+   * ⛔ **Tres cosas que hay que tener delante:**
+   *
+   * 1. **Es una cifra DERIVADA**: no hay columna que escribir, no existe un
+   *    `PUT` para reservar. Comprometen el albarán y la factura **en
+   *    borrador**, y dejan de hacerlo solos cuando mueven el almacén (al
+   *    entregar y al publicar). El presupuesto aceptado NO compromete: nada en
+   *    el núcleo dice cuándo se cumplió.
+   * 2. ⚠️ **`committed` a `null` NO es cero.** Es «no se está calculando» — la
+   *    empresa no tiene el módulo `stock`, o tiene el ciclo de inventario
+   *    apagado. Pintar un 0 ahí afirma «nada comprometido», que es justo lo
+   *    que no se sabe. Igual con `committed_quantity` en el artículo.
+   * 3. **Es GLOBAL por artículo, sin dimensión de almacén**: de los documentos
+   *    que comprometen solo el albarán declara almacén.
+   */
+  get stockMovements() {
+    return {
+      /**
+       * El libro entero de la empresa, filtrable por artículo, almacén, motivo
+       * y fechas. Su `meta` trae además el valor informativo del almacén
+       * (`stock_value_cents`), que NO es valoración contable.
+       */
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'stockMovements.index'>>('/stock-movements', query, options),
+
+      /**
+       * El libro de UN artículo, con la cabecera que lo explica: saldo
+       * (`meta.opening_stock`), reparto por almacén (`meta.warehouse_stock`) y
+       * comprometido (`meta.committed`).
+       */
+      forItem: (
+        itemId: number | string,
+        query?: RequestOptions['query'],
+        options?: ReadOptions,
+      ) =>
+        this.get<Ok<'stockMovements.forItem'>>(
+          `/items/${itemId}/stock-movements`,
+          query,
+          options,
+        ),
+
+      /**
+       * El ajuste manual con motivo: la corrección que deja rastro, frente al
+       * `PUT /items/{item}` que pisa el contador sin decir por qué. Cantidad
+       * FIRMADA (± decimal) y `note` obligatoria; `warehouse_id` opcional.
+       */
+      adjust: (
+        itemId: number | string,
+        body: { quantity: number; note: string; warehouse_id?: number },
+        options?: WriteOptions,
+      ) =>
+        this.post<Ok<'item.stockAdjustments'>>(
+          `/items/${itemId}/stock-adjustments`,
+          body,
+          options,
+        ),
+    }
+  }
+
   get<T = unknown>(
     path: string,
     query?: RequestOptions['query'],
