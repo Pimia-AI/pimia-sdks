@@ -370,6 +370,51 @@ test('los helpers de dominio pegan en las rutas correctas', async () => {
   assert.equal(calls[2].init.headers['content-type'], 'application/json')
 })
 
+test('los recuentos separan contar de confirmar, y no se confunden', async () => {
+  const { client, calls } = clientWith(() => json({ data: {}, meta: {} }), { accessToken: 'at-1' })
+
+  await client.stockCounts.list({ status: 'DRAFT' })
+  await client.stockCounts.create({ count_date: '2026-08-31' })
+  // Contar: escribe lo contado y NO mueve el almacen.
+  await client.stockCounts.update(4, {
+    count_date: '2026-08-31',
+    lines: [{ item_id: 7, counted_quantity: 12 }],
+  })
+  // Confirmar: esto si mueve, y es otra llamada.
+  await client.stockCounts.confirm(4)
+  await client.stockCounts.cancel(5)
+  await client.stockCounts.delete(5)
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/stock-counts?status=DRAFT`)
+  assert.equal(calls[1].init.method, 'POST')
+  assert.equal(calls[2].url, `${BASE}/api/v1/stock-counts/4`)
+  assert.equal(calls[2].init.method, 'PUT')
+  assert.equal(calls[3].url, `${BASE}/api/v1/stock-counts/4/confirm`)
+  assert.equal(calls[3].init.method, 'POST')
+  assert.equal(calls[4].url, `${BASE}/api/v1/stock-counts/5/cancel`)
+  assert.equal(calls[5].init.method, 'DELETE')
+})
+
+// `counted_quantity: null` es «sin contar» y NO es cero: las lineas en null no
+// emiten nada al confirmar. Si el cliente lo convirtiera en 0 por el camino, un
+// recuento a medias vaciaria el almacen — asi que el null tiene que llegar al
+// cable tal cual.
+test('el «sin contar» viaja como null y no como cero', async () => {
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  await client.stockCounts.update(4, {
+    count_date: '2026-08-31',
+    lines: [
+      { item_id: 7, counted_quantity: null },
+      { item_id: 8, counted_quantity: 0 },
+    ],
+  })
+
+  const cuerpo = JSON.parse(calls[0].init.body)
+  assert.equal(cuerpo.lines[0].counted_quantity, null)
+  assert.equal(cuerpo.lines[1].counted_quantity, 0)
+})
+
 test('los almacenes pegan en sus cinco rutas, con su verbo', async () => {
   const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
 

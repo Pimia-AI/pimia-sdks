@@ -358,6 +358,58 @@ final class PimiaClientTest extends TestCase
         $this->assertSame('application/json', $transport->calls[2]['headers']['content-type']);
     }
 
+    public function test_los_recuentos_separan_contar_de_confirmar(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json([]),
+            new TokenSet('at-1'),
+        );
+
+        $client->stockCounts->list(['status' => 'DRAFT']);
+        $client->stockCounts->create(['count_date' => '2026-08-31']);
+        // Contar: escribe lo contado y NO mueve el almacén.
+        $client->stockCounts->update(4, [
+            'count_date' => '2026-08-31',
+            'lines' => [['item_id' => 7, 'counted_quantity' => 12]],
+        ]);
+        // Confirmar: esto sí mueve, y es otra llamada.
+        $client->stockCounts->confirm(4);
+        $client->stockCounts->cancel(5);
+        $client->stockCounts->delete(5);
+
+        $this->assertSame(self::BASE.'/api/v1/stock-counts?status=DRAFT', $transport->calls[0]['url']);
+        $this->assertSame('POST', $transport->calls[1]['method']);
+        $this->assertSame('PUT', $transport->calls[2]['method']);
+        $this->assertSame(self::BASE.'/api/v1/stock-counts/4/confirm', $transport->calls[3]['url']);
+        $this->assertSame(self::BASE.'/api/v1/stock-counts/5/cancel', $transport->calls[4]['url']);
+        $this->assertSame('DELETE', $transport->calls[5]['method']);
+    }
+
+    /**
+     * `counted_quantity` a null es «sin contar» y NO es cero: las líneas en
+     * null no emiten nada al confirmar. Si el cliente lo convirtiera en 0 por
+     * el camino, un recuento a medias vaciaría el almacén.
+     */
+    public function test_el_sin_contar_viaja_como_null_y_no_como_cero(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json([]),
+            new TokenSet('at-1'),
+        );
+
+        $client->stockCounts->update(4, [
+            'count_date' => '2026-08-31',
+            'lines' => [
+                ['item_id' => 7, 'counted_quantity' => null],
+                ['item_id' => 8, 'counted_quantity' => 0],
+            ],
+        ]);
+
+        $cuerpo = json_decode($transport->calls[0]['body'], true);
+        $this->assertNull($cuerpo['lines'][0]['counted_quantity']);
+        $this->assertSame(0, $cuerpo['lines'][1]['counted_quantity']);
+    }
+
     public function test_los_almacenes_pegan_en_sus_cinco_rutas(): void
     {
         [$client, $transport] = $this->client(

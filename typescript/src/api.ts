@@ -3775,6 +3775,13 @@ export interface paths {
          *     líneas con `item_id`, y un artículo con `opening_stock` NULL («nunca ha
          *     llevado stock») no se estrena por una compra — se estrena en su ficha o
          *     con un ajuste, que son los gestos que significan «declaro existencias».
+         *
+         *     ⚠️ **El almacén se puede declarar AQUÍ** (`warehouse_id`, opcional, N2) y
+         *     no solo en la factura: dónde se guarda la mercancía se sabe al recibirla
+         *     —descargando el camión—, no al teclear la factura que el OCR acaba de
+         *     crear. Lo que llegue aquí manda sobre lo que declarara el documento, y
+         *     se GUARDA en él: si el documento dijera una cosa y el almacén moviera
+         *     otra, la ficha estaría mintiendo sobre lo que hizo.
          */
         post: operations["receivedInvoices.markGoodsReceived"];
         delete?: never;
@@ -4610,6 +4617,113 @@ export interface paths {
         /** Ajusta las existencias de un artículo y devuelve el asiento */
         post: operations["item.stockAdjustments"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-counts/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirma el recuento: emite los ajustes en bloque contra el libro
+         * @description Una línea por artículo contado y con diferencia, con motivo `count` y el
+         *     recuento como documento de origen. Lo que NO emite nada:
+         *
+         *      - las líneas **sin contar** (`counted_quantity` NULL) — nadie miró esa
+         *        estantería, y suponer que está vacía sería inventarse un dato;
+         *      - las que **cuadran** con el saldo del momento — el libro anota lo que
+         *        le pasó al contador, no lo que un documento quiso hacerle.
+         *
+         *     Todo va en UNA transacción: un recuento a medias dejaría el almacén en
+         *     un estado que ni la realidad ni el sistema han tenido nunca.
+         */
+        post: operations["stockCounts.confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-counts/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancela un borrador: no emite nada y deja constancia de que se abrió y
+         *     no se cerró. Un recuento confirmado no se cancela — ya movió el almacén
+         */
+        post: operations["stockCounts.cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Los recuentos de la empresa, del más nuevo al más viejo */
+        get: operations["stock-counts.index"];
+        put?: never;
+        /**
+         * Abre un recuento
+         * @description Nace **sembrado** con lo que el almacén dice tener ahora (`seed`, por
+         *     defecto sí): contar es corregir una lista, no escribirla de cero. Se
+         *     siembran los artículos con saldo distinto de cero — una lista con las
+         *     doscientas referencias que el almacén NO tiene es una lista que nadie
+         *     lee. Lo que aparezca de más se añade contando (`PUT` con su `item_id`).
+         */
+        post: operations["stock-counts.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stock-counts/{stock_count}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["stock-counts.show"];
+        /**
+         * Cuenta: escribe lo contado de cada línea
+         * @description Las líneas se UPSERTAN por artículo y no se borran y recrean, que es lo
+         *     que hacen los documentos de venta: aquí `expected_quantity` es la foto
+         *     de lo que el sistema creía cuando se dibujó la línea, y recrearla la
+         *     refrescaría en silencio — perdiendo justo el dato que permite avisar de
+         *     que algo se movió mientras se contaba. Un artículo que no venga en la
+         *     petición se queda como estaba.
+         *
+         *     Un recuento confirmado o cancelado no se edita: **422**.
+         */
+        put: operations["stock-counts.update"];
+        post?: never;
+        /**
+         * Borra un recuento que no ha movido nada
+         * @description Un confirmado no se borra: sus asientos explican saldos de hoy, y
+         *     borrarlo dejaría el libro nombrando un documento que no existe. Para el
+         *     que se abrió y no se cerró está `cancel`.
+         */
+        delete: operations["stock-counts.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -8968,7 +9082,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
         };
         /**
          * RoleRequest
@@ -8993,7 +9107,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
             }[] | null;
         };
         /** RoleResource */
@@ -9093,6 +9207,78 @@ export interface components {
              *     escribir en el almacén de otro.
              */
             warehouse_id?: number | null;
+        };
+        /** StockCountLineResource */
+        StockCountLineResource: {
+            id: number;
+            item_id: number;
+            item_name: string;
+            /** @description Lo que el sistema creía CUANDO SE DIBUJÓ la línea. */
+            expected_quantity: number;
+            /**
+             * @description Lo contado. NULL = todavía no se ha contado, que NO es contar
+             *     cero: una estantería vacía es un dato y una que nadie ha mirado
+             *     no lo es. Las que llegan aquí en NULL no emiten nada al
+             *     confirmar.
+             */
+            counted_quantity: number | null;
+            /**
+             * @description La diferencia que se ENSEÑA mientras se cuenta. ⚠️ No es la que
+             *     se aplica al confirmar: esa se calcula contra el saldo de ese
+             *     momento, porque contar dice «aquí hay 12», no «quítale 3».
+             */
+            difference: number | null;
+            /**
+             * @description El asiento que esta línea emitió al confirmar, si emitió alguno
+             *     (una línea que cuadra no escribe nada en el libro).
+             */
+            stock_movement_id: number | null;
+        };
+        /** StockCountRequest */
+        StockCountRequest: {
+            /** Format: date-time */
+            count_date: string;
+            notes?: string | null;
+            warehouse_id?: number | null;
+            /**
+             * @description Sembrar el recuento con lo que el almacén tiene ahora. Solo se
+             *     mira en el alta.
+             */
+            seed?: boolean | null;
+            lines?: {
+                item_id: number;
+                counted_quantity: number | null;
+            }[] | null;
+        };
+        /** StockCountResource */
+        StockCountResource: {
+            id: number;
+            count_number: string;
+            sequence_number: number;
+            /**
+             * @description DRAFT | CONFIRMED | CANCELLED. Un confirmado es historia: ya
+             *     emitió sus asientos, y no se edita ni se borra.
+             */
+            status: string;
+            /** Format: date-time */
+            count_date: string;
+            /**
+             * @description De qué almacén se contó. NULL solo si el almacén se borró
+             *     después: el recuento sobrevive a lo que nombra.
+             */
+            warehouse_id: number | null;
+            warehouse_name: string | null;
+            notes: string | null;
+            /**
+             * Format: date-time
+             * @description Cuándo se confirmó, no solo si: dice además el instante, como
+             *     los dos candados del ciclo de stock.
+             */
+            confirmed_at: string | null;
+            creator_id: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            lines?: components["schemas"]["StockCountLineResource"][];
         };
         /** StockMovementResource */
         StockMovementResource: {
@@ -17991,7 +18177,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    warehouse_id?: number | null;
+                };
+            };
+        };
         responses: {
             /** @description `ReceivedInvoiceResource` */
             200: {
@@ -18004,19 +18196,7 @@ export interface operations {
                     };
                 };
             };
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        error: "goods_already_received";
-                        /** @constant */
-                        message: "La mercancía de esta factura recibida ya se sumó al almacén.";
-                    };
-                };
-            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "reconciliation.transactions": {
@@ -19566,12 +19746,215 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "stockCounts.confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            status: string;
+                        };
+                        meta: {
+                            adjusted_lines: number;
+                            unchanged_lines: number;
+                            uncounted_lines: number;
+                            moved_while_counting: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "stockCounts.cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description `StockCountResource`
+             *
+             *     Confirmar un recuento en el que nadie contó nada no es «cuadrar
+             *     el almacén»: es no haber contado. Decirlo es mejor que sellar un
+             *     documento vacío que después parecerá un inventario hecho.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockCountResource"];
+                    } | string;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "stock-counts.index": {
+        parameters: {
+            query?: {
+                /** @description Solo los de este estado (`DRAFT`, `CONFIRMED`, `CANCELLED`). */
+                status?: string;
+                /** @description Solo los de este almacén. */
+                warehouse_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `StockCountResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockCountResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "stock-counts.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockCountRequest"];
+            };
+        };
+        responses: {
+            /** @description El recurso recién creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "stock-counts.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_count: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `StockCountResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockCountResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "stock-counts.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_count: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockCountRequest"];
+            };
+        };
+        responses: {
+            /**
+             * @description `StockCountResource`
+             *
+             *     Confirmar un recuento en el que nadie contó nada no es «cuadrar
+             *     el almacén»: es no haber contado. Decirlo es mejor que sellar un
+             *     documento vacío que después parecerá un inventario hecho.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StockCountResource"] & Record<string, never>;
+                    } | string;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "stock-counts.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stock_count: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
     "stockMovements.index": {
         parameters: {
             query?: {
                 /** @description Solo los asientos de este artículo. */
                 item_id?: number;
-                /** @description Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`). */
+                /** @description Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`, `count`). */
                 reason?: string;
                 /** @description Solo los asientos de este almacén. */
                 warehouse_id?: number;
