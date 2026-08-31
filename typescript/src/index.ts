@@ -24,6 +24,8 @@ export type {
   ResourceEnvelope,
   ResponseMeta,
   ResponseWithMeta,
+  StockCountRequest,
+  StockCountResource,
   WarehouseRequest,
   WarehouseResource,
   WriteOptions,

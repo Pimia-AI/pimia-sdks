@@ -39,6 +39,8 @@ export type ContractResource = Schemas['ContractResource']
 export type WarehouseResource = Schemas['WarehouseResource']
 /** El saldo de un artículo EN un almacén. */
 export type ItemWarehouseStockResource = Schemas['ItemWarehouseStockResource']
+/** Un recuento de inventario tal y como lo devuelve la API. */
+export type StockCountResource = Schemas['StockCountResource']
 
 /** Cuerpo de alta/edición de cliente. Incluye `customFields`. */
 export type CustomerRequest = Schemas['CustomerRequest']
@@ -57,6 +59,12 @@ export type ContractRequest = Schemas['ContractRequest']
  * misma transacción, porque la empresa necesita exactamente uno.
  */
 export type WarehouseRequest = Schemas['WarehouseRequest']
+/**
+ * Cuerpo del alta y del conteo de un recuento. ⚠️ En `lines`,
+ * `counted_quantity: null` es «sin contar» y **no** es cero: las líneas en
+ * null no emiten nada al confirmar.
+ */
+export type StockCountRequest = Schemas['StockCountRequest']
 
 /**
  * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
@@ -470,6 +478,67 @@ export class PimiaClient {
        */
       stock: (id: number | string, query?: RequestOptions['query'], options?: ReadOptions) =>
         this.get<Ok<'warehouses.stock'>>(`/warehouses/${id}/stock`, query, options),
+    }
+  }
+
+  /**
+   * Recuentos de inventario: contar un almacén y cuadrarlo de una vez. Exige
+   * `items:read` / `items:write` y el módulo `stock` (opt-in), como el resto.
+   *
+   * El ciclo es **contar → mirar diferencias → confirmar**, y los dos últimos
+   * pasos son llamadas distintas a propósito:
+   *
+   * - `update` escribe lo contado y **no mueve una sola existencia**;
+   * - `confirm` emite los ajustes en bloque, uno por línea con diferencia,
+   *   todos con motivo `count` y en la misma transacción.
+   *
+   * ⛔ **Dos cosas que hay que tener delante para no programar contra una
+   * aritmética que el servidor no garantiza:**
+   *
+   * 1. **La diferencia se calcula al CONFIRMAR**, contra el saldo de ese
+   *    momento: un recuento dice «aquí hay 12», no «quítale 3». Si algo se
+   *    movió entre contar y confirmar, el almacén queda igualmente en lo
+   *    contado, y el `meta.moved_while_counting` de la respuesta dice cuántas
+   *    líneas fueron.
+   * 2. **`counted_quantity: null` es «sin contar», y no es cero.** Las líneas
+   *    en null no emiten nada; mandar 0 es declarar que miraste y no había.
+   */
+  get stockCounts() {
+    return {
+      list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+        this.get<Ok<'stock-counts.index'>>('/stock-counts', query, options),
+      get: (id: number | string, options?: ReadOptions) =>
+        this.get<Ok<'stock-counts.show'>>(`/stock-counts/${id}`, undefined, options),
+
+      /**
+       * Abre el recuento. Nace **sembrado** con lo que el almacén dice tener
+       * (`seed`, por defecto sí): contar es corregir una lista, no escribirla.
+       */
+      create: (body: StockCountRequest, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<StockCountResource>>('/stock-counts', body, options),
+
+      /** Cuenta: escribe lo contado. No mueve el almacén. */
+      update: (id: number | string, body: StockCountRequest, options?: WriteOptions) =>
+        this.put<ResourceEnvelope<StockCountResource>>(`/stock-counts/${id}`, body, options),
+
+      /**
+       * Confirma: emite los ajustes en bloque. La respuesta trae el resumen en
+       * `meta` — cuántas líneas se ajustaron, cuántas cuadraban, cuántas
+       * quedaron sin contar y cuántas se movieron mientras se contaba.
+       */
+      confirm: (id: number | string, options?: WriteOptions) =>
+        this.post<Ok<'stockCounts.confirm'>>(`/stock-counts/${id}/confirm`, {}, options),
+
+      /** Cancela un borrador. Uno confirmado ya movió el almacén: 422. */
+      cancel: (id: number | string, options?: WriteOptions) =>
+        this.post<Ok<'stockCounts.cancel'>>(`/stock-counts/${id}/cancel`, {}, options),
+
+      /**
+       * Borra un recuento que no ha movido nada. Uno confirmado **no se
+       * borra**: sus asientos explican el saldo de hoy.
+       */
+      delete: (id: number | string, options?: ReadOptions) =>
+        this.delete<{ success: string }>(`/stock-counts/${id}`, options),
     }
   }
 

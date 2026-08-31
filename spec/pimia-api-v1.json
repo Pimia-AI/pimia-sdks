@@ -19138,7 +19138,7 @@
         "/received-invoices/{id}/mark-goods-received": {
             "post": {
                 "operationId": "receivedInvoices.markGoodsReceived",
-                "description": "Es una acci\u00f3n expl\u00edcita y no el alta de la factura a prop\u00f3sito: el OCR\ncrea borradores que se corrigen, y un borrador no es mercanc\u00eda en la\nestanter\u00eda. El candado es `stock_added_at` \u2014un instante, como el\n`stock_deducted_at` del albar\u00e1n (#473)\u2014 y hace la acci\u00f3n idempotente:\nla segunda llamada es un 422, no una segunda suma.\n\nReglas espejo del albar\u00e1n, tambi\u00e9n a prop\u00f3sito: solo mueven almac\u00e9n las\nl\u00edneas con `item_id`, y un art\u00edculo con `opening_stock` NULL (\u00abnunca ha\nllevado stock\u00bb) no se estrena por una compra \u2014 se estrena en su ficha o\ncon un ajuste, que son los gestos que significan \u00abdeclaro existencias\u00bb.",
+                "description": "Es una acci\u00f3n expl\u00edcita y no el alta de la factura a prop\u00f3sito: el OCR\ncrea borradores que se corrigen, y un borrador no es mercanc\u00eda en la\nestanter\u00eda. El candado es `stock_added_at` \u2014un instante, como el\n`stock_deducted_at` del albar\u00e1n (#473)\u2014 y hace la acci\u00f3n idempotente:\nla segunda llamada es un 422, no una segunda suma.\n\nReglas espejo del albar\u00e1n, tambi\u00e9n a prop\u00f3sito: solo mueven almac\u00e9n las\nl\u00edneas con `item_id`, y un art\u00edculo con `opening_stock` NULL (\u00abnunca ha\nllevado stock\u00bb) no se estrena por una compra \u2014 se estrena en su ficha o\ncon un ajuste, que son los gestos que significan \u00abdeclaro existencias\u00bb.\n\n\u26a0\ufe0f **El almac\u00e9n se puede declarar AQU\u00cd** (`warehouse_id`, opcional, N2) y\nno solo en la factura: d\u00f3nde se guarda la mercanc\u00eda se sabe al recibirla\n\u2014descargando el cami\u00f3n\u2014, no al teclear la factura que el OCR acaba de\ncrear. Lo que llegue aqu\u00ed manda sobre lo que declarara el documento, y\nse GUARDA en \u00e9l: si el documento dijera una cosa y el almac\u00e9n moviera\notra, la ficha estar\u00eda mintiendo sobre lo que hizo.",
                 "summary": "Marca la mercanc\u00eda de la factura recibida como RECIBIDA y suma sus l\u00edneas\nal almac\u00e9n \u2014 el espejo exacto del `mark-delivered` del albar\u00e1n de venta\n(estudio de stock, decisi\u00f3n S3)",
                 "tags": [
                     "ReceivedInvoices"
@@ -19153,6 +19153,23 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "warehouse_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "`ReceivedInvoiceResource`",
@@ -19173,28 +19190,7 @@
                         }
                     },
                     "422": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "string",
-                                            "const": "goods_already_received"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "La mercanc\u00eda de esta factura recibida ya se sum\u00f3 al almac\u00e9n."
-                                        }
-                                    },
-                                    "required": [
-                                        "error",
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -22907,6 +22903,436 @@
                 ]
             }
         },
+        "/stock-counts/{id}/confirm": {
+            "post": {
+                "operationId": "stockCounts.confirm",
+                "description": "Una l\u00ednea por art\u00edculo contado y con diferencia, con motivo `count` y el\nrecuento como documento de origen. Lo que NO emite nada:\n\n - las l\u00edneas **sin contar** (`counted_quantity` NULL) \u2014 nadie mir\u00f3 esa\n   estanter\u00eda, y suponer que est\u00e1 vac\u00eda ser\u00eda inventarse un dato;\n - las que **cuadran** con el saldo del momento \u2014 el libro anota lo que\n   le pas\u00f3 al contador, no lo que un documento quiso hacerle.\n\nTodo va en UNA transacci\u00f3n: un recuento a medias dejar\u00eda el almac\u00e9n en\nun estado que ni la realidad ni el sistema han tenido nunca.",
+                "summary": "Confirma el recuento: emite los ajustes en bloque contra el libro",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "status"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "adjusted_lines": {
+                                                    "type": "integer"
+                                                },
+                                                "unchanged_lines": {
+                                                    "type": "integer"
+                                                },
+                                                "uncounted_lines": {
+                                                    "type": "integer"
+                                                },
+                                                "moved_while_counting": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "adjusted_lines",
+                                                "unchanged_lines",
+                                                "uncounted_lines",
+                                                "moved_while_counting"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/stock-counts/{id}/cancel": {
+            "post": {
+                "operationId": "stockCounts.cancel",
+                "summary": "Cancela un borrador: no emite nada y deja constancia de que se abri\u00f3 y\nno se cerr\u00f3. Un recuento confirmado no se cancela \u2014 ya movi\u00f3 el almac\u00e9n",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`StockCountResource`\n\nConfirmar un recuento en el que nadie cont\u00f3 nada no es \u00abcuadrar\nel almac\u00e9n\u00bb: es no haber contado. Decirlo es mejor que sellar un\ndocumento vac\u00edo que despu\u00e9s parecer\u00e1 un inventario hecho.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/StockCountResource"
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/stock-counts": {
+            "get": {
+                "operationId": "stock-counts.index",
+                "summary": "Los recuentos de la empresa, del m\u00e1s nuevo al m\u00e1s viejo",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Solo los de este estado (`DRAFT`, `CONFIRMED`, `CANCELLED`).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "warehouse_id",
+                        "in": "query",
+                        "description": "Solo los de este almac\u00e9n.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `StockCountResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StockCountResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "stock-counts.store",
+                "description": "Nace **sembrado** con lo que el almac\u00e9n dice tener ahora (`seed`, por\ndefecto s\u00ed): contar es corregir una lista, no escribirla de cero. Se\nsiembran los art\u00edculos con saldo distinto de cero \u2014 una lista con las\ndoscientas referencias que el almac\u00e9n NO tiene es una lista que nadie\nlee. Lo que aparezca de m\u00e1s se a\u00f1ade contando (`PUT` con su `item_id`).",
+                "summary": "Abre un recuento",
+                "tags": [
+                    "StockCounts"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StockCountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/stock-counts/{stock_count}": {
+            "get": {
+                "operationId": "stock-counts.show",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_count",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`StockCountResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/StockCountResource"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "lines"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:read"
+                        ]
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "stock-counts.update",
+                "description": "Las l\u00edneas se UPSERTAN por art\u00edculo y no se borran y recrean, que es lo\nque hacen los documentos de venta: aqu\u00ed `expected_quantity` es la foto\nde lo que el sistema cre\u00eda cuando se dibuj\u00f3 la l\u00ednea, y recrearla la\nrefrescar\u00eda en silencio \u2014 perdiendo justo el dato que permite avisar de\nque algo se movi\u00f3 mientras se contaba. Un art\u00edculo que no venga en la\npetici\u00f3n se queda como estaba.\n\nUn recuento confirmado o cancelado no se edita: **422**.",
+                "summary": "Cuenta: escribe lo contado de cada l\u00ednea",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_count",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StockCountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`StockCountResource`\n\nConfirmar un recuento en el que nadie cont\u00f3 nada no es \u00abcuadrar\nel almac\u00e9n\u00bb: es no haber contado. Decirlo es mejor que sellar un\ndocumento vac\u00edo que despu\u00e9s parecer\u00e1 un inventario hecho.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/StockCountResource"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "lines"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            },
+            "delete": {
+                "operationId": "stock-counts.destroy",
+                "description": "Un confirmado no se borra: sus asientos explican saldos de hoy, y\nborrarlo dejar\u00eda el libro nombrando un documento que no existe. Para el\nque se abri\u00f3 y no se cerr\u00f3 est\u00e1 `cancel`.",
+                "summary": "Borra un recuento que no ha movido nada",
+                "tags": [
+                    "StockCounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "stock_count",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "items:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/stock-movements": {
             "get": {
                 "operationId": "stockMovements.index",
@@ -22926,7 +23352,7 @@
                     {
                         "name": "reason",
                         "in": "query",
-                        "description": "Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`).",
+                        "description": "Solo los asientos con este motivo (`initial`, `import`, `manual_edit`, `manual_adjustment`, `purchase`, `sale_invoice`, `delivery_note`, `pos_sale`, `pos_return`, `count`).",
                         "schema": {
                             "type": "string"
                         }
@@ -48851,7 +49277,11 @@
                                 "view-warehouse",
                                 "create-warehouse",
                                 "edit-warehouse",
-                                "delete-warehouse"
+                                "delete-warehouse",
+                                "view-stock-count",
+                                "create-stock-count",
+                                "edit-stock-count",
+                                "delete-stock-count"
                             ]
                         }
                     }
@@ -48991,7 +49421,11 @@
                                         "view-warehouse",
                                         "create-warehouse",
                                         "edit-warehouse",
-                                        "delete-warehouse"
+                                        "delete-warehouse",
+                                        "view-stock-count",
+                                        "create-stock-count",
+                                        "edit-stock-count",
+                                        "delete-stock-count"
                                     ]
                                 }
                             },
@@ -49291,6 +49725,195 @@
                     "note"
                 ],
                 "title": "StockAdjustmentRequest"
+            },
+            "StockCountLineResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "item_id": {
+                        "type": "integer"
+                    },
+                    "item_name": {
+                        "type": "string"
+                    },
+                    "expected_quantity": {
+                        "type": "integer",
+                        "description": "Lo que el sistema cre\u00eda CUANDO SE DIBUJ\u00d3 la l\u00ednea."
+                    },
+                    "counted_quantity": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Lo contado. NULL = todav\u00eda no se ha contado, que NO es contar\ncero: una estanter\u00eda vac\u00eda es un dato y una que nadie ha mirado\nno lo es. Las que llegan aqu\u00ed en NULL no emiten nada al\nconfirmar."
+                    },
+                    "difference": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "La diferencia que se ENSE\u00d1A mientras se cuenta. \u26a0\ufe0f No es la que\nse aplica al confirmar: esa se calcula contra el saldo de ese\nmomento, porque contar dice \u00abaqu\u00ed hay 12\u00bb, no \u00abqu\u00edtale 3\u00bb."
+                    },
+                    "stock_movement_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "El asiento que esta l\u00ednea emiti\u00f3 al confirmar, si emiti\u00f3 alguno\n(una l\u00ednea que cuadra no escribe nada en el libro)."
+                    }
+                },
+                "required": [
+                    "id",
+                    "item_id",
+                    "item_name",
+                    "expected_quantity",
+                    "counted_quantity",
+                    "difference",
+                    "stock_movement_id"
+                ],
+                "title": "StockCountLineResource"
+            },
+            "StockCountRequest": {
+                "type": "object",
+                "properties": {
+                    "count_date": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "seed": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "description": "Sembrar el recuento con lo que el almac\u00e9n tiene ahora. Solo se\nmira en el alta."
+                    },
+                    "lines": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "item_id": {
+                                    "type": "integer"
+                                },
+                                "counted_quantity": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "minimum": 0
+                                }
+                            },
+                            "required": [
+                                "item_id",
+                                "counted_quantity"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "count_date"
+                ],
+                "title": "StockCountRequest"
+            },
+            "StockCountResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "count_number": {
+                        "type": "string"
+                    },
+                    "sequence_number": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "DRAFT | CONFIRMED | CANCELLED. Un confirmado es historia: ya\nemiti\u00f3 sus asientos, y no se edita ni se borra."
+                    },
+                    "count_date": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "warehouse_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "De qu\u00e9 almac\u00e9n se cont\u00f3. NULL solo si el almac\u00e9n se borr\u00f3\ndespu\u00e9s: el recuento sobrevive a lo que nombra."
+                    },
+                    "warehouse_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "confirmed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Cu\u00e1ndo se confirm\u00f3, no solo si: dice adem\u00e1s el instante, como\nlos dos candados del ciclo de stock."
+                    },
+                    "creator_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "lines": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StockCountLineResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "count_number",
+                    "sequence_number",
+                    "status",
+                    "count_date",
+                    "warehouse_id",
+                    "warehouse_name",
+                    "notes",
+                    "confirmed_at",
+                    "creator_id",
+                    "created_at"
+                ],
+                "title": "StockCountResource"
             },
             "StockMovementResource": {
                 "type": "object",

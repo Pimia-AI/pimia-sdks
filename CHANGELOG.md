@@ -8,6 +8,54 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.15.0] — 2026-08-31
+
+**El recuento de inventario.** Cuadrar el almacén con la realidad eran
+cincuenta ajustes manuales y cincuenta motivos tecleados; ahora es un
+documento que lo hace de una vez. Pieza 2 de la fase N2 del estudio de stock;
+núcleo en galeote/factSaas#595.
+
+Spec sincronizado con **factSaas@7721dcfb** (2026-08-31) — **415 operaciones**
+(siete más). Ninguna retirada.
+
+### Añadido
+
+- **Recuentos** (7 operaciones): el CRUD (`GET|POST /stock-counts`,
+  `GET|PUT|DELETE /stock-counts/{id}`, con el alta en **201**) y las dos
+  acciones del ciclo, `confirm` y `cancel`.
+- **`client.stockCounts`** en `@pimia/sdk` y **`$client->stockCounts`** en
+  `pimia/pimia-php`: `list`/`get`/`create`/`update`/`confirm`/`cancel`/
+  `delete`, con la misma forma en los dos.
+
+### Lo que hay que tener delante para integrarlo
+
+- **Contar y confirmar son llamadas distintas, a propósito.** `update` escribe
+  lo contado y **no mueve una sola existencia**; `confirm` emite los ajustes en
+  bloque, uno por línea con diferencia, todos con motivo `count` y en la misma
+  transacción. Separarlos es lo que permite contar en tres ratos y revisar
+  antes de tocar el almacén.
+- ⛔ **La diferencia se calcula al CONFIRMAR**, contra el saldo de ese momento:
+  un recuento dice «aquí hay 12», no «quítale 3». Si algo se movió entre contar
+  y confirmar, el almacén queda igualmente en lo contado — y la respuesta lo
+  dice en `meta.moved_while_counting`. **No programes contra una resta
+  guardada**: el servidor no la garantiza, y el estado final sí.
+- ⛔ **`counted_quantity: null` es «sin contar», y no es cero.** Las líneas en
+  null no emiten nada al confirmar; mandar `0` es declarar que miraste y no
+  había. Colapsar los dos convierte un recuento a medias en un vaciado del
+  almacén — hay un test en cada SDK que fija que el `null` llega al cable tal
+  cual.
+- **Un recuento nace sembrado** con lo que el almacén dice tener (`seed`, por
+  defecto sí): contar es corregir una lista, no escribirla de cero.
+- **Confirmado es historia**: ni se edita, ni se cancela, ni se borra
+  (`stock_count_not_draft`, `stock_count_confirmed`). Y confirmar sin haber
+  contado nada es un `422 stock_count_empty`: no es cuadrar el almacén, es no
+  haber contado.
+
+### Sin cambios de scope
+
+Los recuentos cuelgan de `items:*` y viven tras el módulo `stock`, como el
+resto de N2. Nada que añadir a `SCOPES` ni a `Scopes`.
+
 ## [0.14.0] — 2026-08-31
 
 **Los documentos dicen a qué almacén.** La 0.13.0 trajo la dimensión; con ella
