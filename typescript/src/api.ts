@@ -6848,6 +6848,12 @@ export interface components {
              *     para contar lo que hizo.
              */
             stock_deducted_at: string | null;
+            /**
+             * @description DE DÓNDE se entrega (N2). NULL = del almacén por defecto, que se
+             *     resuelve al entregar y no al guardar: cambiar el por defecto no
+             *     reescribe la intención de un albarán viejo.
+             */
+            warehouse_id: number | null;
             sub_total: number;
             total: number;
             tax: number;
@@ -8659,6 +8665,13 @@ export interface components {
                 tax?: number | null;
                 total?: number | null;
             }[];
+            /**
+             * @description DÓNDE entra la mercancía (N2). Opcional: sin él, el almacén por
+             *     defecto de la empresa. Se lee al marcar la mercancía como
+             *     recibida —no al guardar la factura—, porque el OCR crea
+             *     borradores que se corrigen antes de que llegue nada.
+             */
+            warehouse_id?: number | null;
         };
         /** ReceivedInvoiceResource */
         ReceivedInvoiceResource: {
@@ -8676,6 +8689,11 @@ export interface components {
              *     cliente pintar el botón «Mercancía recibida» solo cuando toca.
              */
             stock_added_at: string | null;
+            /**
+             * @description DÓNDE entra la mercancía (N2). NULL = el almacén por defecto,
+             *     resuelto al marcarla recibida.
+             */
+            warehouse_id: number | null;
             paid_status: string;
             tax_per_item: string | null;
             discount_per_item: string | null;
@@ -9067,6 +9085,14 @@ export interface components {
              *     pisado de siempre, que es justo lo que el libro viene a retirar.
              */
             note: string;
+            /**
+             * @description DÓNDE (N2). Opcional: sin él, el ajuste cae en el almacén por
+             *     defecto de la empresa — que es lo que hacía antes de que la
+             *     dimensión existiera. Se valida contra los almacenes de ESTA
+             *     empresa: un id ajeno no es un error de tipo, es un intento de
+             *     escribir en el almacén de otro.
+             */
+            warehouse_id?: number | null;
         };
         /** StockMovementResource */
         StockMovementResource: {
@@ -12915,6 +12941,12 @@ export interface operations {
                         quantity: number;
                         price: number;
                     }[];
+                    /**
+                     * @description DE DÓNDE se entrega (N2). Opcional: sin él, el almacén por
+                     *     defecto. Se valida contra los almacenes de ESTA empresa — un id
+                     *     ajeno no es un error de tipo, es escribir en el almacén de otro.
+                     */
+                    warehouse_id?: number | null;
                 };
             };
         };
@@ -12977,6 +13009,12 @@ export interface operations {
                         quantity: number;
                         price: number;
                     }[];
+                    /**
+                     * @description DE DÓNDE se entrega (N2). Opcional: sin él, el almacén por
+                     *     defecto. Se valida contra los almacenes de ESTA empresa — un id
+                     *     ajeno no es un error de tipo, es escribir en el almacén de otro.
+                     */
+                    warehouse_id?: number | null;
                 };
             };
         };
