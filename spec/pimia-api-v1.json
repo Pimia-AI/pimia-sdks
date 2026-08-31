@@ -23497,11 +23497,107 @@
                                                             "quantity"
                                                         ]
                                                     }
+                                                },
+                                                "committed": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "description": "Lo COMPROMETIDO y lo DISPONIBLE (N2 \u00b7 pieza 3). Cifra\nderivada: nadie la escribe, se calcula al preguntarla.\n`null` ENTERO = no se est\u00e1 calculando (m\u00f3dulo `stock` sin\ninstalar o ciclo de inventario apagado); un cero ah\u00ed\nafirmar\u00eda \u00abnada comprometido\u00bb, que es lo que no se sabe. El desglose viaja entero y sin paginar, como\n`warehouse_stock`: es cabecera de pesta\u00f1a, y son los\nborradores vivos de UN art\u00edculo, que en una pyme se cuentan\ncon los dedos. Va aqu\u00ed y no en un endpoint aparte porque la\npregunta es la misma que abre el libro \u2014 \u00ab\u00bfpor qu\u00e9 tengo\n47?\u00bb y \u00ab\u00bfpor qu\u00e9 solo puedo vender 35?\u00bb se responden en la\nmisma pantalla.",
+                                                    "properties": {
+                                                        "quantity": {
+                                                            "type": "number"
+                                                        },
+                                                        "available": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ],
+                                                            "description": "\u26a0\ufe0f `null` cuando el art\u00edculo NUNCA ha llevado stock\n(`opening_stock` NULL, la distinci\u00f3n que la migraci\u00f3n se\nesforz\u00f3 en preservar): de ese no hay disponible que\ncalcular, y un \u00ab\u22124\u00bb ah\u00ed ser\u00eda una alarma inventada."
+                                                        },
+                                                        "documents": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "document_type": {
+                                                                                "type": "string",
+                                                                                "const": "delivery_note"
+                                                                            },
+                                                                            "document_id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "document_number": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "customer_name": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "date": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "quantity": {
+                                                                                "type": "number"
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "document_type",
+                                                                            "document_id",
+                                                                            "document_number",
+                                                                            "customer_name",
+                                                                            "date",
+                                                                            "quantity"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "document_type": {
+                                                                                "type": "string",
+                                                                                "const": "invoice"
+                                                                            },
+                                                                            "document_id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "document_number": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "customer_name": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "date": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "quantity": {
+                                                                                "type": "number"
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "document_type",
+                                                                            "document_id",
+                                                                            "document_number",
+                                                                            "customer_name",
+                                                                            "date",
+                                                                            "quantity"
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "quantity",
+                                                        "available",
+                                                        "documents"
+                                                    ]
                                                 }
                                             },
                                             "required": [
                                                 "opening_stock",
-                                                "warehouse_stock"
+                                                "warehouse_stock",
+                                                "committed"
                                             ]
                                         }
                                     },
@@ -46126,6 +46222,13 @@
                     "opening_stock": {
                         "type": "integer"
                     },
+                    "committed_quantity": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Lo COMPROMETIDO por documentos que a\u00fan no han movido el almac\u00e9n\n(N2 \u00b7 pieza 3, cifra derivada \u2014 nadie la escribe). \u26a0\ufe0f `null` NO\nes cero: es \u00abno se est\u00e1 calculando\u00bb (m\u00f3dulo `stock` sin\ninstalar, o el ciclo de inventario apagado). Pintar un 0 ah\u00ed\nafirmar\u00eda \u00abnada comprometido\u00bb, que es lo que no se sabe.\nEl porqu\u00e9 entero, en {@see \\App\\Support\\StockCommitments}."
+                    },
                     "stock_alert_qty": {
                         "type": [
                             "integer",
@@ -46222,6 +46325,7 @@
                     "is_active",
                     "is_time_trackable",
                     "opening_stock",
+                    "committed_quantity",
                     "stock_alert_qty",
                     "allow_sale_without_stock",
                     "purchase_tax_type_id",
@@ -46341,6 +46445,13 @@
                     "opening_stock": {
                         "type": "integer"
                     },
+                    "committed_quantity": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Igual que en el recurso completo: `null` es \u00abno se est\u00e1\ncalculando\u00bb, no cero (N2 \u00b7 pieza 3). La celda de stock del\nlistado del panel lo lee de aqu\u00ed \u2014 el \u00edndice del cat\u00e1logo va\npor `?view=summary`."
+                    },
                     "stock_alert_qty": {
                         "type": [
                             "integer",
@@ -46451,6 +46562,7 @@
                     "is_active",
                     "is_time_trackable",
                     "opening_stock",
+                    "committed_quantity",
                     "stock_alert_qty",
                     "allow_sale_without_stock",
                     "created_at",
@@ -46472,13 +46584,21 @@
                     },
                     "quantity": {
                         "type": "integer"
+                    },
+                    "item_committed_quantity": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Lo que el ART\u00cdCULO tiene comprometido \u2014 global, no de este\nalmac\u00e9n (N2 \u00b7 pieza 3). El nombre lleva el `item_` delante por\neso: en una fila que habla de una nave, \u00abcomprometido\u00bb a secas\nse leer\u00eda como \u00abcomprometido aqu\u00ed\u00bb, y de los dos documentos que\ncomprometen solo el albar\u00e1n declara almac\u00e9n. `null` = no se\nest\u00e1 calculando; nunca es cero."
                     }
                 },
                 "required": [
                     "item_id",
                     "item_name",
                     "warehouse_id",
-                    "quantity"
+                    "quantity",
+                    "item_committed_quantity"
                 ],
                 "title": "ItemWarehouseStockResource"
             },

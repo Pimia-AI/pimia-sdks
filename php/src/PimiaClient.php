@@ -20,6 +20,7 @@ use Pimia\Resource\Customers;
 use Pimia\Resource\Estimates;
 use Pimia\Resource\Invoices;
 use Pimia\Resource\StockCounts;
+use Pimia\Resource\StockMovements;
 use Pimia\Resource\Warehouses;
 
 /**
@@ -47,6 +48,8 @@ final class PimiaClient
 
     public readonly StockCounts $stockCounts;
 
+    public readonly StockMovements $stockMovements;
+
     /** @var array{limit: ?int, remaining: ?int} */
     private array $rateLimit = ['limit' => null, 'remaining' => null];
 
@@ -64,6 +67,7 @@ final class PimiaClient
         $this->contracts = new Contracts($this);
         $this->warehouses = new Warehouses($this);
         $this->stockCounts = new StockCounts($this);
+        $this->stockMovements = new StockMovements($this);
     }
 
     /** Cabeceras `X-RateLimit-*` de la última respuesta. */

@@ -432,6 +432,67 @@ test('los almacenes pegan en sus cinco rutas, con su verbo', async () => {
   assert.equal(calls[4].url, `${BASE}/api/v1/warehouses/3/stock?only_with_stock=1`)
 })
 
+test('el libro pega en sus tres rutas, y no va tras el módulo', async () => {
+  const { client, calls } = clientWith(() => json({ data: [], meta: {} }), { accessToken: 'at-1' })
+
+  await client.stockMovements.list({ reason: 'count' })
+  await client.stockMovements.forItem(51)
+  await client.stockMovements.adjust(51, { quantity: -3, note: 'Rotura' })
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/stock-movements?reason=count`)
+  assert.equal(calls[1].url, `${BASE}/api/v1/items/51/stock-movements`)
+  assert.equal(calls[2].url, `${BASE}/api/v1/items/51/stock-adjustments`)
+  assert.equal(calls[2].init.method, 'POST')
+})
+
+// ⚠️ `committed: null` es «no se está calculando» —la empresa no tiene el
+// módulo `stock`, o el ciclo de inventario apagado— y NO es cero. Un cliente
+// que lo colapsara a 0 afirmaría «nada comprometido» sobre lo que no se sabe:
+// exactamente el defecto que este módulo lleva tres piezas retirando. Así que
+// el null tiene que llegar al integrador tal cual, sin normalizar.
+test('el comprometido distingue «cero» de «no se está calculando»', async () => {
+  const sinModulo = clientWith(
+    () => json({ data: [], meta: { opening_stock: 57, warehouse_stock: [], committed: null } }),
+    { accessToken: 'at-1' },
+  )
+  const conModulo = clientWith(
+    () =>
+      json({
+        data: [],
+        meta: {
+          opening_stock: 57,
+          warehouse_stock: [],
+          committed: { quantity: 0, available: 57, documents: [] },
+        },
+      }),
+    { accessToken: 'at-1' },
+  )
+
+  const apagado = await sinModulo.client.stockMovements.forItem(51)
+  const encendido = await conModulo.client.stockMovements.forItem(51)
+
+  assert.equal(apagado.meta.committed, null, 'El null se normalizó por el camino.')
+  assert.equal(encendido.meta.committed.quantity, 0)
+  assert.equal(encendido.meta.committed.available, 57)
+  assert.notEqual(apagado.meta.committed, encendido.meta.committed.quantity)
+})
+
+// El comprometido viaja como NÚMERO. Nació tipado como `string` en el
+// generador del OpenAPI —no es columna de modelo, así que el `@mixin` no
+// llegaba— y se corrigió en el núcleo el mismo día: es el defecto que ya costó
+// `due_amount` llegando como cadena al panel, y aquí queda fijado.
+test('el comprometido del artículo viaja como número, no como cadena', async () => {
+  const { client } = clientWith(
+    () => json({ data: [{ id: 51, name: 'Material obra 51', committed_quantity: 12.5 }] }),
+    { accessToken: 'at-1' },
+  )
+
+  const respuesta = await client.get('/items', { view: 'summary' })
+
+  assert.equal(typeof respuesta.data[0].committed_quantity, 'number')
+  assert.equal(respuesta.data[0].committed_quantity, 12.5)
+})
+
 // El módulo `stock` es opt-in, así que la respuesta esperable en un tenant que
 // no lo ha instalado es un 403 `module_not_installed` — que NO es falta de
 // scope. Si el SDK lo tradujera a MissingScopeError, un integrador se pasaría

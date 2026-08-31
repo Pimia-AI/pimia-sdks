@@ -430,6 +430,83 @@ final class PimiaClientTest extends TestCase
         $this->assertSame(self::BASE.'/api/v1/warehouses/3/stock?only_with_stock=1', $transport->calls[4]['url']);
     }
 
+    public function test_el_libro_pega_en_sus_tres_rutas(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json([]),
+            new TokenSet('at-1'),
+        );
+
+        $client->stockMovements->list(['reason' => 'count']);
+        $client->stockMovements->forItem(51);
+        $client->stockMovements->adjust(51, ['quantity' => -3, 'note' => 'Rotura']);
+
+        $this->assertSame(self::BASE.'/api/v1/stock-movements?reason=count', $transport->calls[0]['url']);
+        $this->assertSame(self::BASE.'/api/v1/items/51/stock-movements', $transport->calls[1]['url']);
+        $this->assertSame(self::BASE.'/api/v1/items/51/stock-adjustments', $transport->calls[2]['url']);
+        $this->assertSame('POST', $transport->calls[2]['method']);
+    }
+
+    /**
+     * ⚠️ `committed` a null es «no se está calculando» —la empresa no tiene el
+     * módulo `stock`, o el ciclo de inventario apagado— y NO es cero.
+     *
+     * Un cliente que lo colapsara a 0 afirmaría «nada comprometido» sobre lo
+     * que no se sabe: exactamente el defecto que este módulo lleva tres piezas
+     * retirando. El null llega al integrador tal cual, sin normalizar.
+     */
+    public function test_el_comprometido_distingue_cero_de_no_se_esta_calculando(): void
+    {
+        [$sinModulo] = $this->client(
+            static fn () => FakeTransport::json([
+                'data' => [],
+                'meta' => ['opening_stock' => 57, 'warehouse_stock' => [], 'committed' => null],
+            ]),
+            new TokenSet('at-1'),
+        );
+
+        [$conModulo] = $this->client(
+            static fn () => FakeTransport::json([
+                'data' => [],
+                'meta' => [
+                    'opening_stock' => 57,
+                    'warehouse_stock' => [],
+                    'committed' => ['quantity' => 0, 'available' => 57, 'documents' => []],
+                ],
+            ]),
+            new TokenSet('at-1'),
+        );
+
+        $apagado = $sinModulo->stockMovements->forItem(51);
+        $encendido = $conModulo->stockMovements->forItem(51);
+
+        $this->assertNull($apagado['meta']['committed'], 'El null se normalizó por el camino.');
+        $this->assertSame(0, $encendido['meta']['committed']['quantity']);
+        $this->assertSame(57, $encendido['meta']['committed']['available']);
+    }
+
+    /**
+     * El comprometido del artículo viaja como NÚMERO.
+     *
+     * Nació tipado como `string` en el generador del OpenAPI —no es columna de
+     * modelo, así que el `@mixin` no llegaba— y se corrigió en el núcleo el
+     * mismo día: es el defecto que ya costó `due_amount` llegando como cadena.
+     */
+    public function test_el_comprometido_del_articulo_viaja_como_numero(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json([
+                'data' => [['id' => 51, 'name' => 'Material obra 51', 'committed_quantity' => 12.5]],
+            ]),
+            new TokenSet('at-1'),
+        );
+
+        $respuesta = $client->get('/items', ['view' => 'summary']);
+
+        $this->assertIsFloat($respuesta['data'][0]['committed_quantity']);
+        $this->assertSame(12.5, $respuesta['data'][0]['committed_quantity']);
+    }
+
     public function test_una_respuesta_sin_cuerpo_no_revienta(): void
     {
         [$client] = $this->client(
