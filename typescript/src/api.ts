@@ -7653,6 +7653,7 @@ export interface components {
             triage_resolved_by: number | null;
             triage_resolved_at: string | null;
             triage_rejection_reason: string | null;
+            /** Format: date-time */
             exported_at: string | null;
             rectified_invoice_id: number | null;
             customer_sequence_number: number | null;
@@ -7672,6 +7673,7 @@ export interface components {
             /** Format: date-time */
             viewed_at: string | null;
             contract_id: number | null;
+            export_batch_id: number | null;
         };
         /** InvoiceItem */
         InvoiceItem: {
@@ -9634,6 +9636,36 @@ export interface components {
             description?: string | null;
             compound_tax?: string | null;
             collective_tax?: string | null;
+            /**
+             * @description Familia AEAT del impuesto. Decide en qué modelo entra: `IVA` en el
+             *     303, `IRPF` (las retenciones) en el 111 o el 115. Un porcentaje
+             *     negativo NO basta para que un tipo cuente como retención: lo
+             *     decide esta clave. Si se omite, la columna vale `IVA`.
+             * @enum {string}
+             */
+            tax_category?: "IVA" | "IRPF" | "IGIC" | "IPSI" | "RE" | "REAGYP" | "SS" | "OTHER";
+            /**
+             * @description Dónde se puede aplicar el tipo: `sale` en lo que se emite
+             *     (facturas, presupuestos), `purchase` en lo que se recibe
+             *     (facturas de proveedor, gastos), `investment` en bienes de
+             *     inversión, `both` en cualquiera de los dos primeros. Si se omite,
+             *     la columna vale `both`.
+             * @enum {string}
+             */
+            tax_scope?: "sale" | "purchase" | "both" | "investment";
+            /**
+             * @description Marca este tipo como el preseleccionado de su familia y su ámbito.
+             *     Solo puede haberlo uno por (categoría, ámbito): al marcar este, el
+             *     anterior de esa pareja se desmarca. Es el que gana cuando un
+             *     documento declara un tramo por el porcentaje y varios tipos
+             *     encajan.
+             */
+            is_default?: boolean;
+            /**
+             * @description Modelo de la AEAT en el que declara este impuesto: `303` el IVA,
+             *     `111` o `115` las retenciones.
+             */
+            aeat_model?: string | null;
         };
         /** TaxTypeResource */
         TaxTypeResource: {

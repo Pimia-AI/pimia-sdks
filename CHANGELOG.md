@@ -8,6 +8,46 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.17.0] — 2026-09-01
+
+**El sello de exportación contable, y los cuatro campos del impuesto que no
+tenían camino de escritura.** Dos superficies aditivas del núcleo; ninguna ruta
+nueva y ninguna retirada.
+
+Spec sincronizado con **factSaas@cb5def1f** (2026-09-01) — **415 operaciones**,
+las mismas que en la 0.16.0.
+
+### Añadido
+
+- **`export_batch_id`** en `Invoice`: el lote de exportación contable que selló
+  el documento, o `null` si sigue pendiente. Viaja en las tres operaciones que
+  publican el modelo —`GET /dashboard` (`recent_due_invoices`),
+  `GET /sepa-remittances/eligible-invoices` y `GET /invoices/verifactu`— y
+  dentro de `DeliveryNoteResource.invoice`. Núcleo en galeote/factSaas#614.
+- **`exported_at`** pasa a declararse `format: date-time` en `Invoice`. Ya
+  viajaba; lo que no traía era el formato, así que quien generaba tipos del
+  spec la recibía como `string` pelado en vez de como fecha.
+- **Cuatro campos opcionales en `TaxTypeRequest`** — `tax_category`,
+  `tax_scope`, `is_default` y `aeat_model`. Núcleo en galeote/factSaas#616
+  y #617.
+
+### Lo que hay que tener delante para integrarlo
+
+- ⛔ **Sin `tax_category`, un IRPF dado de alta por la API se guardaba como
+  IVA.** Un porcentaje negativo NO basta para que un tipo cuente como
+  retención: lo decide esa clave, y hasta ahora el contrato no la admitía en la
+  escritura, así que no había forma de mandarla. Si tu integración crea tipos
+  de impuesto, es el campo que te faltaba — y el que decide si el importe entra
+  en el 303 o en el 111/115.
+- **`export_batch_id` es de SOLO LECTURA.** Lo estampa la exportación por lotes
+  de la gestoría; no hay endpoint que lo escriba ni columna que pisar.
+- ⚠️ **Su `null` significa dos cosas distintas**: que el documento está
+  pendiente de exportar, o que lo selló un lote anterior a que existiera la
+  columna. No sirve para reconstruir el histórico de exportaciones.
+- `pimia/pimia-php` sube de versión **sin cambios de código**: el versionado es
+  en bloque, y estos campos viajan por tipos generados que en PHP son arrays.
+  `@pimia/design-tokens` va a 0.17.0 también sin cambios.
+
 ## [0.16.0] — 2026-08-31
 
 **El stock comprometido.** El almacén ya sabía cuánto tienes, quién lo movió y
