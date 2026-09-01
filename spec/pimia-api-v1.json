@@ -44397,7 +44397,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "rectified_invoice_id": {
                         "type": [
@@ -44487,6 +44488,12 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "export_batch_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -44549,7 +44556,8 @@
                     "reference_number",
                     "sent_at",
                     "viewed_at",
-                    "contract_id"
+                    "contract_id",
+                    "export_batch_id"
                 ],
                 "title": "Invoice"
             },
@@ -51453,6 +51461,42 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "tax_category": {
+                        "type": "string",
+                        "description": "Familia AEAT del impuesto. Decide en qu\u00e9 modelo entra: `IVA` en el\n303, `IRPF` (las retenciones) en el 111 o el 115. Un porcentaje\nnegativo NO basta para que un tipo cuente como retenci\u00f3n: lo\ndecide esta clave. Si se omite, la columna vale `IVA`.",
+                        "enum": [
+                            "IVA",
+                            "IRPF",
+                            "IGIC",
+                            "IPSI",
+                            "RE",
+                            "REAGYP",
+                            "SS",
+                            "OTHER"
+                        ]
+                    },
+                    "tax_scope": {
+                        "type": "string",
+                        "description": "D\u00f3nde se puede aplicar el tipo: `sale` en lo que se emite\n(facturas, presupuestos), `purchase` en lo que se recibe\n(facturas de proveedor, gastos), `investment` en bienes de\ninversi\u00f3n, `both` en cualquiera de los dos primeros. Si se omite,\nla columna vale `both`.",
+                        "enum": [
+                            "sale",
+                            "purchase",
+                            "both",
+                            "investment"
+                        ]
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "Marca este tipo como el preseleccionado de su familia y su \u00e1mbito.\nSolo puede haberlo uno por (categor\u00eda, \u00e1mbito): al marcar este, el\nanterior de esa pareja se desmarca. Es el que gana cuando un\ndocumento declara un tramo por el porcentaje y varios tipos\nencajan."
+                    },
+                    "aeat_model": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Modelo de la AEAT en el que declara este impuesto: `303` el IVA,\n`111` o `115` las retenciones.",
+                        "maxLength": 10
                     }
                 },
                 "required": [
