@@ -46,6 +46,12 @@ const RESERVADOS_A_LA_PRIMERA_PARTE = [
   // puede pedir el scope.
   'verifactu:read',
   'verifactu:write',
+  // El plan y la contratación de la instancia (2026-09-03, factSaas#673):
+  // contratar, cambiar de plan y abrir el portal de Stripe en nombre de la
+  // empresa, con el criterio de `admin`. Las cinco operaciones salen en el
+  // spec marcadas `first-party-only`; el scope no lo pide un integrador.
+  'billing:read',
+  'billing:write',
 ]
 
 test('SCOPES ofrece todo lo que un integrador puede pedir', () => {

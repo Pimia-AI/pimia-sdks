@@ -1564,6 +1564,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/{invoice}/einvoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descarga la factura electrónica del país del emisor
+         * @description Devuelve los BYTES del documento con su tipo real en `Content-Type`
+         *     (`application/xml` para Facturae, `application/pdf` para Factur-X) y el
+         *     nombre de fichero en `Content-Disposition`. El contrato lo publica como
+         *     `application/octet-stream` porque el tipo depende del formato.
+         *
+         *     Casos que no son el `200`: `404` con `{error: true, message, available}`
+         *     si el país del emisor no ofrece el formato pedido —o no ofrece ninguno—,
+         *     donde `available` lista los que sí ofrece; `422` de validación (`{message,
+         *     errors}`) si la factura está en borrador, sin número o sin fecha de
+         *     expedición —la factura electrónica solo existe sobre una factura
+         *     publicada—; `500` con `{error: true, message}` si el documento no se
+         *     pudo generar.
+         */
+        get: operations["eInvoice.download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/employees": {
         parameters: {
             query?: never;
@@ -1925,7 +1956,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download FacturaE XML for an invoice */
+        /**
+         * Download FacturaE XML for an invoice
+         * @description Casos que no son el `200`: `404` con `{error: true, message}` si el
+         *     emisor no ofrece Facturae; `422` de validación (`{message, errors}`) si la
+         *     factura está en borrador, sin número o sin fecha de expedición —el
+         *     Facturae solo existe sobre una factura publicada—; `500` con `{error:
+         *     true, message}` si el XML no se pudo generar.
+         */
         get: operations["facturae.download"];
         put?: never;
         post?: never;
@@ -1992,6 +2030,71 @@ export interface paths {
          *     anuncia como PELIGROSA.
          */
         post: operations["fiscalQuarter.toggle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/fr/ereporting/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Operaciones de la cola de e-reporting de la empresa, de la más reciente
+         *     a la más antigua. Filtros: `status` (pending, sent, attached, declared,
+         *     rejected, error, withdrawn), `flow_type` (10.1, 10.2, 10.3, 10.4), `from`
+         *     y `to` (fecha de la operación, `YYYY-MM-DD`), `per_page` (máximo 100).
+         *     `aggregates` va en subunidades de euro
+         */
+        get: operations["frEReporting.transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/fr/ereporting/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reports (periodos) del e-reporting que la plateforme ha comunicado
+         *     para la empresa, del más reciente al más antiguo: abiertos, cerrados,
+         *     transmitidos al PPF, declarados o rechazados (con el motivo en `error`).
+         *     `per_page` máximo 100
+         */
+        get: operations["frEReporting.reports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/fr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["frSettings.index"];
+        /**
+         * Guarda los ajustes que vengan (los que no vengan se conservan) y devuelve
+         *     el conjunto resuelto, como `index`
+         */
+        put: operations["frSettings.update"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2204,6 +2307,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/received-invoices/{received_invoice}/einvoice/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inboundEInvoice.approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/received-invoices/{received_invoice}/einvoice/refuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inboundEInvoice.refuse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/incidences/{incidence}/review": {
         parameters: {
             query?: never;
@@ -2295,6 +2430,40 @@ export interface paths {
         put: operations["investment-assets.update"];
         post?: never;
         delete: operations["investment-assets.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/{invoice}/fiscal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado fiscal de la factura, neutro al país
+         * @description `country` es el país fiscal del EMISOR (`companies.country_code`, o el
+         *     de la config si la empresa no lo declara). `fiscal` es la fila neutra
+         *     —`null` mientras la factura no haya pasado por ningún registro:
+         *     borradores, países sin driver, módulo de cumplimiento apagado— con la
+         *     misma forma que `InvoiceResource.fiscal`. `driver_detail` es lo que el
+         *     driver del país añade preguntando a su servicio: para España, el
+         *     registro tal como lo tiene VeriFactu (la misma forma que
+         *     `GET /invoices/{invoice}/verifactu/detail`, a un nivel); para Francia
+         *     (#653), el ciclo de vida que la plateforme agréée ha contado
+         *     (`events`, en orden), el literal y código del último estado y el
+         *     documento exacto depositado (`document`).
+         *
+         *     Si el servicio del driver no contesta, la respuesta sigue siendo `200`
+         *     con la fila neutra —que es verdad y está en casa— y el motivo en
+         *     `driver_detail_error`; `driver_detail` queda a `null`.
+         */
+        get: operations["invoiceFiscal.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5047,6 +5216,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los planes que esta instancia puede contratar
+         * @description **Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Sin los planes de canal (`Asesoría`, `Desarrollador`): esos los contrata
+         *     una gestoría o un desarrollador para su cartera, no una pyme. Con la
+         *     instancia en marca blanca —su licencia la paga un desarrollador— la lista
+         *     llega VACÍA y `white_label` a `true`: el cliente vive dentro del producto
+         *     del partner y no ve precios de Pimia. El corte va en el servidor.
+         */
+        get: operations["tenantBilling.plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El plan de ESTA instancia: límites, consumo, prueba, quién la paga y el
+         *     estado de la suscripción en Stripe
+         * @description **Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Lo puede leer cualquier usuario de la instancia: el plan y el consumo son
+         *     de la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,
+         *     cambiar de plan o abrir el portal — el dueño de la instancia, y no en
+         *     marca blanca —; es lo que la pantalla usa para enseñar o esconder los
+         *     botones, pero el corte real lo hacen las rutas de escritura.
+         *
+         *     `usage.storage` es `null` cuando no se puede medir (esquema a medias) y
+         *     `subscription.current_period_end` es `null` cuando Stripe no contesta:
+         *     un dato que no consta se dice como tal, no se inventa un cero.
+         */
+        get: operations["tenantBilling.subscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Contratar un plan de pago desde el panel web
+         * @description **Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Devuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea allí
+         *     y nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web
+         *     (`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el
+         *     webhook `checkout.session.completed`. Solo el dueño de la instancia.
+         *
+         *     Errores, con su código en `error`: `white_label` (403), `no_payer` (409),
+         *     `free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),
+         *     `stripe_price_missing` (503).
+         */
+        post: operations["tenantBilling.checkoutFromPanel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * El portal de Stripe del pagador: cambiar la tarjeta, ver y descargar las
+         *     facturas de Pimia, cancelar. Solo el dueño, y solo si ya hay cuenta de
+         *     facturación en Stripe (`no_billing_account`, 404, si nunca contrató)
+         * @description **Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["tenantBilling.portal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/change-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambiar de plan: subir, bajar entre planes de pago o bajar a Free
+         * @description **Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Las reglas son las de `PlanChange`, las mismas que en el plano central:
+         *     `not_the_payer` (403) si la licencia la paga otra cuenta, `channel_plan`
+         *     y `channel_seat` (422), `no_active_subscription` (422: sin suscripción
+         *     viva hay que pasar por el checkout), `subscription_not_linked` (409),
+         *     `stripe_price_missing` (503). Solo el dueño de la instancia.
+         */
+        post: operations["tenantBilling.changePlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/delegated-tasks": {
         parameters: {
             query?: never;
@@ -5714,8 +6017,23 @@ export interface paths {
         };
         /**
          * Get full VeriFactu details for an invoice
-         * @description Returns the complete data from VeriFactu API including
-         *     AEAT response, alerts, attempts count, etc.
+         * @description Devuelve el registro tal como lo tiene el servicio VeriFactu: el estado
+         *     ante la AEAT (`aeat_status`), el CSV que devolvió al aceptarlo
+         *     (`aeat_csv`), su respuesta literal (`aeat_response`: el motivo del rechazo
+         *     o del aviso, o `{status: 'correct', csv}` si lo aceptó), cuándo se envió
+         *     (`sent_at`, en UTC), cuántos intentos lleva, la huella y la URL del QR.
+         *
+         *     El cuerpo es `{data: <registro>}`, UN solo nivel. Hasta 2026-09-02 el
+         *     registro llegaba DOS niveles dentro: `VeriFactuClient::getInvoice()`
+         *     devuelve el cuerpo entero de verifactuApi, que ya es `{data: <registro>}`,
+         *     y aquí se volvía a envolver. Nadie lo leía bien: el modal de VeriFactu
+         *     del panel pintaba «—» y «No enviada» sobre facturas ACEPTADAS, y la vista
+         *     de la factura nunca encontraba el motivo del rechazo (#646). `sync` y
+         *     `retry` ya desenvolvían con `VeriFactuClient::datos()` desde el #505.
+         *
+         *     Casos que no son el `200`: `422` si la factura no está registrada en
+         *     VeriFactu (no tiene `verifactu_record_id`); `500` si el servicio no
+         *     contesta o devuelve error, con el motivo en `message`.
          */
         get: operations["veriFactu.detail"];
         put?: never;
@@ -6365,6 +6683,18 @@ export interface components {
             name: string;
             trade_name?: string | null;
             vat_id?: string | null;
+            /**
+             * @description Número de registro mercantil de la empresa. En Francia es el
+             *     SIREN (9 dígitos) o el SIRET (14) y se comprueba su dígito de
+             *     control; es lo que identifica al emisor en la facturación
+             *     electrónica francesa y sin él no se puede publicar. En España
+             *     no hace falta: el NIF (`vat_id`) es el identificador.
+             */
+            registration_number?: string | null;
+            /** @description País fiscal del emisor (ISO 3166-1 alfa-2). */
+            country_code?: string | null;
+            /** @description Régimen fiscal por defecto de la empresa (clave AEAT de dos dígitos). */
+            tax_regime?: string | null;
             slug?: string | null;
             address: {
                 country_id: string;
@@ -6376,6 +6706,9 @@ export interface components {
             name: string;
             trade_name: string | null;
             vat_id: string | null;
+            registration_number: string | null;
+            country_code: string;
+            tax_regime: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
              *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
@@ -6577,6 +6910,9 @@ export interface components {
             name: string;
             trade_name: string | null;
             vat_id: string | null;
+            registration_number: string | null;
+            country_code: string;
+            tax_regime: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
              *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
@@ -6671,6 +7007,7 @@ export interface components {
             payment_method_id: number | null;
             customer_type: string;
             notes: string | null;
+            registration_number: string | null;
             avatar: string;
             currency?: components["schemas"]["Currency"] | null;
         };
@@ -6689,6 +7026,15 @@ export interface components {
              *     como `taxNumber` del comprador en FacturaE.
              */
             tax_id?: string | null;
+            /**
+             * @description Número de registro mercantil del cliente. Para un emisor
+             *     francés es el SIREN (9 dígitos) o el SIRET (14) del cliente,
+             *     mención obligatoria de la factura electrónica y lo que la
+             *     plataforma usa para enrutarla: sin él no se puede publicar una
+             *     factura a una empresa. Se comprueba su dígito de control; para
+             *     un emisor de otro país es texto libre.
+             */
+            registration_number?: string | null;
             notes?: string | null;
             /**
              * @description Referencia externa: TU identificador para este cliente (el id
@@ -6797,6 +7143,7 @@ export interface components {
             base_due_amount: number | null;
             prefix: string | null;
             tax_id: string | null;
+            registration_number: string | null;
             notes: string | null;
             /**
              * @description Referencia externa DE QUIEN PREGUNTA: la resuelve el client OAuth
@@ -7553,6 +7900,29 @@ export interface components {
             catalog_id: number | null;
             is_override: boolean;
         };
+        /** InboundEInvoiceResource */
+        InboundEInvoiceResource: {
+            id: number;
+            source: string;
+            external_id: string;
+            network: string | null;
+            format: string | null;
+            type_code: string | null;
+            invoice_number: string | null;
+            supplier_siren: string | null;
+            supplier_vat: string | null;
+            status: string;
+            error: string | null;
+            pa_status: string | null;
+            /** Format: date-time */
+            pa_status_sent_at: string | null;
+            rejection_reason: string | null;
+            rejection_message: string | null;
+            /** Format: date-time */
+            imported_at: string | null;
+            /** Format: date-time */
+            received_at: string | null;
+        };
         /** IncidenceRequest */
         IncidenceRequest: {
             /** Format: date */
@@ -7674,6 +8044,7 @@ export interface components {
             viewed_at: string | null;
             contract_id: number | null;
             export_batch_id: number | null;
+            operation_nature: string | null;
         };
         /** InvoiceItem */
         InvoiceItem: {
@@ -7749,6 +8120,7 @@ export interface components {
             tax_included: string;
             discount_per_item: string | null;
             notes: string | null;
+            operation_nature: string | null;
             discount_type: string | null;
             discount: number;
             discount_val: number;
@@ -7809,10 +8181,27 @@ export interface components {
             overdue: string;
             effective_paid_status: string;
             effective_overdue: string;
+            /** @description Fachada ESPAÑOLA del registro fiscal, deprecada desde #656: el mismo estado viaja neutro en `fiscal.status`. Se mantiene tal cual (VeriFactu la escribe y el panel la lee); para una factura de otro país no dice nada (`not_applicable`). */
             aeat_status: string;
             qr_data: string | null;
             hash: string | null;
+            /** @description CSV de la AEAT, fachada española deprecada desde #656: el acuse neutro es `fiscal.receipt`. */
             aeat_csv: string | null;
+            /** @description El registro fiscal de la factura, NEUTRO al país (#656): la fila de `invoice_fiscal_registrations` que escribe el driver del país del emisor (`verifactu` para ES, `fr-platform` para FR). `null` mientras la factura no haya pasado por ningún registro: borradores, países sin driver, módulo de cumplimiento apagado. Un consumidor sigue una factura española y una francesa por `fiscal.status`; el detalle que sepa el driver está en `GET /invoices/{invoice}/fiscal`. */
+            fiscal: {
+                country: string;
+                driver: string;
+                status: string;
+                /** @description Literal del último estado tal como lo cuenta el régimen (Francia: `RECEIVED`, `DISPUTED`…); null para España, cuyo `status` ya es el literal. */
+                external_status: string | null;
+                /** @description Código del régimen de ese estado (Francia: el código DGFiP, `202`, `207`…); null para España. */
+                external_status_code: string | null;
+                external_id: string | null;
+                receipt: string | null;
+                error: string | null;
+                /** @description Cuándo se presentó ante la administración (ISO 8601, zona de la app); null hasta que el driver presenta. */
+                submitted_at: string | null;
+            } | null;
             is_credit_note: boolean;
             rectified_invoice_id: number | null;
             rectified_invoice_number?: string | null;
@@ -8057,6 +8446,15 @@ export interface components {
              *     guardarse. Los `max` son los de la columna.
              */
             notes?: string | null;
+            /**
+             * @description Naturaleza de la operación, mención obligatoria de la factura
+             *     electrónica francesa: `S1` prestación de servicios, `B1` entrega
+             *     de bienes, `M1` mixta. Sin declararla, el Factur-X toma el valor
+             *     por defecto de la empresa (`fr_operation_nature`). Para un emisor
+             *     de otro país no tiene efecto.
+             * @enum {string|null}
+             */
+            operation_nature?: "S1" | "B1" | "M1" | null;
             discount_type?: string | null;
             /**
              * @description Referencia libre del documento («Su pedido 4711»), distinta de
@@ -8866,6 +9264,7 @@ export interface components {
              *     está cargada (show) para no disparar N+1 en el listado.
              */
             document_meta?: string;
+            einvoice?: components["schemas"]["InboundEInvoiceResource"] | null;
             items?: components["schemas"]["ReceivedInvoiceItemResource"][];
             supplier?: components["schemas"]["SupplierResource"] | null;
             taxes?: components["schemas"]["TaxResource"][];
@@ -9056,6 +9455,21 @@ export interface components {
             taxes?: components["schemas"]["TaxResource"][];
             creator?: components["schemas"]["UserResource"] | null;
             currency?: components["schemas"]["CurrencyResource"] | null;
+        };
+        /** RefuseInboundEInvoiceRequest */
+        RefuseInboundEInvoiceRequest: {
+            /**
+             * @description Motivo del rechazo, del enum `rejectionDetail.reason` de la plateforme
+             *     (p. ej. `LEGAL_INFORMATION_MISSING`, `SIRET_INCORRECT_OR_MISSING`,
+             *     `DUPLICATE_INVOICE`, `VAT_RATE_INCORRECT`). Se reenvía tal cual al
+             *     emisor como estado 210 «refusée». Mayúsculas y guiones bajos.
+             */
+            reason: string;
+            /**
+             * @description Texto libre para el emisor: qué está mal y qué se espera en la
+             *     factura corregida.
+             */
+            message?: string | null;
         };
         /**
          * RenewContractRequest
@@ -9621,16 +10035,19 @@ export interface components {
             is_default: boolean;
             is_system: boolean;
             is_active: boolean;
+            vat_category: string | null;
+            vat_exemption_code: string | null;
         };
         /** TaxTypeRequest */
         TaxTypeRequest: {
             name: string;
             /**
-             * @description `calculation_type` y `fixed_amount` estaban aquí y NO son columnas
-             *     de `tax_types`: se validaban, se metían en el payload y Eloquent
-             *     las descartaba en silencio (#377). El primero además era
-             *     `required`, así que un cliente de la API que no se inventara el
-             *     campo se comía un 422 por un dato que no se guardaba.
+             * @description Porcentaje del impuesto. ⚠️ Una retención de IRPF se guarda en
+             *     NEGATIVO —un IRPF del 15 % es `-15`, porque resta de la factura—
+             *     y con `tax_category: "IRPF"` el positivo se rechaza con un 422.
+             *     El contrato no puede expresar esa condición: la regla depende de
+             *     otro campo y el generador evalúa `rules()` en frío. Por eso se
+             *     dice aquí.
              */
             percent?: number | null;
             description?: string | null;
@@ -9666,6 +10083,21 @@ export interface components {
              *     `111` o `115` las retenciones.
              */
             aeat_model?: string | null;
+            /**
+             * @description Categoría de IVA de la norma europea EN 16931, la que viaja en la
+             *     factura electrónica (Factur-X, UBL): `S` tipo normal, `Z` tipo
+             *     cero, `E` exento, `AE` inversión del sujeto pasivo, `K` entrega
+             *     intracomunitaria, `G` exportación, `O` no sujeto. Si se omite, el
+             *     documento electrónico la deduce del porcentaje (>0 ⇒ `S`, 0 ⇒ `E`).
+             * @enum {string|null}
+             */
+            vat_category?: "S" | "Z" | "E" | "AE" | "K" | "G" | "O" | null;
+            /**
+             * @description Código VATEX del motivo de exención (p. ej. `VATEX-FR-FRANCHISE`,
+             *     `VATEX-EU-AE`, `VATEX-EU-IC`, `VATEX-EU-G`) para las categorías
+             *     sin cuota. Sin efecto en un tipo `S`.
+             */
+            vat_exemption_code?: string | null;
         };
         /** TaxTypeResource */
         TaxTypeResource: {
@@ -9686,6 +10118,12 @@ export interface components {
             tax_category: string;
             aeat_model: string | null;
             tax_scope: string;
+            /**
+             * @description Categoría EN 16931 y VATEX (#651): null en los catálogos que no
+             *     la declaran, y el documento electrónico la deduce.
+             */
+            vat_category: string | null;
+            vat_exemption_code: string | null;
             is_default: boolean;
             is_system: boolean;
             is_active: boolean;
@@ -9903,6 +10341,9 @@ export interface components {
                 name: string;
                 trade_name: string | null;
                 vat_id: string | null;
+                registration_number: string | null;
+                country_code: string;
+                tax_regime: string | null;
                 /**
                  * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
                  *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
@@ -13310,6 +13751,45 @@ export interface operations {
             };
         };
     };
+    "eInvoice.download": {
+        parameters: {
+            query?: {
+                /** @description Formato del documento electrónico: `facturae` (España, XML) o `facturx` (Francia, PDF/A-3). Sin él, el primero que ofrezca el país del emisor. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The invoice ID */
+                invoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": Blob;
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: boolean;
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
     "employees.index": {
         parameters: {
             query?: {
@@ -14226,6 +14706,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -14304,6 +14785,309 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "frEReporting.transactions": {
+        parameters: {
+            query?: {
+                status?: "pending" | "sent" | "attached" | "declared" | "rejected" | "error" | "withdrawn";
+                flow_type?: "10.1" | "10.2" | "10.3" | "10.4";
+                from?: string;
+                to?: string;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            flow_type: string;
+                            source_type: string;
+                            source_id: number;
+                            status: string;
+                            transaction_date: string | null;
+                            period_start: string | null;
+                            period_end: string | null;
+                            currency_code: string;
+                            category_code: string | null;
+                            aggregates: {
+                                [key: string]: unknown;
+                            }[];
+                            external_id: string | null;
+                            report_id: string | null;
+                            error: string | null;
+                            sent_at: string | null;
+                            attached_at: string | null;
+                            created_at: string | null;
+                        }[];
+                        meta: {
+                            current_page: number;
+                            last_page: number;
+                            per_page: number;
+                            total: number;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "frEReporting.reports": {
+        parameters: {
+            query?: {
+                status?: "open" | "closed" | "submitted" | "declared" | "rejected";
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            report_id: string;
+                            status: string;
+                            period_start: string | null;
+                            period_end: string | null;
+                            auto_close_at: string | null;
+                            declaration_type: string | null;
+                            file_link: string | null;
+                            error: string | null;
+                            transactions: number;
+                            submitted_at: string | null;
+                            declared_at: string | null;
+                            created_at: string | null;
+                        }[];
+                        meta: {
+                            current_page: number;
+                            last_page: number;
+                            per_page: number;
+                            total: number;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "frSettings.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fr_operation_nature: string;
+                            fr_vat_on_debits: string;
+                            fr_payment_terms: string;
+                            fr_mention_pmt: string;
+                            fr_mention_pmd: string;
+                            fr_mention_aab: string;
+                            fr_vat_exemption_reason: string;
+                            fr_vat_regime: string | null;
+                            issuer: {
+                                name: string | null;
+                                registration_number: string | null;
+                                vat_number: string | null;
+                                siren: string | null;
+                                vat_number_valid: boolean;
+                                ready_to_publish: boolean;
+                            };
+                            platform: {
+                                provider: string;
+                                configured: boolean;
+                                environment: string | null;
+                                webhook_configured: boolean;
+                                entity_id: string | null;
+                                enrollment_id: string | null;
+                                enrollment_status: string | null;
+                                enrollment_started_at: string | null;
+                            };
+                            ereporting: {
+                                enabled: boolean;
+                                regime: string | null;
+                                regime_label: string | null;
+                                frequency: {
+                                    transactions: string;
+                                    payments: string;
+                                } | null;
+                                counts: {
+                                    pending: number;
+                                    sent: number;
+                                    attached: number;
+                                    declared: number;
+                                    rejected: number;
+                                    error: number;
+                                };
+                                current_period: {
+                                    start: string;
+                                    end: string;
+                                    deadline: string;
+                                    unattached: number;
+                                } | null;
+                                last_report: {
+                                    id: number;
+                                    report_id: string;
+                                    status: string;
+                                    period_start: string | null;
+                                    period_end: string | null;
+                                    auto_close_at: string | null;
+                                    declaration_type: string | null;
+                                    file_link: string | null;
+                                    error: string | null;
+                                    transactions: number;
+                                    submitted_at: string | null;
+                                    declared_at: string | null;
+                                    created_at: string | null;
+                                } | null;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "frSettings.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Naturaleza de la operación por defecto (BT-23): `S1` servicios,
+                     *     `B1` bienes, `M1` mixta. Una factura puede declarar la suya.
+                     * @enum {string}
+                     */
+                    fr_operation_nature?: "S1" | "B1" | "M1";
+                    /**
+                     * @description Opción «TVA sur les débits» (BT-8 = 5): `YES` o `NO`.
+                     * @enum {string}
+                     */
+                    fr_vat_on_debits?: "YES" | "NO";
+                    fr_payment_terms?: string;
+                    /**
+                     * @description Las tres menciones legales obligatorias en toda factura francesa
+                     *     (frais de recouvrement, pénalités de retard, escompte).
+                     */
+                    fr_mention_pmt?: string;
+                    fr_mention_pmd?: string;
+                    fr_mention_aab?: string;
+                    /** @description Texto de la exención para las líneas sin TVA (franquicia en base). */
+                    fr_vat_exemption_reason?: string;
+                    /**
+                     * @description Régimen de TVA (#665): `reel_normal_mensuel`, `reel_normal_trimestriel`, `reel_simplifie` o `franchise_en_base`. Fija la periodicidad del e-reporting y lo ACTIVA; `null` lo apaga.
+                     * @enum {string|null}
+                     */
+                    fr_vat_regime?: "reel_normal_mensuel" | "reel_normal_trimestriel" | "reel_simplifie" | "franchise_en_base" | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            fr_operation_nature: string;
+                            fr_vat_on_debits: string;
+                            fr_payment_terms: string;
+                            fr_mention_pmt: string;
+                            fr_mention_pmd: string;
+                            fr_mention_aab: string;
+                            fr_vat_exemption_reason: string;
+                            fr_vat_regime: string | null;
+                            issuer: {
+                                name: string | null;
+                                registration_number: string | null;
+                                vat_number: string | null;
+                                siren: string | null;
+                                vat_number_valid: boolean;
+                                ready_to_publish: boolean;
+                            };
+                            platform: {
+                                provider: string;
+                                configured: boolean;
+                                environment: string | null;
+                                webhook_configured: boolean;
+                                entity_id: string | null;
+                                enrollment_id: string | null;
+                                enrollment_status: string | null;
+                                enrollment_started_at: string | null;
+                            };
+                            ereporting: {
+                                enabled: boolean;
+                                regime: string | null;
+                                regime_label: string | null;
+                                frequency: {
+                                    transactions: string;
+                                    payments: string;
+                                } | null;
+                                counts: {
+                                    pending: number;
+                                    sent: number;
+                                    attached: number;
+                                    declared: number;
+                                    rejected: number;
+                                    error: number;
+                                };
+                                current_period: {
+                                    start: string;
+                                    end: string;
+                                    deadline: string;
+                                    unattached: number;
+                                } | null;
+                                last_report: {
+                                    id: number;
+                                    report_id: string;
+                                    status: string;
+                                    period_start: string | null;
+                                    period_end: string | null;
+                                    auto_close_at: string | null;
+                                    declaration_type: string | null;
+                                    file_link: string | null;
+                                    error: string | null;
+                                    transactions: number;
+                                    submitted_at: string | null;
+                                    declared_at: string | null;
+                                    created_at: string | null;
+                                } | null;
+                            };
+                        };
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -14665,6 +15449,69 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "inboundEInvoice.approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The received invoice ID */
+                received_invoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    message?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description `ReceivedInvoiceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReceivedInvoiceResource"];
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "inboundEInvoice.refuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The received invoice ID */
+                received_invoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefuseInboundEInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description `ReceivedInvoiceResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ReceivedInvoiceResource"];
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -15030,6 +15877,49 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "invoiceFiscal.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The invoice ID */
+                invoice: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            country: string;
+                            fiscal: {
+                                country: string;
+                                driver: string;
+                                status: string;
+                                external_status: string | null;
+                                external_status_code: string | null;
+                                external_id: string | null;
+                                receipt: string | null;
+                                error: string | null;
+                                submitted_at: string | null;
+                            } | null;
+                            driver_detail: {
+                                [key: string]: unknown;
+                            } | null;
+                            driver_detail_error: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -20948,6 +21838,220 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "tenantBilling.plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                            price: string;
+                            price_cents: number;
+                            max_invoices_month: number;
+                            max_users: number;
+                            max_storage_mb: number;
+                            features: string[];
+                            is_free: boolean;
+                        }[];
+                        white_label: boolean;
+                        message: string | null;
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "tenantBilling.subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: number;
+                                name: string;
+                                price: string;
+                                price_cents: number;
+                                max_invoices_month: number;
+                                max_users: number;
+                                max_storage_mb: number;
+                                features: string[];
+                                is_free: boolean;
+                            } | null;
+                            limits: {
+                                max_invoices_month: number;
+                                max_users: number;
+                                max_storage_mb: number;
+                            };
+                            usage: {
+                                invoices_month: number;
+                                users: number;
+                                storage: {
+                                    used_bytes: number;
+                                    used_mb: number;
+                                    limit_mb: number;
+                                    unlimited: boolean;
+                                    percent: number | null;
+                                } | null;
+                            };
+                            trial: {
+                                active: boolean;
+                                ends_at: string | null;
+                            };
+                            billing: {
+                                mode: string;
+                                white_label: boolean;
+                                can_manage: boolean;
+                                seat: {
+                                    role: string;
+                                    grace_until: string | null;
+                                    suspended_at: string | null;
+                                } | null;
+                            };
+                            subscription: {
+                                status: string;
+                                current_period_end: number | null;
+                                cancel_at_period_end: boolean;
+                                ends_at: string | null;
+                            } | null;
+                            status: string;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "tenantBilling.checkoutFromPanel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            checkout_url: string;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "tenantBilling.portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            portal_url: string;
+                        };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example Solo el administrador de la instancia puede gestionar su suscripción.
+                         */
+                        message: string;
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "tenantBilling.changePlan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_id: number;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            plan: string;
+                        };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example Solo el administrador de la instancia puede cambiar su plan.
+                         */
+                        message: string;
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "tenantDelegationCallback.delegatedIndex": {
         parameters: {
             query?: never;
@@ -24900,28 +26004,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: unknown[];
-                    };
-                };
-            };
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invoice not registered in VeriFactu";
-                    };
-                };
-            };
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        message: string;
+                        data: {
+                            id: string;
+                            invoice_number: string;
+                            invoice_date: string;
+                            invoice_type: string;
+                            issuer_nif: string;
+                            recipient_nif: string | null;
+                            recipient_name: string | null;
+                            total_amount: string;
+                            total_tax_amount: string;
+                            record_type: string;
+                            aeat_status: string;
+                            aeat_csv: string | null;
+                            aeat_response: {
+                                [key: string]: unknown;
+                            } | string | null;
+                            sent_at: string | null;
+                            attempts: number;
+                            hash: string;
+                            previous_hash: string | null;
+                            qr_url: string | null;
+                            generation_timestamp: string;
+                            created_at: string;
+                        };
                     };
                 };
             };
@@ -24953,6 +26059,8 @@ export interface operations {
                             hash: string | null;
                             qr_data: string | null;
                             verifactu_record_id: string | null;
+                            /** @description Código Seguro de Verificación que devuelve la AEAT al aceptar el registro; null hasta entonces. */
+                            aeat_csv: string | null;
                         };
                     };
                 };
