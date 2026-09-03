@@ -1764,6 +1764,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -1849,6 +1852,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -1896,6 +1902,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -1993,6 +2002,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -2037,6 +2049,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -2149,6 +2164,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -2188,6 +2206,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -2228,6 +2249,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -13144,6 +13168,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -13317,6 +13344,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -13406,6 +13436,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -13454,6 +13487,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -13557,6 +13593,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
@@ -13606,6 +13645,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -19957,7 +19999,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -20006,7 +20048,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -20058,7 +20100,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -20121,7 +20163,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -20171,7 +20213,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -20211,6 +20253,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -20255,6 +20300,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -20337,6 +20385,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
@@ -20399,6 +20450,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -20463,6 +20517,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -20509,6 +20566,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -20566,6 +20626,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -20627,6 +20690,9 @@
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     }
@@ -20682,6 +20748,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -20749,6 +20818,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -20970,6 +21042,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -21053,6 +21128,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -21185,6 +21263,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -21272,6 +21353,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -21347,6 +21431,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -21396,6 +21483,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -21443,6 +21533,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -21490,6 +21583,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23315,6 +23411,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23354,6 +23453,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23390,6 +23492,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23495,6 +23600,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23541,6 +23649,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -23585,6 +23696,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -25643,6 +25757,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     }
@@ -25690,6 +25807,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -25744,6 +25864,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -25787,6 +25910,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -25836,6 +25962,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -25893,6 +26022,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -25983,7 +26115,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -26153,7 +26285,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -26162,7 +26294,7 @@
         "/tasks/{task}/delegate": {
             "post": {
                 "operationId": "task.delegate",
-                "description": "**Reservada al panel de Pimia.** Exige `crm:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes \u2014se le rechazan en el registro y no se le anuncian\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nReusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
+                "description": "**Reservada al panel de Pimia.** Exige `work:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes \u2014se le rechazan en el registro y no se le anuncian\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nReusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip\ndelegar\u2192agente\u2192callback\u2192sello): compone un context rico desde la tarea (t\u00edtulo,\ndescripci\u00f3n y el lead/cliente/proyecto vinculado con sus datos), crea la\ndelegaci\u00f3n, la entrega al Kanban del Copilot y la enlaza con la tarea.\n\nAlcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operaci\u00f3n\ndelegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.",
                 "summary": "POST tasks/{task}/delegate \u2014 delega esta tarea CRM a su agente Pim",
                 "tags": [
                     "Task"
@@ -26507,14 +26639,14 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write",
+                            "work:write",
                             "delegation:write"
                         ]
                     }
                 ],
                 "x-pimia-partner-availability": "first-party-only",
                 "x-pimia-required-scopes": [
-                    "crm:write",
+                    "work:write",
                     "delegation:write"
                 ]
             }
@@ -26595,7 +26727,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -26644,7 +26776,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -26696,7 +26828,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -26759,7 +26891,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -26809,7 +26941,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -28877,7 +29009,7 @@
         "/tenant-modules": {
             "get": {
                 "operationId": "tenantModules.index",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).",
                 "summary": "Los m\u00f3dulos del registro y en qu\u00e9 estado est\u00e1 cada uno EN ESTA INSTANCIA",
                 "tags": [
                     "TenantModules"
@@ -28908,6 +29040,9 @@
                                                         ]
                                                     },
                                                     "core": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "listed": {
                                                         "type": "boolean"
                                                     },
                                                     "depends_on": {
@@ -28965,6 +29100,7 @@
                                                     "name",
                                                     "description",
                                                     "core",
+                                                    "listed",
                                                     "depends_on",
                                                     "abilities_namespace",
                                                     "status",
@@ -30145,7 +30281,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "customers:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -30237,7 +30373,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -30286,7 +30422,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -30338,7 +30474,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "work:read"
                         ]
                     }
                 ]
@@ -30423,7 +30559,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -30495,7 +30631,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "work:write"
                         ]
                     }
                 ]
@@ -41160,8 +41296,10 @@
                             "items:write": "gestionar tu cat\u00e1logo",
                             "banking:read": "leer tu banca",
                             "banking:write": "gestionar tu banca",
-                            "crm:read": "leer tu CRM",
-                            "crm:write": "gestionar tu CRM",
+                            "crm:read": "leer tus oportunidades",
+                            "crm:write": "gestionar tus oportunidades",
+                            "work:read": "leer tu trabajo",
+                            "work:write": "gestionar tu trabajo",
                             "agenda:read": "leer tu agenda",
                             "agenda:write": "gestionar tu agenda",
                             "reports:read": "leer tus informes",
@@ -51907,6 +52045,28 @@
                                 "create-expense",
                                 "edit-expense",
                                 "delete-expense",
+                                "view-supplier",
+                                "create-supplier",
+                                "edit-supplier",
+                                "delete-supplier",
+                                "view-received-invoice",
+                                "create-received-invoice",
+                                "edit-received-invoice",
+                                "delete-received-invoice",
+                                "view-bank-account",
+                                "create-bank-account",
+                                "edit-bank-account",
+                                "delete-bank-account",
+                                "view-bank-transaction",
+                                "import-bank-transaction",
+                                "reconcile-bank-transaction",
+                                "view-sepa-remittance",
+                                "create-sepa-remittance",
+                                "delete-sepa-remittance",
+                                "view-investment-asset",
+                                "create-investment-asset",
+                                "edit-investment-asset",
+                                "delete-investment-asset",
                                 "view-delivery-note",
                                 "create-delivery-note",
                                 "edit-delivery-note",
@@ -52051,6 +52211,28 @@
                                         "create-expense",
                                         "edit-expense",
                                         "delete-expense",
+                                        "view-supplier",
+                                        "create-supplier",
+                                        "edit-supplier",
+                                        "delete-supplier",
+                                        "view-received-invoice",
+                                        "create-received-invoice",
+                                        "edit-received-invoice",
+                                        "delete-received-invoice",
+                                        "view-bank-account",
+                                        "create-bank-account",
+                                        "edit-bank-account",
+                                        "delete-bank-account",
+                                        "view-bank-transaction",
+                                        "import-bank-transaction",
+                                        "reconcile-bank-transaction",
+                                        "view-sepa-remittance",
+                                        "create-sepa-remittance",
+                                        "delete-sepa-remittance",
+                                        "view-investment-asset",
+                                        "create-investment-asset",
+                                        "edit-investment-asset",
+                                        "delete-investment-asset",
                                         "view-delivery-note",
                                         "create-delivery-note",
                                         "edit-delivery-note",

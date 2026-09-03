@@ -5084,7 +5084,7 @@ export interface paths {
         put?: never;
         /**
          * POST tasks/{task}/delegate — delega esta tarea CRM a su agente Pim
-         * @description **Reservada al panel de Pimia.** Exige `crm:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes —se le rechazan en el registro y no se le anuncian— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         * @description **Reservada al panel de Pimia.** Exige `work:write`, `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir esos scopes —se le rechazan en el registro y no se le anuncian— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Reusa el plano async `delegated_tasks` (el mismo que ya cierra el round-trip
          *     delegar→agente→callback→sello): compone un context rico desde la tarea (título,
@@ -5513,6 +5513,14 @@ export interface paths {
          *     ejecución: sin él, `meta`, `depends_on`, `dependents` e `installed_slugs`
          *     se publicaban sin tipar. Es PHPDoc normal, no una dependencia del
          *     generador.
+         *
+         *     `listed` dice si el módulo se OFRECE en el escaparate. Los de
+         *     cumplimiento fiscal salen con `false`: su presencia la decide el país del
+         *     emisor y no es mercancía —«no se ofrece desactivar una obligación
+         *     legal»—. La tienda del núcleo ya lo respetaba; el contrato no lo
+         *     publicaba, así que el panel web enseñaba un botón de «Desactivar» sobre
+         *     `compliance-es` y otro de «Instalar» sobre `compliance-fr` en una empresa
+         *     española (épica #677).
          */
         get: operations["tenantModules.index"];
         put?: never;
@@ -9529,7 +9537,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
         };
         /**
          * RoleRequest
@@ -9554,7 +9562,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
             }[] | null;
         };
         /** RoleResource */
@@ -11228,6 +11236,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "bank-accounts.store": {
@@ -11261,6 +11270,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -11285,6 +11295,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "bank-accounts.update": {
@@ -11320,6 +11331,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -11345,6 +11357,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "bankImport.import": {
@@ -11388,6 +11401,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -11410,6 +11424,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "bankImport.presets": {
@@ -11431,6 +11446,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "general.bootstrap": {
@@ -15706,6 +15722,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -15757,6 +15774,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "investment-assets.store": {
@@ -15792,6 +15810,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -15818,6 +15837,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -15857,6 +15877,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
@@ -15883,6 +15904,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -18892,6 +18914,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -18915,6 +18938,7 @@ export interface operations {
                     "application/octet-stream": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -18951,6 +18975,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
@@ -18978,6 +19003,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -19006,6 +19032,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "received-invoices.store": {
@@ -19032,6 +19059,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19058,6 +19086,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -19088,6 +19117,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
@@ -19119,6 +19149,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "receivedInvoices.markGoodsReceived": {
@@ -19149,6 +19180,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19199,6 +19231,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19231,6 +19264,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19276,6 +19310,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19310,6 +19345,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "reconciliation.match": {
@@ -19342,6 +19378,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -19367,6 +19404,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "reconciliation.ignore": {
@@ -19391,6 +19429,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "reconciliation.reconcile": {
@@ -19415,6 +19454,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "recurringInvoice.delete": {
@@ -20176,6 +20216,7 @@ export interface operations {
                     "application/xml": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -20208,6 +20249,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "sepa-remittances.index": {
@@ -20229,6 +20271,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "sepa-remittances.store": {
@@ -20262,6 +20305,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
             500: {
                 headers: {
@@ -20298,6 +20342,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "sepa-remittances.destroy": {
@@ -20321,6 +20366,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "invoice.sharedLink": {
@@ -21183,6 +21229,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -21209,6 +21256,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -21235,6 +21283,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "suppliers.store": {
@@ -21261,6 +21310,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -21287,6 +21337,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -21317,6 +21368,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
@@ -22366,6 +22418,7 @@ export interface operations {
                             name: string;
                             description: string | null;
                             core: boolean;
+                            listed: boolean;
                             depends_on: string[];
                             abilities_namespace: string | null;
                             status: string;
