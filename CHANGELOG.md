@@ -8,6 +8,46 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.21.0] — 2026-09-03
+
+**⚠️ SEGUNDO CAMBIO INCOMPATIBLE DE SCOPE del mismo día: la campana sale del
+CRM.** `GET /notifications` y sus tres escrituras pasan a exigir
+`notifications:read` / `notifications:write`. Un grant vivo con `crm:*` deja de
+alcanzarlas. Ninguna operación entra ni sale del contrato.
+
+Spec sincronizado con **factSaas@5985313a** (2026-09-03) — **428 operaciones**, las
+mismas que en la 0.20.0.
+
+### Añadido
+
+- **`SCOPES.notificationsRead` / `SCOPES.notificationsWrite`** (TS) y
+  **`Scopes::NOTIFICATIONS_READ` / `NOTIFICATIONS_WRITE`** (PHP).
+
+### Cambiado
+
+- Las cuatro rutas de `/notifications` (leer, marcar una leída, marcar todas,
+  borrar) dejan el dominio `crm`.
+
+### Cómo migrar
+
+Si tu app lee la campana, añade `notifications:read` (y `notifications:write`
+si marca o borra avisos) y **manda a reconectar** a los usuarios cuyo grant sea
+anterior. Si no la lees, no tienes que hacer nada.
+
+El porqué: lo que la campana lleva son tareas vencidas y ausencias y
+correcciones de fichaje — de los módulos de Trabajo y de Personal—, no del
+embudo comercial. Cobrarla con `crm:read` era además la vía por la que un
+client de prospección leía avisos de recursos humanos. Decisión de 👤 sobre el
+punto 5 de la épica galeote/factSaas#677: la épica pedía «cobrable con
+`work:read` o `hr:read`» y el guard no sabe expresar esa O, así que el dominio
+propio es lo que consigue lo que la decisión perseguía.
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` sube a 0.21.0 **sin cambios de código**.
+- Sale un día después de la 0.20.0 y por la misma épica: quien reconecte para
+  ganar `work:*` puede pedir los dos pares de una vez.
+
 ## [0.20.0] — 2026-09-03
 
 **⚠️ CAMBIO INCOMPATIBLE DE SCOPE: proyectos, tareas y partes de horas dejan

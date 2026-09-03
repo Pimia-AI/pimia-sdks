@@ -126,6 +126,16 @@ export const SCOPES = {
   workRead: 'work:read',
   /** Crear y modificar obras y proyectos, tareas y partes de horas. */
   workWrite: 'work:write',
+  /**
+   * Leer la campana: tareas vencidas, ausencias y correcciones de fichaje.
+   *
+   * ⚠️ Desde la 0.21.0 `/notifications` tiene dominio propio y `crm:read` ya
+   * no lo alcanza (núcleo galeote/factSaas#677). Lo que la campana lleva lo
+   * emiten los módulos de Trabajo y de Personal, no el embudo comercial.
+   */
+  notificationsRead: 'notifications:read',
+  /** Marcar avisos como leídos y borrarlos. */
+  notificationsWrite: 'notifications:write',
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',
