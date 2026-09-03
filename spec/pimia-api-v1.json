@@ -8365,6 +8365,90 @@
                 ]
             }
         },
+        "/invoices/{invoice}/einvoice": {
+            "get": {
+                "operationId": "eInvoice.download",
+                "description": "Devuelve los BYTES del documento con su tipo real en `Content-Type`\n(`application/xml` para Facturae, `application/pdf` para Factur-X) y el\nnombre de fichero en `Content-Disposition`. El contrato lo publica como\n`application/octet-stream` porque el tipo depende del formato.\n\nCasos que no son el `200`: `404` con `{error: true, message, available}`\nsi el pa\u00eds del emisor no ofrece el formato pedido \u2014o no ofrece ninguno\u2014,\ndonde `available` lista los que s\u00ed ofrece; `422` de validaci\u00f3n (`{message,\nerrors}`) si la factura est\u00e1 en borrador, sin n\u00famero o sin fecha de\nexpedici\u00f3n \u2014la factura electr\u00f3nica solo existe sobre una factura\npublicada\u2014; `500` con `{error: true, message}` si el documento no se\npudo generar.",
+                "summary": "Descarga la factura electr\u00f3nica del pa\u00eds del emisor",
+                "tags": [
+                    "EInvoice"
+                ],
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "description": "The invoice ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "description": "Formato del documento electr\u00f3nico: `facturae` (Espa\u00f1a, XML) o `facturx` (Francia, PDF/A-3). Sin \u00e9l, el primero que ofrezca el pa\u00eds del emisor.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Content-Disposition": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "invoices:read"
+                        ]
+                    }
+                ]
+            }
+        },
         "/employees": {
             "get": {
                 "operationId": "employees.index",
@@ -10189,6 +10273,7 @@
         "/invoices/{invoice}/facturae": {
             "get": {
                 "operationId": "facturae.download",
+                "description": "Casos que no son el `200`: `404` con `{error: true, message}` si el\nemisor no ofrece Facturae; `422` de validaci\u00f3n (`{message, errors}`) si la\nfactura est\u00e1 en borrador, sin n\u00famero o sin fecha de expedici\u00f3n \u2014el\nFacturae solo existe sobre una factura publicada\u2014; `500` con `{error:\ntrue, message}` si el XML no se pudo generar.",
                 "summary": "Download FacturaE XML for an invoice",
                 "tags": [
                     "Facturae"
@@ -10247,6 +10332,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -10439,6 +10527,1208 @@
                     {
                         "oauth2": [
                             "reports:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/settings/fr/ereporting/transactions": {
+            "get": {
+                "operationId": "frEReporting.transactions",
+                "summary": "Operaciones de la cola de e-reporting de la empresa, de la m\u00e1s reciente\na la m\u00e1s antigua. Filtros: `status` (pending, sent, attached, declared,\nrejected, error, withdrawn), `flow_type` (10.1, 10.2, 10.3, 10.4), `from`\ny `to` (fecha de la operaci\u00f3n, `YYYY-MM-DD`), `per_page` (m\u00e1ximo 100).\n`aggregates` va en subunidades de euro",
+                "tags": [
+                    "FrEReporting"
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "sent",
+                                "attached",
+                                "declared",
+                                "rejected",
+                                "error",
+                                "withdrawn"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "flow_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "10.1",
+                                "10.2",
+                                "10.3",
+                                "10.4"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "flow_type": {
+                                                        "type": "string"
+                                                    },
+                                                    "source_type": {
+                                                        "type": "string"
+                                                    },
+                                                    "source_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "transaction_date": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "period_start": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "period_end": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "currency_code": {
+                                                        "type": "string"
+                                                    },
+                                                    "category_code": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "aggregates": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": {}
+                                                        }
+                                                    },
+                                                    "external_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "report_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "error": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "sent_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "attached_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "flow_type",
+                                                    "source_type",
+                                                    "source_id",
+                                                    "status",
+                                                    "transaction_date",
+                                                    "period_start",
+                                                    "period_end",
+                                                    "currency_code",
+                                                    "category_code",
+                                                    "aggregates",
+                                                    "external_id",
+                                                    "report_id",
+                                                    "error",
+                                                    "sent_at",
+                                                    "attached_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "last_page",
+                                                "per_page",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "settings:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/settings/fr/ereporting/reports": {
+            "get": {
+                "operationId": "frEReporting.reports",
+                "summary": "Reports (periodos) del e-reporting que la plateforme ha comunicado\npara la empresa, del m\u00e1s reciente al m\u00e1s antiguo: abiertos, cerrados,\ntransmitidos al PPF, declarados o rechazados (con el motivo en `error`).\n`per_page` m\u00e1ximo 100",
+                "tags": [
+                    "FrEReporting"
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "open",
+                                "closed",
+                                "submitted",
+                                "declared",
+                                "rejected"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "report_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "period_start": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "period_end": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "auto_close_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "declaration_type": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "file_link": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "error": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "transactions": {
+                                                        "type": "integer"
+                                                    },
+                                                    "submitted_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "declared_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "report_id",
+                                                    "status",
+                                                    "period_start",
+                                                    "period_end",
+                                                    "auto_close_at",
+                                                    "declaration_type",
+                                                    "file_link",
+                                                    "error",
+                                                    "transactions",
+                                                    "submitted_at",
+                                                    "declared_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "last_page",
+                                                "per_page",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "settings:read"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/settings/fr": {
+            "get": {
+                "operationId": "frSettings.index",
+                "tags": [
+                    "FrSettings"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "fr_operation_nature": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_on_debits": {
+                                                    "type": "string"
+                                                },
+                                                "fr_payment_terms": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_pmt": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_pmd": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_aab": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_exemption_reason": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_regime": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "issuer": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "registration_number": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "vat_number": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "siren": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "vat_number_valid": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ready_to_publish": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "registration_number",
+                                                        "vat_number",
+                                                        "siren",
+                                                        "vat_number_valid",
+                                                        "ready_to_publish"
+                                                    ]
+                                                },
+                                                "platform": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "provider": {
+                                                            "type": "string"
+                                                        },
+                                                        "configured": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "environment": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "webhook_configured": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "entity_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_started_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "provider",
+                                                        "configured",
+                                                        "environment",
+                                                        "webhook_configured",
+                                                        "entity_id",
+                                                        "enrollment_id",
+                                                        "enrollment_status",
+                                                        "enrollment_started_at"
+                                                    ]
+                                                },
+                                                "ereporting": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "regime": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "regime_label": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "frequency": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "transactions": {
+                                                                    "type": "string"
+                                                                },
+                                                                "payments": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "transactions",
+                                                                "payments"
+                                                            ]
+                                                        },
+                                                        "counts": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "pending": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "sent": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "attached": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "declared": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "rejected": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "error": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "pending",
+                                                                "sent",
+                                                                "attached",
+                                                                "declared",
+                                                                "rejected",
+                                                                "error"
+                                                            ]
+                                                        },
+                                                        "current_period": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "start": {
+                                                                    "type": "string"
+                                                                },
+                                                                "end": {
+                                                                    "type": "string"
+                                                                },
+                                                                "deadline": {
+                                                                    "type": "string"
+                                                                },
+                                                                "unattached": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "start",
+                                                                "end",
+                                                                "deadline",
+                                                                "unattached"
+                                                            ]
+                                                        },
+                                                        "last_report": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "report_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "status": {
+                                                                    "type": "string"
+                                                                },
+                                                                "period_start": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "period_end": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "auto_close_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "declaration_type": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "file_link": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "error": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "transactions": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "submitted_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "declared_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "created_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "report_id",
+                                                                "status",
+                                                                "period_start",
+                                                                "period_end",
+                                                                "auto_close_at",
+                                                                "declaration_type",
+                                                                "file_link",
+                                                                "error",
+                                                                "transactions",
+                                                                "submitted_at",
+                                                                "declared_at",
+                                                                "created_at"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "enabled",
+                                                        "regime",
+                                                        "regime_label",
+                                                        "frequency",
+                                                        "counts",
+                                                        "current_period",
+                                                        "last_report"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "fr_operation_nature",
+                                                "fr_vat_on_debits",
+                                                "fr_payment_terms",
+                                                "fr_mention_pmt",
+                                                "fr_mention_pmd",
+                                                "fr_mention_aab",
+                                                "fr_vat_exemption_reason",
+                                                "fr_vat_regime",
+                                                "issuer",
+                                                "platform",
+                                                "ereporting"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "settings:read"
+                        ]
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "frSettings.update",
+                "summary": "Guarda los ajustes que vengan (los que no vengan se conservan) y devuelve\nel conjunto resuelto, como `index`",
+                "tags": [
+                    "FrSettings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "fr_operation_nature": {
+                                        "type": "string",
+                                        "description": "Naturaleza de la operaci\u00f3n por defecto (BT-23): `S1` servicios,\n`B1` bienes, `M1` mixta. Una factura puede declarar la suya.",
+                                        "enum": [
+                                            "S1",
+                                            "B1",
+                                            "M1"
+                                        ]
+                                    },
+                                    "fr_vat_on_debits": {
+                                        "type": "string",
+                                        "description": "Opci\u00f3n \u00abTVA sur les d\u00e9bits\u00bb (BT-8 = 5): `YES` o `NO`.",
+                                        "enum": [
+                                            "YES",
+                                            "NO"
+                                        ]
+                                    },
+                                    "fr_payment_terms": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    },
+                                    "fr_mention_pmt": {
+                                        "type": "string",
+                                        "description": "Las tres menciones legales obligatorias en toda factura francesa\n(frais de recouvrement, p\u00e9nalit\u00e9s de retard, escompte).",
+                                        "maxLength": 500
+                                    },
+                                    "fr_mention_pmd": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    },
+                                    "fr_mention_aab": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    },
+                                    "fr_vat_exemption_reason": {
+                                        "type": "string",
+                                        "description": "Texto de la exenci\u00f3n para las l\u00edneas sin TVA (franquicia en base).",
+                                        "maxLength": 255
+                                    },
+                                    "fr_vat_regime": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "R\u00e9gimen de TVA (#665): `reel_normal_mensuel`, `reel_normal_trimestriel`, `reel_simplifie` o `franchise_en_base`. Fija la periodicidad del e-reporting y lo ACTIVA; `null` lo apaga.",
+                                        "enum": [
+                                            "reel_normal_mensuel",
+                                            "reel_normal_trimestriel",
+                                            "reel_simplifie",
+                                            "franchise_en_base",
+                                            null
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "fr_operation_nature": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_on_debits": {
+                                                    "type": "string"
+                                                },
+                                                "fr_payment_terms": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_pmt": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_pmd": {
+                                                    "type": "string"
+                                                },
+                                                "fr_mention_aab": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_exemption_reason": {
+                                                    "type": "string"
+                                                },
+                                                "fr_vat_regime": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "issuer": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "registration_number": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "vat_number": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "siren": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "vat_number_valid": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ready_to_publish": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "registration_number",
+                                                        "vat_number",
+                                                        "siren",
+                                                        "vat_number_valid",
+                                                        "ready_to_publish"
+                                                    ]
+                                                },
+                                                "platform": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "provider": {
+                                                            "type": "string"
+                                                        },
+                                                        "configured": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "environment": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "webhook_configured": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "entity_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "enrollment_started_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "provider",
+                                                        "configured",
+                                                        "environment",
+                                                        "webhook_configured",
+                                                        "entity_id",
+                                                        "enrollment_id",
+                                                        "enrollment_status",
+                                                        "enrollment_started_at"
+                                                    ]
+                                                },
+                                                "ereporting": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "regime": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "regime_label": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "frequency": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "transactions": {
+                                                                    "type": "string"
+                                                                },
+                                                                "payments": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "transactions",
+                                                                "payments"
+                                                            ]
+                                                        },
+                                                        "counts": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "pending": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "sent": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "attached": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "declared": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "rejected": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "error": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "pending",
+                                                                "sent",
+                                                                "attached",
+                                                                "declared",
+                                                                "rejected",
+                                                                "error"
+                                                            ]
+                                                        },
+                                                        "current_period": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "start": {
+                                                                    "type": "string"
+                                                                },
+                                                                "end": {
+                                                                    "type": "string"
+                                                                },
+                                                                "deadline": {
+                                                                    "type": "string"
+                                                                },
+                                                                "unattached": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "start",
+                                                                "end",
+                                                                "deadline",
+                                                                "unattached"
+                                                            ]
+                                                        },
+                                                        "last_report": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "report_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "status": {
+                                                                    "type": "string"
+                                                                },
+                                                                "period_start": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "period_end": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "auto_close_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "declaration_type": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "file_link": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "error": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "transactions": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "submitted_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "declared_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "created_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "report_id",
+                                                                "status",
+                                                                "period_start",
+                                                                "period_end",
+                                                                "auto_close_at",
+                                                                "declaration_type",
+                                                                "file_link",
+                                                                "error",
+                                                                "transactions",
+                                                                "submitted_at",
+                                                                "declared_at",
+                                                                "created_at"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "enabled",
+                                                        "regime",
+                                                        "regime_label",
+                                                        "frequency",
+                                                        "counts",
+                                                        "current_period",
+                                                        "last_report"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "fr_operation_nature",
+                                                "fr_vat_on_debits",
+                                                "fr_payment_terms",
+                                                "fr_mention_pmt",
+                                                "fr_mention_pmd",
+                                                "fr_mention_aab",
+                                                "fr_vat_exemption_reason",
+                                                "fr_vat_regime",
+                                                "issuer",
+                                                "platform",
+                                                "ereporting"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "settings:write"
                         ]
                     }
                 ]
@@ -11356,6 +12646,131 @@
                 ]
             }
         },
+        "/received-invoices/{received_invoice}/einvoice/approve": {
+            "post": {
+                "operationId": "inboundEInvoice.approve",
+                "tags": [
+                    "InboundEInvoice"
+                ],
+                "parameters": [
+                    {
+                        "name": "received_invoice",
+                        "in": "path",
+                        "required": true,
+                        "description": "The received invoice ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ReceivedInvoiceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReceivedInvoiceResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "expenses:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/received-invoices/{received_invoice}/einvoice/refuse": {
+            "post": {
+                "operationId": "inboundEInvoice.refuse",
+                "tags": [
+                    "InboundEInvoice"
+                ],
+                "parameters": [
+                    {
+                        "name": "received_invoice",
+                        "in": "path",
+                        "required": true,
+                        "description": "The received invoice ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RefuseInboundEInvoiceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ReceivedInvoiceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ReceivedInvoiceResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "expenses:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/incidences/{incidence}/review": {
             "post": {
                 "operationId": "incidence.review",
@@ -12200,6 +13615,148 @@
                     {
                         "oauth2": [
                             "expenses:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/invoices/{invoice}/fiscal": {
+            "get": {
+                "operationId": "invoiceFiscal.show",
+                "description": "`country` es el pa\u00eds fiscal del EMISOR (`companies.country_code`, o el\nde la config si la empresa no lo declara). `fiscal` es la fila neutra\n\u2014`null` mientras la factura no haya pasado por ning\u00fan registro:\nborradores, pa\u00edses sin driver, m\u00f3dulo de cumplimiento apagado\u2014 con la\nmisma forma que `InvoiceResource.fiscal`. `driver_detail` es lo que el\ndriver del pa\u00eds a\u00f1ade preguntando a su servicio: para Espa\u00f1a, el\nregistro tal como lo tiene VeriFactu (la misma forma que\n`GET /invoices/{invoice}/verifactu/detail`, a un nivel); para Francia\n(#653), el ciclo de vida que la plateforme agr\u00e9\u00e9e ha contado\n(`events`, en orden), el literal y c\u00f3digo del \u00faltimo estado y el\ndocumento exacto depositado (`document`).\n\nSi el servicio del driver no contesta, la respuesta sigue siendo `200`\ncon la fila neutra \u2014que es verdad y est\u00e1 en casa\u2014 y el motivo en\n`driver_detail_error`; `driver_detail` queda a `null`.",
+                "summary": "Estado fiscal de la factura, neutro al pa\u00eds",
+                "tags": [
+                    "InvoiceFiscal"
+                ],
+                "parameters": [
+                    {
+                        "name": "invoice",
+                        "in": "path",
+                        "required": true,
+                        "description": "The invoice ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "country": {
+                                                    "type": "string"
+                                                },
+                                                "fiscal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "country": {
+                                                            "type": "string"
+                                                        },
+                                                        "driver": {
+                                                            "type": "string"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "external_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "external_status_code": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "external_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "receipt": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "error": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "submitted_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "country",
+                                                        "driver",
+                                                        "status",
+                                                        "external_status",
+                                                        "external_status_code",
+                                                        "external_id",
+                                                        "receipt",
+                                                        "error",
+                                                        "submitted_at"
+                                                    ]
+                                                },
+                                                "driver_detail": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "additionalProperties": {}
+                                                },
+                                                "driver_detail_error": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "country",
+                                                "fiscal",
+                                                "driver_detail",
+                                                "driver_detail_error"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "invoices:read"
                         ]
                     }
                 ]
@@ -18996,7 +20553,8 @@
                                                 {
                                                     "type": "object",
                                                     "required": [
-                                                        "document_meta"
+                                                        "document_meta",
+                                                        "einvoice"
                                                     ]
                                                 }
                                             ]
@@ -25610,6 +27168,602 @@
                             "settings:write"
                         ]
                     }
+                ]
+            }
+        },
+        "/billing/plans": {
+            "get": {
+                "operationId": "tenantBilling.plans",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSin los planes de canal (`Asesor\u00eda`, `Desarrollador`): esos los contrata\nuna gestor\u00eda o un desarrollador para su cartera, no una pyme. Con la\ninstancia en marca blanca \u2014su licencia la paga un desarrollador\u2014 la lista\nllega VAC\u00cdA y `white_label` a `true`: el cliente vive dentro del producto\ndel partner y no ve precios de Pimia. El corte va en el servidor.",
+                "summary": "Los planes que esta instancia puede contratar",
+                "tags": [
+                    "TenantBilling"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "string"
+                                                    },
+                                                    "price_cents": {
+                                                        "type": "integer"
+                                                    },
+                                                    "max_invoices_month": {
+                                                        "type": "integer"
+                                                    },
+                                                    "max_users": {
+                                                        "type": "integer"
+                                                    },
+                                                    "max_storage_mb": {
+                                                        "type": "integer"
+                                                    },
+                                                    "features": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "is_free": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "price",
+                                                    "price_cents",
+                                                    "max_invoices_month",
+                                                    "max_users",
+                                                    "max_storage_mb",
+                                                    "features",
+                                                    "is_free"
+                                                ]
+                                            }
+                                        },
+                                        "white_label": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "white_label",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "billing:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "billing:read"
+                ]
+            }
+        },
+        "/billing/subscription": {
+            "get": {
+                "operationId": "tenantBilling.subscription",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLo puede leer cualquier usuario de la instancia: el plan y el consumo son\nde la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,\ncambiar de plan o abrir el portal \u2014 el due\u00f1o de la instancia, y no en\nmarca blanca \u2014; es lo que la pantalla usa para ense\u00f1ar o esconder los\nbotones, pero el corte real lo hacen las rutas de escritura.\n\n`usage.storage` es `null` cuando no se puede medir (esquema a medias) y\n`subscription.current_period_end` es `null` cuando Stripe no contesta:\nun dato que no consta se dice como tal, no se inventa un cero.",
+                "summary": "El plan de ESTA instancia: l\u00edmites, consumo, prueba, qui\u00e9n la paga y el\nestado de la suscripci\u00f3n en Stripe",
+                "tags": [
+                    "TenantBilling"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "plan": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "price": {
+                                                            "type": "string"
+                                                        },
+                                                        "price_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_invoices_month": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_users": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_storage_mb": {
+                                                            "type": "integer"
+                                                        },
+                                                        "features": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "is_free": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "price",
+                                                        "price_cents",
+                                                        "max_invoices_month",
+                                                        "max_users",
+                                                        "max_storage_mb",
+                                                        "features",
+                                                        "is_free"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "max_invoices_month": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_users": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_storage_mb": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "max_invoices_month",
+                                                        "max_users",
+                                                        "max_storage_mb"
+                                                    ]
+                                                },
+                                                "usage": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "invoices_month": {
+                                                            "type": "integer"
+                                                        },
+                                                        "users": {
+                                                            "type": "integer"
+                                                        },
+                                                        "storage": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "used_bytes": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "used_mb": {
+                                                                    "type": "number"
+                                                                },
+                                                                "limit_mb": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "unlimited": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "percent": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "used_bytes",
+                                                                "used_mb",
+                                                                "limit_mb",
+                                                                "unlimited",
+                                                                "percent"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "invoices_month",
+                                                        "users",
+                                                        "storage"
+                                                    ]
+                                                },
+                                                "trial": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "active": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ends_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "active",
+                                                        "ends_at"
+                                                    ]
+                                                },
+                                                "billing": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "mode": {
+                                                            "type": "string"
+                                                        },
+                                                        "white_label": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "can_manage": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "seat": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "role": {
+                                                                    "type": "string"
+                                                                },
+                                                                "grace_until": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "suspended_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "role",
+                                                                "grace_until",
+                                                                "suspended_at"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "mode",
+                                                        "white_label",
+                                                        "can_manage",
+                                                        "seat"
+                                                    ]
+                                                },
+                                                "subscription": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "current_period_end": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "cancel_at_period_end": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ends_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "status",
+                                                        "current_period_end",
+                                                        "cancel_at_period_end",
+                                                        "ends_at"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "plan",
+                                                "limits",
+                                                "usage",
+                                                "trial",
+                                                "billing",
+                                                "subscription",
+                                                "status"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "billing:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "billing:read"
+                ]
+            }
+        },
+        "/billing/checkout": {
+            "post": {
+                "operationId": "tenantBilling.checkoutFromPanel",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea all\u00ed\ny nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web\n(`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el\nwebhook `checkout.session.completed`. Solo el due\u00f1o de la instancia.\n\nErrores, con su c\u00f3digo en `error`: `white_label` (403), `no_payer` (409),\n`free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),\n`stripe_price_missing` (503).",
+                "summary": "Contratar un plan de pago desde el panel web",
+                "tags": [
+                    "TenantBilling"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "checkout_url": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "checkout_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "billing:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "billing:write"
+                ]
+            }
+        },
+        "/billing/portal": {
+            "post": {
+                "operationId": "tenantBilling.portal",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "El portal de Stripe del pagador: cambiar la tarjeta, ver y descargar las\nfacturas de Pimia, cancelar. Solo el due\u00f1o, y solo si ya hay cuenta de\nfacturaci\u00f3n en Stripe (`no_billing_account`, 404, si nunca contrat\u00f3)",
+                "tags": [
+                    "TenantBilling"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "portal_url": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "portal_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Solo el administrador de la instancia puede gestionar su suscripci\u00f3n."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "billing:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "billing:write"
+                ]
+            }
+        },
+        "/billing/change-plan": {
+            "post": {
+                "operationId": "tenantBilling.changePlan",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLas reglas son las de `PlanChange`, las mismas que en el plano central:\n`not_the_payer` (403) si la licencia la paga otra cuenta, `channel_plan`\ny `channel_seat` (422), `no_active_subscription` (422: sin suscripci\u00f3n\nviva hay que pasar por el checkout), `subscription_not_linked` (409),\n`stripe_price_missing` (503). Solo el due\u00f1o de la instancia.",
+                "summary": "Cambiar de plan: subir, bajar entre planes de pago o bajar a Free",
+                "tags": [
+                    "TenantBilling"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "plan_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "plan_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "plan": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "plan"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Solo el administrador de la instancia puede cambiar su plan."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "billing:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "billing:write"
                 ]
             }
         },
@@ -36527,7 +38681,7 @@
         "/invoices/{invoice}/verifactu/detail": {
             "get": {
                 "operationId": "veriFactu.detail",
-                "description": "Returns the complete data from VeriFactu API including\nAEAT response, alerts, attempts count, etc.",
+                "description": "Devuelve el registro tal como lo tiene el servicio VeriFactu: el estado\nante la AEAT (`aeat_status`), el CSV que devolvi\u00f3 al aceptarlo\n(`aeat_csv`), su respuesta literal (`aeat_response`: el motivo del rechazo\no del aviso, o `{status: 'correct', csv}` si lo acept\u00f3), cu\u00e1ndo se envi\u00f3\n(`sent_at`, en UTC), cu\u00e1ntos intentos lleva, la huella y la URL del QR.\n\nEl cuerpo es `{data: <registro>}`, UN solo nivel. Hasta 2026-09-02 el\nregistro llegaba DOS niveles dentro: `VeriFactuClient::getInvoice()`\ndevuelve el cuerpo entero de verifactuApi, que ya es `{data: <registro>}`,\ny aqu\u00ed se volv\u00eda a envolver. Nadie lo le\u00eda bien: el modal de VeriFactu\ndel panel pintaba \u00ab\u2014\u00bb y \u00abNo enviada\u00bb sobre facturas ACEPTADAS, y la vista\nde la factura nunca encontraba el motivo del rechazo (#646). `sync` y\n`retry` ya desenvolv\u00edan con `VeriFactuClient::datos()` desde el #505.\n\nCasos que no son el `200`: `422` si la factura no est\u00e1 registrada en\nVeriFactu (no tiene `verifactu_record_id`); `500` si el servicio no\ncontesta o devuelve error, con el motivo en `message`.",
                 "summary": "Get full VeriFactu details for an invoice",
                 "tags": [
                     "VeriFactu"
@@ -36543,24 +38697,6 @@
                     }
                 ],
                 "responses": {
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -36569,31 +38705,124 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {}
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "invoice_number": {
+                                                    "type": "string"
+                                                },
+                                                "invoice_date": {
+                                                    "type": "string"
+                                                },
+                                                "invoice_type": {
+                                                    "type": "string"
+                                                },
+                                                "issuer_nif": {
+                                                    "type": "string"
+                                                },
+                                                "recipient_nif": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "recipient_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total_amount": {
+                                                    "type": "string"
+                                                },
+                                                "total_tax_amount": {
+                                                    "type": "string"
+                                                },
+                                                "record_type": {
+                                                    "type": "string"
+                                                },
+                                                "aeat_status": {
+                                                    "type": "string"
+                                                },
+                                                "aeat_csv": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "aeat_response": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "additionalProperties": {}
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "null"
+                                                        }
+                                                    ]
+                                                },
+                                                "sent_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "attempts": {
+                                                    "type": "integer"
+                                                },
+                                                "hash": {
+                                                    "type": "string"
+                                                },
+                                                "previous_hash": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "qr_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "generation_timestamp": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "invoice_number",
+                                                "invoice_date",
+                                                "invoice_type",
+                                                "issuer_nif",
+                                                "recipient_nif",
+                                                "recipient_name",
+                                                "total_amount",
+                                                "total_tax_amount",
+                                                "record_type",
+                                                "aeat_status",
+                                                "aeat_csv",
+                                                "aeat_response",
+                                                "sent_at",
+                                                "attempts",
+                                                "hash",
+                                                "previous_hash",
+                                                "qr_url",
+                                                "generation_timestamp",
+                                                "created_at"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Invoice not registered in VeriFactu"
-                                        }
-                                    },
-                                    "required": [
-                                        "message"
                                     ]
                                 }
                             }
@@ -36689,6 +38918,13 @@
                                                         "string",
                                                         "null"
                                                     ]
+                                                },
+                                                "aeat_csv": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "C\u00f3digo Seguro de Verificaci\u00f3n que devuelve la AEAT al aceptar el registro; null hasta entonces."
                                                 }
                                             },
                                             "required": [
@@ -36697,7 +38933,8 @@
                                                 "aeat_status",
                                                 "hash",
                                                 "qr_data",
-                                                "verifactu_record_id"
+                                                "verifactu_record_id",
+                                                "aeat_csv"
                                             ]
                                         }
                                     },
@@ -38930,7 +41167,9 @@
                             "verifactu:read": "(solo el panel de Pimia) ver tu conexi\u00f3n con VeriFactu",
                             "verifactu:write": "(solo el panel de Pimia) configurar tu conexi\u00f3n con VeriFactu",
                             "delegation:read": "(solo el panel de Pimia) ver lo que delegas a tu agente",
-                            "delegation:write": "(solo el panel de Pimia) delegar tareas a tu agente"
+                            "delegation:write": "(solo el panel de Pimia) delegar tareas a tu agente",
+                            "billing:read": "(solo el panel de Pimia) ver el plan de tu empresa",
+                            "billing:write": "(solo el panel de Pimia) contratar y cambiar el plan de tu empresa"
                         }
                     }
                 }
@@ -39767,6 +42006,31 @@
                             "null"
                         ]
                     },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "N\u00famero de registro mercantil de la empresa. En Francia es el\nSIREN (9 d\u00edgitos) o el SIRET (14) y se comprueba su d\u00edgito de\ncontrol; es lo que identifica al emisor en la facturaci\u00f3n\nelectr\u00f3nica francesa y sin \u00e9l no se puede publicar. En Espa\u00f1a\nno hace falta: el NIF (`vat_id`) es el identificador.",
+                        "maxLength": 20
+                    },
+                    "country_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Pa\u00eds fiscal del emisor (ISO 3166-1 alfa-2).",
+                        "minLength": 2,
+                        "maxLength": 2
+                    },
+                    "tax_regime": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "R\u00e9gimen fiscal por defecto de la empresa (clave AEAT de dos d\u00edgitos).",
+                        "maxLength": 5
+                    },
                     "slug": {
                         "type": [
                             "string",
@@ -39807,6 +42071,21 @@
                         ]
                     },
                     "vat_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "country_code": {
+                        "type": "string"
+                    },
+                    "tax_regime": {
                         "type": [
                             "string",
                             "null"
@@ -39856,6 +42135,9 @@
                     "name",
                     "trade_name",
                     "vat_id",
+                    "registration_number",
+                    "country_code",
+                    "tax_regime",
                     "logo",
                     "logo_path",
                     "unique_hash",
@@ -40475,6 +42757,21 @@
                             "null"
                         ]
                     },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "country_code": {
+                        "type": "string"
+                    },
+                    "tax_regime": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "logo": {
                         "type": [
                             "string",
@@ -40537,6 +42834,9 @@
                     "name",
                     "trade_name",
                     "vat_id",
+                    "registration_number",
+                    "country_code",
+                    "tax_regime",
                     "logo",
                     "logo_path",
                     "unique_hash",
@@ -40905,6 +43205,12 @@
                             "null"
                         ]
                     },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "avatar": {
                         "type": "string"
                     },
@@ -40944,6 +43250,7 @@
                     "payment_method_id",
                     "customer_type",
                     "notes",
+                    "registration_number",
                     "avatar"
                 ],
                 "title": "Customer"
@@ -40997,6 +43304,14 @@
                             "null"
                         ],
                         "description": "NIF/CIF del cliente. Es el dato que VeriFactu exige del\ndestinatario al publicar una factura completa, y el que viaja\ncomo `taxNumber` del comprador en FacturaE.",
+                        "maxLength": 20
+                    },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "N\u00famero de registro mercantil del cliente. Para un emisor\nfranc\u00e9s es el SIREN (9 d\u00edgitos) o el SIRET (14) del cliente,\nmenci\u00f3n obligatoria de la factura electr\u00f3nica y lo que la\nplataforma usa para enrutarla: sin \u00e9l no se puede publicar una\nfactura a una empresa. Se comprueba su d\u00edgito de control; para\nun emisor de otro pa\u00eds es texto libre.",
                         "maxLength": 20
                     },
                     "notes": {
@@ -41305,6 +43620,12 @@
                             "null"
                         ]
                     },
+                    "registration_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "notes": {
                         "type": [
                             "string",
@@ -41419,6 +43740,7 @@
                     "base_due_amount",
                     "prefix",
                     "tax_id",
+                    "registration_number",
                     "notes",
                     "external_ref",
                     "iban",
@@ -43970,6 +46292,124 @@
                 ],
                 "title": "HolidayResource"
             },
+            "InboundEInvoiceResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "external_id": {
+                        "type": "string"
+                    },
+                    "network": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "format": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "type_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "invoice_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "supplier_siren": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "supplier_vat": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "error": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pa_status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pa_status_sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "rejection_reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "rejection_message": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "imported_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "received_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "source",
+                    "external_id",
+                    "network",
+                    "format",
+                    "type_code",
+                    "invoice_number",
+                    "supplier_siren",
+                    "supplier_vat",
+                    "status",
+                    "error",
+                    "pa_status",
+                    "pa_status_sent_at",
+                    "rejection_reason",
+                    "rejection_message",
+                    "imported_at",
+                    "received_at"
+                ],
+                "title": "InboundEInvoiceResource"
+            },
             "IncidenceRequest": {
                 "type": "object",
                 "properties": {
@@ -44494,6 +46934,12 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "operation_nature": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -44557,7 +47003,8 @@
                     "sent_at",
                     "viewed_at",
                     "contract_id",
-                    "export_batch_id"
+                    "export_batch_id",
+                    "operation_nature"
                 ],
                 "title": "Invoice"
             },
@@ -44874,6 +47321,12 @@
                             "null"
                         ]
                     },
+                    "operation_nature": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "discount_type": {
                         "type": [
                             "string",
@@ -45044,7 +47497,8 @@
                         "type": "string"
                     },
                     "aeat_status": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Fachada ESPA\u00d1OLA del registro fiscal, deprecada desde #656: el mismo estado viaja neutro en `fiscal.status`. Se mantiene tal cual (VeriFactu la escribe y el panel la lee); para una factura de otro pa\u00eds no dice nada (`not_applicable`)."
                     },
                     "qr_data": {
                         "type": [
@@ -45062,6 +47516,75 @@
                         "type": [
                             "string",
                             "null"
+                        ],
+                        "description": "CSV de la AEAT, fachada espa\u00f1ola deprecada desde #656: el acuse neutro es `fiscal.receipt`."
+                    },
+                    "fiscal": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "El registro fiscal de la factura, NEUTRO al pa\u00eds (#656): la fila de `invoice_fiscal_registrations` que escribe el driver del pa\u00eds del emisor (`verifactu` para ES, `fr-platform` para FR). `null` mientras la factura no haya pasado por ning\u00fan registro: borradores, pa\u00edses sin driver, m\u00f3dulo de cumplimiento apagado. Un consumidor sigue una factura espa\u00f1ola y una francesa por `fiscal.status`; el detalle que sepa el driver est\u00e1 en `GET /invoices/{invoice}/fiscal`.",
+                        "properties": {
+                            "country": {
+                                "type": "string"
+                            },
+                            "driver": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string"
+                            },
+                            "external_status": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Literal del \u00faltimo estado tal como lo cuenta el r\u00e9gimen (Francia: `RECEIVED`, `DISPUTED`\u2026); null para Espa\u00f1a, cuyo `status` ya es el literal."
+                            },
+                            "external_status_code": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "C\u00f3digo del r\u00e9gimen de ese estado (Francia: el c\u00f3digo DGFiP, `202`, `207`\u2026); null para Espa\u00f1a."
+                            },
+                            "external_id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "receipt": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "error": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "submitted_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Cu\u00e1ndo se present\u00f3 ante la administraci\u00f3n (ISO 8601, zona de la app); null hasta que el driver presenta."
+                            }
+                        },
+                        "required": [
+                            "country",
+                            "driver",
+                            "status",
+                            "external_status",
+                            "external_status_code",
+                            "external_id",
+                            "receipt",
+                            "error",
+                            "submitted_at"
                         ]
                     },
                     "is_credit_note": {
@@ -45254,6 +47777,7 @@
                     "tax_included",
                     "discount_per_item",
                     "notes",
+                    "operation_nature",
                     "discount_type",
                     "discount",
                     "discount_val",
@@ -45300,6 +47824,7 @@
                     "qr_data",
                     "hash",
                     "aeat_csv",
+                    "fiscal",
                     "is_credit_note",
                     "rectified_invoice_id",
                     "credit_notes_count",
@@ -45821,6 +48346,19 @@
                             "null"
                         ],
                         "description": "Los tres de abajo los manda el panel y hasta ahora se persist\u00edan SIN\nregla, porque el payload era una lista negra: cualquier clave que\ncoincidiera con una columna entraba. Desde el #393 la lista blanca es\neste contrato, as\u00ed que un campo que no se declare aqu\u00ed deja de\nguardarse. Los `max` son los de la columna."
+                    },
+                    "operation_nature": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Naturaleza de la operaci\u00f3n, menci\u00f3n obligatoria de la factura\nelectr\u00f3nica francesa: `S1` prestaci\u00f3n de servicios, `B1` entrega\nde bienes, `M1` mixta. Sin declararla, el Factur-X toma el valor\npor defecto de la empresa (`fr_operation_nature`). Para un emisor\nde otro pa\u00eds no tiene efecto.",
+                        "enum": [
+                            "S1",
+                            "B1",
+                            "M1",
+                            null
+                        ]
                     },
                     "discount_type": {
                         "type": [
@@ -48602,6 +51140,17 @@
                         "type": "string",
                         "description": "Metadatos del documento original (OCR). Solo cuando la relaci\u00f3n media\nest\u00e1 cargada (show) para no disparar N+1 en el listado."
                     },
+                    "einvoice": {
+                        "anyOf": [
+                            {
+                                "description": "La factura electr\u00f3nica de la plateforme agr\u00e9\u00e9e de la que naci\u00f3\nesta recibida (#654): id externo, formato, estado de la\nimportaci\u00f3n y \u00faltimo estado devuelto al emisor. Solo en el show\ny en las acciones approve/refuse (relaci\u00f3n cargada); null si la\nrecibida no vino por ah\u00ed.",
+                                "$ref": "#/components/schemas/InboundEInvoiceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "items": {
                         "type": "array",
                         "items": {
@@ -49222,6 +51771,29 @@
                     "template_name"
                 ],
                 "title": "RecurringInvoiceResource"
+            },
+            "RefuseInboundEInvoiceRequest": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "Motivo del rechazo, del enum `rejectionDetail.reason` de la plateforme\n(p. ej. `LEGAL_INFORMATION_MISSING`, `SIRET_INCORRECT_OR_MISSING`,\n`DUPLICATE_INVOICE`, `VAT_RATE_INCORRECT`). Se reenv\u00eda tal cual al\nemisor como estado 210 \u00abrefus\u00e9e\u00bb. May\u00fasculas y guiones bajos.",
+                        "pattern": "^[A-Z][A-Z0-9_]{2,63}$",
+                        "maxLength": 64
+                    },
+                    "message": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Texto libre para el emisor: qu\u00e9 est\u00e1 mal y qu\u00e9 se espera en la\nfactura corregida.",
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "title": "RefuseInboundEInvoiceRequest"
             },
             "RenewContractRequest": {
                 "type": "object",
@@ -51407,6 +53979,18 @@
                     },
                     "is_active": {
                         "type": "boolean"
+                    },
+                    "vat_category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "vat_exemption_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -51425,7 +54009,9 @@
                     "tax_scope",
                     "is_default",
                     "is_system",
-                    "is_active"
+                    "is_active",
+                    "vat_category",
+                    "vat_exemption_code"
                 ],
                 "title": "TaxType"
             },
@@ -51441,7 +54027,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "`calculation_type` y `fixed_amount` estaban aqu\u00ed y NO son columnas\nde `tax_types`: se validaban, se met\u00edan en el payload y Eloquent\nlas descartaba en silencio (#377). El primero adem\u00e1s era\n`required`, as\u00ed que un cliente de la API que no se inventara el\ncampo se com\u00eda un 422 por un dato que no se guardaba."
+                        "description": "Porcentaje del impuesto. \u26a0\ufe0f Una retenci\u00f3n de IRPF se guarda en\nNEGATIVO \u2014un IRPF del 15 % es `-15`, porque resta de la factura\u2014\ny con `tax_category: \"IRPF\"` el positivo se rechaza con un 422.\nEl contrato no puede expresar esa condici\u00f3n: la regla depende de\notro campo y el generador eval\u00faa `rules()` en fr\u00edo. Por eso se\ndice aqu\u00ed."
                     },
                     "description": {
                         "type": [
@@ -51497,6 +54083,31 @@
                         ],
                         "description": "Modelo de la AEAT en el que declara este impuesto: `303` el IVA,\n`111` o `115` las retenciones.",
                         "maxLength": 10
+                    },
+                    "vat_category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Categor\u00eda de IVA de la norma europea EN 16931, la que viaja en la\nfactura electr\u00f3nica (Factur-X, UBL): `S` tipo normal, `Z` tipo\ncero, `E` exento, `AE` inversi\u00f3n del sujeto pasivo, `K` entrega\nintracomunitaria, `G` exportaci\u00f3n, `O` no sujeto. Si se omite, el\ndocumento electr\u00f3nico la deduce del porcentaje (>0 \u21d2 `S`, 0 \u21d2 `E`).",
+                        "enum": [
+                            "S",
+                            "Z",
+                            "E",
+                            "AE",
+                            "K",
+                            "G",
+                            "O",
+                            null
+                        ]
+                    },
+                    "vat_exemption_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "C\u00f3digo VATEX del motivo de exenci\u00f3n (p. ej. `VATEX-FR-FRANCHISE`,\n`VATEX-EU-AE`, `VATEX-EU-IC`, `VATEX-EU-G`) para las categor\u00edas\nsin cuota. Sin efecto en un tipo `S`.",
+                        "maxLength": 20
                     }
                 },
                 "required": [
@@ -51551,6 +54162,19 @@
                     "tax_scope": {
                         "type": "string"
                     },
+                    "vat_category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Categor\u00eda EN 16931 y VATEX (#651): null en los cat\u00e1logos que no\nla declaran, y el documento electr\u00f3nico la deduce."
+                    },
+                    "vat_exemption_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "is_default": {
                         "type": "boolean"
                     },
@@ -51583,6 +54207,8 @@
                     "tax_category",
                     "aeat_model",
                     "tax_scope",
+                    "vat_category",
+                    "vat_exemption_code",
                     "is_default",
                     "is_system",
                     "is_active"
@@ -52399,6 +55025,21 @@
                                         "null"
                                     ]
                                 },
+                                "registration_number": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "country_code": {
+                                    "type": "string"
+                                },
+                                "tax_regime": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
                                 "logo": {
                                     "type": [
                                         "string",
@@ -52449,6 +55090,9 @@
                                 "name",
                                 "trade_name",
                                 "vat_id",
+                                "registration_number",
+                                "country_code",
+                                "tax_regime",
                                 "logo",
                                 "logo_path",
                                 "unique_hash",

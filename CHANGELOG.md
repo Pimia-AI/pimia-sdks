@@ -8,6 +8,65 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.18.0] — 2026-09-03
+
+**El plan y la contratación de la instancia, para el panel de Pimia; y el
+contrato al día con la facturación francesa y el alta por país.** Trece
+operaciones nuevas, ninguna retirada.
+
+Spec sincronizado con **factSaas@c6370f9b** (2026-09-03) — **428 operaciones**
+(415 en la 0.17.0).
+
+### Añadido
+
+- **`/billing/*`, cinco operaciones de PRIMERA PARTE** (galeote/factSaas#673):
+  `GET /billing/plans` (el catálogo contratable, sin los planes de canal),
+  `GET /billing/subscription` (el plan de la instancia con sus límites
+  efectivos, el consumo del mes, la prueba, quién paga y el estado en Stripe),
+  `POST /billing/checkout` (la URL del Checkout de Stripe), `POST /billing/portal`
+  (la URL del portal de Stripe) y `POST /billing/change-plan`. Exigen
+  `billing:read` / `billing:write`, que el Authorization Server emite **solo al
+  client del panel web de Pimia**: un integrador ve las operaciones en el spec,
+  marcadas `x-pimia-partner-availability: first-party-only`, y no puede pedir
+  el scope. `SCOPES` no los ofrece, a propósito.
+- **La facturación electrónica francesa**, del bloque #658 del núcleo:
+  `GET`/`PUT /settings/fr` (régimen de TVA, TVA sobre débitos, naturaleza de
+  operación por defecto; tras la puerta del módulo `compliance-fr`),
+  `GET /settings/fr/ereporting/{transactions,reports}` (la cola del
+  e-reporting, solo lectura), `GET /invoices/{invoice}/einvoice` (el Factur-X)
+  y `POST /received-invoices/{received_invoice}/einvoice/{approve,refuse}`
+  (lo que el receptor decide sobre una factura llegada por la plateforme), con
+  `InboundEInvoiceResource` y `RefuseInboundEInvoiceRequest`.
+- **`GET /invoices/{invoice}/fiscal`**, el estado fiscal NEUTRO de una factura
+  (galeote/factSaas#666): el mismo bloque para VeriFactu y para Factur-X.
+  Viaja también como `fiscal` en `InvoiceResource`.
+- Campos nuevos, todos opcionales: `country_code`, `registration_number` y
+  `tax_regime` en la empresa (`CompanyRequest`/`CompanyResource`/
+  `CurrentCompanyResource`); `registration_number` (el SIREN) en el cliente;
+  `operation_nature` en la factura y en su alta; `vat_category` y
+  `vat_exemption_code` (EN 16931) en el tipo de impuesto; `einvoice` en la
+  factura recibida.
+
+### Cambiado
+
+- `GET /invoices/{invoice}/verifactu/detail` publica solo su `200`: el detalle
+  va a un nivel (galeote/factSaas#647). `GET /invoices/{invoice}/facturae`
+  documenta el `422` de una factura sin emitir (#669). `aeat_csv` y
+  `aeat_status` de `InvoiceResource` ganan tipo (#639).
+- `TaxTypeRequest.percent` afina su tipo; `UserResource.companies` cambia la
+  forma de sus elementos (el rol de cada empresa, #672).
+
+### Lo que hay que tener delante para integrarlo
+
+- ⛔ **`/billing/*` no es para un integrador.** Está en el contrato para que
+  el panel de Pimia tipe contra él; un token de partner recibe `403`. Lo que
+  sí puede leer un integrador del plan es el `403 feature_not_available` y el
+  `403 plan_limit_exceeded` de siempre.
+- `pimia/pimia-php` sube de versión **sin cambios de código**: las
+  operaciones nuevas viajan por tipos generados que en PHP son arrays, y
+  `Scopes` no gana constantes porque ninguno de los dos scopes es pedible.
+  `@pimia/design-tokens` va a 0.18.0 también sin cambios.
+
 ## [0.17.0] — 2026-09-01
 
 **El sello de exportación contable, y los cuatro campos del impuesto que no
