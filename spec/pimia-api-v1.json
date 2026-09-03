@@ -18545,7 +18545,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:read"
+                            "notifications:read"
                         ]
                     }
                 ]
@@ -18590,7 +18590,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "notifications:write"
                         ]
                     }
                 ]
@@ -18625,7 +18625,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "notifications:write"
                         ]
                     }
                 ]
@@ -18670,7 +18670,7 @@
                 "security": [
                     {
                         "oauth2": [
-                            "crm:write"
+                            "notifications:write"
                         ]
                     }
                 ]
@@ -41300,6 +41300,8 @@
                             "crm:write": "gestionar tus oportunidades",
                             "work:read": "leer tu trabajo",
                             "work:write": "gestionar tu trabajo",
+                            "notifications:read": "leer tus avisos",
+                            "notifications:write": "gestionar tus avisos",
                             "agenda:read": "leer tu agenda",
                             "agenda:write": "gestionar tu agenda",
                             "reports:read": "leer tus informes",
