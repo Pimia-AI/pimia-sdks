@@ -39,9 +39,23 @@ final class Scopes
 
     public const BANKING_WRITE = 'banking:write';
 
+    /**
+     * Leer las OPORTUNIDADES: leads, su embudo y su actividad comercial.
+     *
+     * ⚠️ Desde la 0.20.0 ya NO alcanza proyectos, tareas ni partes de horas:
+     * eso es `work:read` (núcleo galeote/factSaas#677). Un grant vivo que solo
+     * pidió `crm:*` tiene que reconectar para recuperarlos.
+     */
     public const CRM_READ = 'crm:read';
 
+    /** Crear y modificar leads, moverlos de etapa y convertirlos en cliente. */
     public const CRM_WRITE = 'crm:write';
+
+    /** Leer el trabajo: obras y proyectos, tareas y partes de horas. */
+    public const WORK_READ = 'work:read';
+
+    /** Crear y modificar obras y proyectos, tareas y partes de horas. */
+    public const WORK_WRITE = 'work:write';
 
     public const AGENDA_READ = 'agenda:read';
 

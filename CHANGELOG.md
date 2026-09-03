@@ -8,6 +8,62 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.20.0] — 2026-09-03
+
+**⚠️ CAMBIO INCOMPATIBLE DE SCOPE: proyectos, tareas y partes de horas dejan
+`crm:*` y pasan a `work:*`.** Un grant vivo que solo pidió `crm:read`/`crm:write`
+**deja de alcanzarlos**: hay que reconectar pidiendo también `work:*`. Ninguna
+operación entra ni sale; lo que cambia es qué scope exige cada una.
+
+Spec sincronizado con **factSaas@c2dcdd90** (2026-09-03) — **428 operaciones**,
+las mismas que en la 0.19.0.
+
+### Añadido
+
+- **`SCOPES.workRead` / `SCOPES.workWrite`** (TS) y **`Scopes::WORK_READ` /
+  `Scopes::WORK_WRITE`** (PHP): el dominio nuevo del catálogo OAuth. Se piden
+  como cualquier otro de partner, con consentimiento del dueño.
+- **`listed`** en cada módulo de `GET /tenant-modules`: dice si el módulo se
+  OFRECE en el escaparate. Los dos de cumplimiento fiscal salen con `false` —su
+  presencia la decide el país del emisor y no es mercancía—, así que una
+  pantalla de módulos no debe pintarles botón de instalar ni de desactivar.
+- **`403`** documentado en las operaciones de proveedores, facturas recibidas,
+  cuentas bancarias, movimientos, remesas SEPA e inmovilizado: hasta ahora esas
+  rutas no autorizaban nada y ya lo hacen, con permisos de grano fino por
+  usuario.
+
+### Cambiado
+
+- **`work:read`** es el scope de `GET /projects`, `GET /tasks`,
+  `GET /time-entries` y `GET /customers/{id}/pending-time-entries`; **`work:write`**
+  el de sus escrituras. `POST /tasks/{task}/delegate` pasa a exigir
+  `work:write` + `delegation:write` (era `crm:write` + `delegation:write`) y
+  sigue reservada al panel de Pimia.
+- **`crm:read` / `crm:write`** se quedan con las OPORTUNIDADES: leads, su
+  embudo, su actividad comercial, la conversión a cliente y
+  `GET /crm/assignable-users`. Sus textos de consentimiento cambian en
+  consecuencia.
+
+### Cómo migrar
+
+1. Añade `work:read` (y `work:write` si escribes) a los scopes que pide tu app.
+2. **Manda a reconectar a los usuarios cuyo grant sea anterior.** El grant viejo
+   no gana el dominio nuevo solo: hasta que el dueño vuelva a autorizar, tus
+   llamadas a proyectos, tareas y tiempos responden `403`.
+3. Si solo lees leads, no tienes que hacer nada.
+
+El porqué, en una línea: leads y trabajo son dos consentimientos distintos. Una
+herramienta de prospección no tiene por qué leer las horas que el equipo imputa
+a cada obra, y una de gestión de obra no tiene por qué ver el embudo comercial.
+Núcleo en galeote/factSaas#677 (épica de composición de los módulos internos).
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` sube a 0.20.0 **sin cambios de código**.
+- El cambio es del CATÁLOGO, no del código del SDK: llamar a
+  `client.projects.list()` con un token que no lleve `work:read` responde `403`
+  con `Token lacks the work:read scope`.
+
 ## [0.19.0] — 2026-09-03
 
 **Contratar tras bajar a Free reanuda la suscripción en vez de abrir otra.**

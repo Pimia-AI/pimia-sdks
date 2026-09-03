@@ -112,8 +112,20 @@ export const SCOPES = {
   itemsWrite: 'items:write',
   bankingRead: 'banking:read',
   bankingWrite: 'banking:write',
+  /**
+   * Leer las OPORTUNIDADES: leads, su embudo y su actividad comercial.
+   *
+   * ⚠️ Desde la 0.20.0 ya NO alcanza proyectos, tareas ni partes de horas: eso
+   * es `work:read` (núcleo galeote/factSaas#677). Un grant vivo que solo pidió
+   * `crm:*` tiene que reconectar para recuperarlos.
+   */
   crmRead: 'crm:read',
+  /** Crear y modificar leads, moverlos de etapa y convertirlos en cliente. */
   crmWrite: 'crm:write',
+  /** Leer el trabajo: obras y proyectos, tareas y partes de horas. */
+  workRead: 'work:read',
+  /** Crear y modificar obras y proyectos, tareas y partes de horas. */
+  workWrite: 'work:write',
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',
