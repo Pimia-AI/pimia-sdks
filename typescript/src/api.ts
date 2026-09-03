@@ -5291,9 +5291,15 @@ export interface paths {
          *     (`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el
          *     webhook `checkout.session.completed`. Solo el dueño de la instancia.
          *
+         *     Si el pagador tenía una suscripción cancelada a fin de periodo (bajó a
+         *     Free y se arrepintió), NO hay checkout: se reanuda esa suscripción, se
+         *     recrea el asiento y el plan cambia al instante. Entonces `resumed` es
+         *     `true`, `checkout_url` es `null` y `plan` dice a cuál: el panel no tiene
+         *     a dónde ir, solo refrescar.
+         *
          *     Errores, con su código en `error`: `white_label` (403), `no_payer` (409),
          *     `free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),
-         *     `stripe_price_missing` (503).
+         *     `stripe_resume_failed` (502), `stripe_price_missing` (503).
          */
         post: operations["tenantBilling.checkoutFromPanel"];
         delete?: never;
@@ -21959,7 +21965,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            checkout_url: string;
+                            checkout_url: string | null;
+                            resumed: boolean;
+                            plan: string | null;
                         };
                     };
                 };

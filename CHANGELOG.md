@@ -8,6 +8,35 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.19.0] — 2026-09-03
+
+**Contratar tras bajar a Free reanuda la suscripción en vez de abrir otra.**
+Una operación cambia de forma; ninguna entra ni sale.
+
+Spec sincronizado con **factSaas@2fac3afa** (2026-09-03) — **428 operaciones**,
+las mismas que en la 0.18.0.
+
+### Cambiado
+
+- **`POST /billing/checkout`** (primera parte) publica ahora
+  `data: {checkout_url: string|null, resumed: boolean, plan: string|null}`.
+  Con `resumed: true` no hay Checkout de Stripe al que ir: el pagador tenía una
+  suscripción cancelada a fin de periodo (bajó a Free y se arrepintió) y el
+  núcleo la reanudó, recreó el asiento y cambió el plan al instante —
+  `checkout_url` es `null` y `plan` dice a cuál. Núcleo en
+  galeote/factSaas#674, medido en dev con el panel: antes, el segundo
+  «Contratar» abría una segunda suscripción y el solape se cobraba dos veces.
+  Error nuevo: `502 stripe_resume_failed` (Stripe no dejó reanudar; no se abre
+  un checkout encima).
+
+### Lo que hay que tener delante para integrarlo
+
+- ⚠️ `checkout_url` pasa de `string` a `string|null`: quien redirigía a ciegas
+  tiene que mirar `resumed` primero. Sigue siendo una operación reservada al
+  panel de Pimia (`first-party-only`), así que ningún integrador la consume.
+- `pimia/pimia-php` y `@pimia/design-tokens` suben a 0.19.0 **sin cambios de
+  código**.
+
 ## [0.18.0] — 2026-09-03
 
 **El plan y la contratación de la instancia, para el panel de Pimia; y el

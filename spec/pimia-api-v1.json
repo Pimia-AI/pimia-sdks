@@ -27548,7 +27548,7 @@
         "/billing/checkout": {
             "post": {
                 "operationId": "tenantBilling.checkoutFromPanel",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea all\u00ed\ny nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web\n(`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el\nwebhook `checkout.session.completed`. Solo el due\u00f1o de la instancia.\n\nErrores, con su c\u00f3digo en `error`: `white_label` (403), `no_payer` (409),\n`free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),\n`stripe_price_missing` (503).",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea all\u00ed\ny nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web\n(`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el\nwebhook `checkout.session.completed`. Solo el due\u00f1o de la instancia.\n\nSi el pagador ten\u00eda una suscripci\u00f3n cancelada a fin de periodo (baj\u00f3 a\nFree y se arrepinti\u00f3), NO hay checkout: se reanuda esa suscripci\u00f3n, se\nrecrea el asiento y el plan cambia al instante. Entonces `resumed` es\n`true`, `checkout_url` es `null` y `plan` dice a cu\u00e1l: el panel no tiene\na d\u00f3nde ir, solo refrescar.\n\nErrores, con su c\u00f3digo en `error`: `white_label` (403), `no_payer` (409),\n`free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),\n`stripe_resume_failed` (502), `stripe_price_missing` (503).",
                 "summary": "Contratar un plan de pago desde el panel web",
                 "tags": [
                     "TenantBilling"
@@ -27565,11 +27565,25 @@
                                             "type": "object",
                                             "properties": {
                                                 "checkout_url": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "resumed": {
+                                                    "type": "boolean"
+                                                },
+                                                "plan": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
-                                                "checkout_url"
+                                                "checkout_url",
+                                                "resumed",
+                                                "plan"
                                             ]
                                         }
                                     },
