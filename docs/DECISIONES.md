@@ -446,10 +446,22 @@ obtiene en el registro de Pimia o en el panel de integrador).
     juntas (una sola prueba de atribución para el retorno, la cartera y el
     `billing_mode`) → #721 → el contrato del plano central → el catálogo del
     integrador y la activación mayorista → el dominio de acceso por
-    integrador → el dashboard. Quedan sin decidir dos cosas que no son de
-    arquitectura: la contraseña del cliente en el asistente de «Nuevo
-    cliente» (hoy la elige el tercero, con suelo de 6 frente a los 8 del
-    registro público) y la cifra del plan de canal.
+    integrador → el dashboard. ~~Quedan sin decidir dos cosas que no son de
+    arquitectura~~ **Decididas por 👤 el mismo 2026-09-05, por la tarde:**
+    la **contraseña del cliente** en el asistente de «Nuevo cliente» (hoy la
+    elige el tercero, con suelo de 6 frente a los 8 del registro público) →
+    **invitar, no fijar**: el alta por gestoría o desarrollador manda una
+    invitación y el cliente pone su contraseña en su dominio; si el campo se
+    mantiene para el caso sin correo, mismo suelo que el registro y cambio
+    obligatorio al primer acceso (galeote/factSaas#724). Y la **cifra del
+    plan de canal** → **Price de PRUEBA en dev**, no precio real: creado ese
+    día en la cuenta de test de Pimia (product `prod_VCojt6AVsKnRCu`, 49 €
+    por asiento y mes, la doctrina del seeder) y asignado al plan de canal
+    «Desarrollador» (id 6) en `plans.stripe_price_id`, anotado como
+    `STRIPE_PRICE_CANAL_DESARROLLADOR` en el `.env` de dev. Con eso
+    `Sponsorship::sponsor()` deja de responder `stripe_price_missing` y el
+    patrocinio se puede ensayar de punta a punta con Zoomo. «Asesoría» (id 3)
+    sigue sin precio; prod sigue sin precios.
 
 ## Referencias (repos privados)
 
