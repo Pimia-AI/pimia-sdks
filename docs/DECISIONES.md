@@ -355,6 +355,102 @@ obtiene en el registro de Pimia o en el panel de integrador).
     desconectar—. La 2 no empieza sin decidir qué scopes de escritura pide
     Hermes, que vuelve a ser el punto 4.
 
+12. **El programa de integradores es MAYORISTA: el tenant es del cliente, la
+    relación comercial es del integrador y Pimia cobra al integrador
+    (2026-09-05).** Decisión de 👤 tras vivir la superficie de partner con
+    el primer integrador real —Zoomo Estudio, fork privado
+    `Pimia-AI/zoomo-pimia` servido en `app.erpstudio.es` contra dev— y los
+    tres estudios que salieron de ahí (`ESTUDIO-ALTA-CLIENTE-ZOOMO.md`,
+    `ESTUDIO-PANEL-INTEGRADOR.md`, `ESTUDIO-DOMINIO-Y-ALTA-DEL-INTEGRADOR.md`,
+    en el fork). Seis reglas, y el orden en que se paga la deuda:
+
+    1. **«Powered by Pimia» siempre, también en marca blanca.** La marca
+       blanca de Pimia es de FACTURACIÓN (el cliente no ve precios de Pimia),
+       no de existencia. Se aplica en los tres sitios donde el cliente toca a
+       Pimia: la app del integrador, la pantalla de contraseña y
+       consentimiento (que lleva la marca del integrador y «powered by Pimia»
+       al pie) y los correos que el núcleo manda al cliente.
+    2. **Modelo mayorista, no marketplace.** Pimia le cobra al integrador un
+       plan de canal —una suscripción con N asientos y sus añadidos, una
+       factura al mes— y el integrador le cobra a su cliente lo que quiera,
+       con SU Stripe, fuera de Pimia. Pimia no toca el dinero del cliente
+       final ni ve el Stripe del integrador: **sin Stripe Connect**. La
+       maquinaria mayorista ya existe (patrocinio de canal, asientos, gracia
+       de 15 días, rescate); le falta un plan de canal con precio y que el
+       desarrollador pueda declarar «pago yo» desde una pantalla
+       (galeote/factSaas#721).
+    3. **El tenant es siempre del cliente.** La invitación (el cliente se
+       registra y nace dueño) es el camino por defecto; si el integrador crea
+       la instancia, el traspaso de propiedad ANTES de entregar es
+       obligatorio, no opcional. Con eso, «romper con el integrador» es dos
+       actos del dueño que ya existen: revocar el acceso de la app desde Apps
+       conectadas y asumir la licencia (rescate). No se mueve ni se borra un
+       dato; borrar la cuenta es otra decisión del mismo dueño, la de
+       cualquier pyme. Aristas aparcadas, con fecha: el cambio de precios al
+       pasar del integrador a Pimia, el integrador que quiere cortar el
+       servicio a un cliente moroso (hoy solo corta Pimia, por impago del
+       canal) y el contrato a tres partes.
+    4. **El catálogo del integrador, pieza nueva.** Pimia guarda por
+       integrador qué revende (Pimia base, cada módulo, cada app integrada), a
+       qué precio, en qué moneda y con qué enlace de contratación. Hace dos
+       cosas con él: **enseñarlo al cliente** en la pantalla de plan del
+       tenant en marca blanca (hoy devuelve lista vacía) con «Contratar»
+       llevando al cobro del integrador; y **activar lo vendido**: el
+       integrador enciende el módulo en el tenant desde su dashboard o por
+       API desde su propio webhook, y la activación dispara el cobro
+       MAYORISTA (asiento más añadidos). El precio minorista solo existe en el
+       catálogo, nunca en el dinero de Pimia.
+    5. **El dominio del integrador, en dos niveles y no tres.** Hoy: la app
+       en su dominio (`app.erpstudio.es`, medido) y la pantalla de Pimia con
+       la marca del integrador. Objetivo: **un dominio de acceso por
+       integrador** (`login.<integrador>`), CNAME al Authorization Server del
+       ÁPICE —el que autentica con correo, contraseña y selector de instancia
+       sin depender del subdominio del tenant— con TLS bajo demanda,
+       verificación de propiedad del dominio y cookie acotada al host. El
+       cliente no ve nunca `pimia.es`, y **las credenciales siguen llegando a
+       servidores de Pimia**: el integrador presta el nombre, no custodia la
+       contraseña — lo que contesta la pregunta aparcada de quién responde de
+       ellas. El **dominio por cliente** (que las instancias cuelguen del
+       dominio del integrador; ocho piezas de infraestructura, diseñadas en el
+       fork) queda SIN motivo salvo que un contrato lo exija: las direcciones
+       de la instancia no las ve nadie.
+    6. **El dashboard del integrador nace en Next.js + shadcn, en un repo
+       NUEVO de primera parte del plano central**, no en `pimia-web-shadcn`
+       (ese es el panel de la pyme y es lo que el integrador forkea: meter ahí
+       la consola con la que Pimia gestiona a sus partners haría que cada fork
+       la arrastrara). No contradice la decisión 2: no es migrar el Vue
+       central por estética, es producto nuevo para la única figura que nació
+       después de congelarlo. Enseña: cartera de clientes y tenants (con la
+       atribución del alta), invitaciones y traspasos, patrocinio y asientos,
+       lo que el integrador paga a Pimia, sus clients OAuth con alta y edición,
+       y el catálogo con sus precios de venta. No enseña sus cobros
+       minoristas. Dos condiciones antes de la primera línea: **un contrato
+       del plano central** (hoy `/api/desarrollador/*` es interno del SPA con
+       sesión Sanctum; el spec público solo cubre `/api/v1`) y **la
+       atribución** «este tenant entró por este integrador»
+       (galeote/factSaas#722, diseñada junto con #720).
+
+    **Lo que el fork midió sobre la línea del repo**, y que este punto da por
+    cerrado: todo lo que un integrador toca cabe en `src/host/`, `src/app/` y
+    `src/server/` (marca, menú, scopes, despliegue, y hasta su web comercial
+    servida por `Host`); lo que le obliga a entrar en `features/pimia/` es
+    deuda de la web, y son cinco cosas —las secciones de Ajustes de primera
+    parte siempre visibles, el menú de cuenta, los destinos de `closedDoors`,
+    la lista de permisos de `account.ts` y el widget de fichaje que dispara
+    `hr:read` sin mirar el grant— más el nombre del producto, que debería
+    venir de la costura de auth como ya vienen `firstParty` y sus scopes. Es
+    la opción A+ de `ESTUDIO-PRIMERA-PARTE-VS-PARTNER.md`, y ya no hace falta
+    decidirla contra B o C: la vertical existe sin dos árboles ni paquete.
+
+    **La deuda, en orden:** plan de canal con precio → #720 y #722 diseñadas
+    juntas (una sola prueba de atribución para el retorno, la cartera y el
+    `billing_mode`) → #721 → el contrato del plano central → el catálogo del
+    integrador y la activación mayorista → el dominio de acceso por
+    integrador → el dashboard. Quedan sin decidir dos cosas que no son de
+    arquitectura: la contraseña del cliente en el asistente de «Nuevo
+    cliente» (hoy la elige el tercero, con suelo de 6 frente a los 8 del
+    registro público) y la cifra del plan de canal.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
@@ -377,3 +473,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
 - El anfitrión Hermes: plugin en `pimia-hermes-plugin` (local, sin remoto
   todavía); la receta del build y los tropiezos del loader, en su README y
   sus commits.
+- El programa de integradores (punto 12): el fork `Pimia-AI/zoomo-pimia`
+  (privado; `docs/FORK.md` es su libro de cuentas y `docs/ESTUDIO-*.md` los
+  tres estudios medidos con cuenta de desarrollador real); en el núcleo,
+  galeote/factSaas#720 (retorno al integrador), #721 (invitación y
+  `billing_mode` del desarrollador) y #722 (atribución del alta). El estudio
+  de la línea del repo: `pimia-web-shadcn/docs/ESTUDIO-PRIMERA-PARTE-VS-PARTNER.md`.
