@@ -19,7 +19,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/billing/portal — Get Stripe Customer Portal URL
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          *
          *     Allows users to manage payment methods, view invoices, cancel subscriptions.
          */
@@ -41,7 +41,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/billing/sponsorship — asumir la licencia de un cliente
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          *
          *     Mismo mecanismo para las dos figuras intermediarias (gestoría y
          *     desarrollador): una suscripción de canal con `quantity` = asientos y una
@@ -50,7 +50,7 @@ export interface paths {
         post: operations["billing.sponsor"];
         /**
          * DELETE /api/billing/sponsorship — soltar un cliente patrocinado
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         delete: operations["billing.releaseSponsorship"];
         options?: never;
@@ -69,9 +69,14 @@ export interface paths {
          * GET /api/desarrollador/overview — cartera y cuota
          * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
          *
-         *     Cada fila de `cartera` lleva `origen`: el client OAuth que trajo al
-         *     tenant (la atribución del alta, #726) o `null` si entró por otro
-         *     camino. Es lo que el panel central enseña como «entró por tu app X».
+         *     Cada fila de `cartera` lleva `origen`: el client OAuth de ESTE
+         *     desarrollador por el que se le atribuye el tenant —con
+         *     `atribuido: true` si el alta lo dejó escrito (`origin_client_id`,
+         *     #726) y `false` si se infiere porque el vínculo está vivo y el
+         *     desarrollador tiene un único client con orígenes (la red de
+         *     `IntegradorDelTenant::clientDe`)— o `null`. Nunca el client de otro
+         *     desarrollador aunque el tenant lo recuerde: es su relación comercial,
+         *     no la de quien mira.
          *
          *     El cuerpo se declara entero porque el generador no sigue el `map()`
          *     sobre la colección de tenants: en la 1.3.0 `cartera` salía como una
@@ -487,7 +492,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/tenants/{slug}/transfer-ownership — traspaso de propiedad
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          *
          *     Versión mínima y deliberada: el dueño actual (o el superadmin) pasa la
          *     propiedad a un usuario que YA pertenece a la instancia. No es un flujo
@@ -516,7 +521,15 @@ export interface paths {
         };
         /**
          * GET /api/tenants/{slug}/users — List users with access to this tenant
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
+         *
+         *     En el contrato del plano central desde la 1.4.0: es a quién puede
+         *     traspasar la instancia el integrador que la creó
+         *     (`POST /tenants/{slug}/transfer-ownership` pide un `user_id` de aquí).
+         *     Contesta SOLO para las instancias que el que pregunta administra
+         *     —dueño o con asiento (`manageableTenants`)—; una instancia de la
+         *     cartera solo VINCULADA (`relacion: vinculada` en `overview`) responde
+         *     404, que es lo mismo que le pasaría al traspaso.
          */
         get: operations["tenant.users"];
         put?: never;
@@ -536,13 +549,13 @@ export interface paths {
         };
         /**
          * GET /api/tenant-invitations — Invitaciones de la gestoría autenticada
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         get: operations["tenantInvitation.index"];
         put?: never;
         /**
          * POST /api/tenant-invitations — Crear y enviar una invitación (gestoría)
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         post: operations["tenantInvitation.store"];
         delete?: never;
@@ -563,7 +576,7 @@ export interface paths {
         post?: never;
         /**
          * DELETE /api/tenant-invitations/{invitation} — Revocar una invitación
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         delete: operations["tenantInvitation.destroy"];
         options?: never;
@@ -666,7 +679,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    return_url?: string;
+                    return_url?: string | null;
                 };
             };
         };
@@ -695,6 +708,7 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "billing.sponsor": {
@@ -794,6 +808,7 @@ export interface operations {
                                 origen: {
                                     client_id: string;
                                     name: string;
+                                    atribuido: boolean;
                                 } | null;
                             }[];
                             resumen: {
@@ -887,37 +902,27 @@ export interface operations {
                             canal: {
                                 estado: string;
                                 asientos: number;
-                                /**
-                                 * @description Por la partida del PLAN: con un añadido mayorista el
-                                 *     canal es multiprecio y `$canal->quantity` es NULL.
-                                 */
                                 quantity: number;
-                                /** @description Si divergen, manda el número de asientos: es lo servido. */
                                 descuadre: boolean;
-                                termina_en: string;
+                                termina_en: string | null;
                             } | null;
                             asientos: {
                                 tenant_id: string;
                                 rol: string;
                                 en_mora: boolean;
-                                /** Format: date-time */
                                 gracia_hasta: string | null;
-                                /** Format: date-time */
                                 suspendido_desde: string | null;
                             }[];
                             en_mora: number;
-                            /**
-                             * @description Lo que paga en añadidos mayoristas de toda su cartera
-                             *     (módulos y apps activados a sus clientes). Por el servicio
-                             *     inyectado y no por `app()`: el generador del contrato solo
-                             *     ve la forma del retorno si sabe qué clase lo devuelve
-                             *     (en la 1.3.0 salía como `string`).
-                             */
                             anadidos: {
                                 activaciones: number;
                                 total_cents: number;
                                 total: string;
-                                por_tenant: unknown[];
+                                por_tenant: {
+                                    tenant_id: string;
+                                    activaciones: number;
+                                    total_cents: number;
+                                }[];
                             };
                         };
                     };
@@ -1758,7 +1763,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: string;
+                        data: {
+                            id: number;
+                            name: string;
+                            email: string;
+                            role: string;
+                            invited_at: string | null;
+                            is_owner: boolean;
+                        }[];
                     };
                 };
             };

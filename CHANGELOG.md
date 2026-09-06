@@ -47,9 +47,16 @@ Specs sincronizados con la rama del núcleo (2026-09-07): plano central
   y la activación publica `200` y `201` con el mismo cuerpo.
 - **`facturacion().data.anadidos`** era `string`; es
   `{activaciones, total_cents, total, por_tenant[]}`.
-- **`overview().data.cartera[].origen`**: la atribución del alta (el client
-  que trajo al tenant, `{client_id, name}`, o `null`), que la regla 6 pedía
-  y no existía.
+- **`overview().data.cartera[].origen`**: la atribución del alta —el client
+  del PROPIO integrador por el que se le atribuye el tenant,
+  `{client_id, name, atribuido}` (`atribuido: false` cuando se infiere del
+  vínculo y no del alta), o `null`—, que la regla 6 pedía y no existía. El
+  client de otro integrador nunca se enseña.
+- **`tenants.users()`** venía tipado como `string` en la primera exportación:
+  es la lista de `{id, name, email, role, invited_at, is_owner}`; `is_owner`
+  va por el título de propiedad. ⚠️ Solo contesta para instancias que el
+  integrador administra (dueño o con asiento): una solo VINCULADA responde
+  404, como el traspaso.
 
 ## [0.25.0] — 2026-09-07
 

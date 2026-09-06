@@ -24,7 +24,7 @@
         "/billing/portal": {
             "post": {
                 "operationId": "billing.portal",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nAllows users to manage payment methods, view invoices, cancel subscriptions.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nAllows users to manage payment methods, view invoices, cancel subscriptions.",
                 "summary": "POST /api/billing/portal \u2014 Get Stripe Customer Portal URL",
                 "tags": [
                     "Billing"
@@ -36,7 +36,11 @@
                                 "type": "object",
                                 "properties": {
                                     "return_url": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 2000
                                     }
                                 }
                             }
@@ -89,6 +93,9 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     }
@@ -100,7 +107,7 @@
         "/billing/sponsorship": {
             "post": {
                 "operationId": "billing.sponsor",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nMismo mecanismo para las dos figuras intermediarias (gestor\u00eda y\ndesarrollador): una suscripci\u00f3n de canal con `quantity` = asientos y una\nfactura consolidada, en vez de N suscripciones sueltas.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nMismo mecanismo para las dos figuras intermediarias (gestor\u00eda y\ndesarrollador): una suscripci\u00f3n de canal con `quantity` = asientos y una\nfactura consolidada, en vez de N suscripciones sueltas.",
                 "summary": "POST /api/billing/sponsorship \u2014 asumir la licencia de un cliente",
                 "tags": [
                     "Billing"
@@ -195,7 +202,7 @@
             },
             "delete": {
                 "operationId": "billing.releaseSponsorship",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "DELETE /api/billing/sponsorship \u2014 soltar un cliente patrocinado",
                 "tags": [
                     "Billing"
@@ -254,7 +261,7 @@
         "/desarrollador/overview": {
             "get": {
                 "operationId": "desarrollador.overview",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCada fila de `cartera` lleva `origen`: el client OAuth que trajo al\ntenant (la atribuci\u00f3n del alta, #726) o `null` si entr\u00f3 por otro\ncamino. Es lo que el panel central ense\u00f1a como \u00abentr\u00f3 por tu app X\u00bb.\n\nEl cuerpo se declara entero porque el generador no sigue el `map()`\nsobre la colecci\u00f3n de tenants: en la 1.3.0 `cartera` sal\u00eda como una\nlista de `string` y el panel no pod\u00eda tipar ni una fila.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCada fila de `cartera` lleva `origen`: el client OAuth de ESTE\ndesarrollador por el que se le atribuye el tenant \u2014con\n`atribuido: true` si el alta lo dej\u00f3 escrito (`origin_client_id`,\n#726) y `false` si se infiere porque el v\u00ednculo est\u00e1 vivo y el\ndesarrollador tiene un \u00fanico client con or\u00edgenes (la red de\n`IntegradorDelTenant::clientDe`)\u2014 o `null`. Nunca el client de otro\ndesarrollador aunque el tenant lo recuerde: es su relaci\u00f3n comercial,\nno la de quien mira.\n\nEl cuerpo se declara entero porque el generador no sigue el `map()`\nsobre la colecci\u00f3n de tenants: en la 1.3.0 `cartera` sal\u00eda como una\nlista de `string` y el panel no pod\u00eda tipar ni una fila.",
                 "summary": "GET /api/desarrollador/overview \u2014 cartera y cuota",
                 "tags": [
                     "Desarrollador"
@@ -328,11 +335,15 @@
                                                                     },
                                                                     "name": {
                                                                         "type": "string"
+                                                                    },
+                                                                    "atribuido": {
+                                                                        "type": "boolean"
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "client_id",
-                                                                    "name"
+                                                                    "name",
+                                                                    "atribuido"
                                                                 ]
                                                             }
                                                         },
@@ -634,19 +645,19 @@
                                                             "type": "string"
                                                         },
                                                         "asientos": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "quantity": {
-                                                            "type": "integer",
-                                                            "description": "Por la partida del PLAN: con un a\u00f1adido mayorista el\ncanal es multiprecio y `$canal->quantity` es NULL."
+                                                            "type": "integer"
                                                         },
                                                         "descuadre": {
-                                                            "type": "boolean",
-                                                            "description": "Si divergen, manda el n\u00famero de asientos: es lo servido."
+                                                            "type": "boolean"
                                                         },
                                                         "termina_en": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
@@ -675,15 +686,13 @@
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             },
                                                             "suspendido_desde": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
@@ -696,16 +705,13 @@
                                                     }
                                                 },
                                                 "en_mora": {
-                                                    "type": "integer",
-                                                    "minimum": 0
+                                                    "type": "integer"
                                                 },
                                                 "anadidos": {
                                                     "type": "object",
-                                                    "description": "Lo que paga en a\u00f1adidos mayoristas de toda su cartera\n(m\u00f3dulos y apps activados a sus clientes). Por el servicio\ninyectado y no por `app()`: el generador del contrato solo\nve la forma del retorno si sabe qu\u00e9 clase lo devuelve\n(en la 1.3.0 sal\u00eda como `string`).",
                                                     "properties": {
                                                         "activaciones": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "total_cents": {
                                                             "type": "integer"
@@ -715,7 +721,25 @@
                                                         },
                                                         "por_tenant": {
                                                             "type": "array",
-                                                            "items": {}
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "tenant_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "activaciones": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "total_cents": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "tenant_id",
+                                                                    "activaciones",
+                                                                    "total_cents"
+                                                                ]
+                                                            }
                                                         }
                                                     },
                                                     "required": [
@@ -2895,7 +2919,7 @@
         "/tenants/{slug}/transfer-ownership": {
             "post": {
                 "operationId": "tenant.transferOwnership",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nVersi\u00f3n m\u00ednima y deliberada: el due\u00f1o actual (o el superadmin) pasa la\npropiedad a un usuario que YA pertenece a la instancia. No es un flujo\nself-service con aceptaci\u00f3n por parte del destinatario; es la pieza que\nfaltaba para que el desarrollador que dio de alta un tenant pueda\ndevolv\u00e9rselo a su cliente.\n\nPor qu\u00e9 hace falta: la decisi\u00f3n n\u00ba 4 del fundador permite al\ndesarrollador crear tenants, y entonces \u00e9l queda de owner. El rescate por\nimpago (\u00abtu proveedor dej\u00f3 de pagar; asume t\u00fa la licencia\u00bb) exige que el\ncliente pueda ser due\u00f1o de lo suyo \u2014 si no, la instancia queda de reh\u00e9n.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nVersi\u00f3n m\u00ednima y deliberada: el due\u00f1o actual (o el superadmin) pasa la\npropiedad a un usuario que YA pertenece a la instancia. No es un flujo\nself-service con aceptaci\u00f3n por parte del destinatario; es la pieza que\nfaltaba para que el desarrollador que dio de alta un tenant pueda\ndevolv\u00e9rselo a su cliente.\n\nPor qu\u00e9 hace falta: la decisi\u00f3n n\u00ba 4 del fundador permite al\ndesarrollador crear tenants, y entonces \u00e9l queda de owner. El rescate por\nimpago (\u00abtu proveedor dej\u00f3 de pagar; asume t\u00fa la licencia\u00bb) exige que el\ncliente pueda ser due\u00f1o de lo suyo \u2014 si no, la instancia queda de reh\u00e9n.",
                 "summary": "POST /api/tenants/{slug}/transfer-ownership \u2014 traspaso de propiedad",
                 "tags": [
                     "Tenant"
@@ -3007,7 +3031,7 @@
         "/tenants/{slug}/users": {
             "get": {
                 "operationId": "tenant.users",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nEn el contrato del plano central desde la 1.4.0: es a qui\u00e9n puede\ntraspasar la instancia el integrador que la cre\u00f3\n(`POST /tenants/{slug}/transfer-ownership` pide un `user_id` de aqu\u00ed).\nContesta SOLO para las instancias que el que pregunta administra\n\u2014due\u00f1o o con asiento (`manageableTenants`)\u2014; una instancia de la\ncartera solo VINCULADA (`relacion: vinculada` en `overview`) responde\n404, que es lo mismo que le pasar\u00eda al traspaso.",
                 "summary": "GET /api/tenants/{slug}/users \u2014 List users with access to this tenant",
                 "tags": [
                     "Tenant"
@@ -3031,7 +3055,41 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "email": {
+                                                        "type": "string"
+                                                    },
+                                                    "role": {
+                                                        "type": "string"
+                                                    },
+                                                    "invited_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "is_owner": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "email",
+                                                    "role",
+                                                    "invited_at",
+                                                    "is_owner"
+                                                ]
+                                            }
                                         }
                                     },
                                     "required": [
@@ -3052,7 +3110,7 @@
         "/tenant-invitations": {
             "post": {
                 "operationId": "tenantInvitation.store",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "POST /api/tenant-invitations \u2014 Crear y enviar una invitaci\u00f3n (gestor\u00eda)",
                 "tags": [
                     "TenantInvitation"
@@ -3230,7 +3288,7 @@
             },
             "get": {
                 "operationId": "tenantInvitation.index",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "GET /api/tenant-invitations \u2014 Invitaciones de la gestor\u00eda autenticada",
                 "tags": [
                     "TenantInvitation"
@@ -3308,7 +3366,7 @@
         "/tenant-invitations/{invitation}": {
             "delete": {
                 "operationId": "tenantInvitation.destroy",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "DELETE /api/tenant-invitations/{invitation} \u2014 Revocar una invitaci\u00f3n",
                 "tags": [
                     "TenantInvitation"
