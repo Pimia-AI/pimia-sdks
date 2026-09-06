@@ -888,6 +888,21 @@ obtiene en el registro de Pimia o en el panel de integrador).
     contrato de la pyme y el asiento del socio—, nunca se lee del plan. En la
     maqueta, arreglarlo bajó el MRR de 854 € a 834 €.
 
+    **13.11. Una cuenta NO tiene pantalla propia: lleva a lo que ya existe
+    (2026-09-07).** Pulsar una cuenta del panel del superadmin abre la ficha de
+    **su instancia** si es una empresa, o **su ficha de socio** si es un
+    integrador o una asesoría; la del superadmin no lleva a ninguna parte y su
+    nombre ni siquiera es un enlace —un nombre que parece pulsable y no lleva a
+    nada se lee como algo roto—. Lo que hizo obvia la decisión fue contar: de 33
+    cuentas del censo, **28 tienen una sola instancia** y las otras **5 son
+    socios que ya tienen ficha**; una pantalla intermedia habría sido un nombre,
+    un correo y un enlace, o una copia de la ficha de socio, y **dos sitios
+    contando lo mismo acaban contándolo distinto**. Anotado el caso que hoy no
+    existe y habrá que resolver cuando aparezca: una empresa con dos instancias
+    no tendría adónde ir. Invariante: ningún destino puede apuntar a una
+    instancia o a un socio que ya no está — un enlace roto es peor que no tener
+    enlace.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
@@ -897,9 +912,8 @@ obtiene en el registro de Pimia o en el panel de integrador).
     **Lo que sigue sin decidir:** ningún recoveco de marco. Lo único aparcado a
     propósito es, por 13.9c, si entrar dentro de una instancia deja rastro y si
     el cliente se entera; el botón está a la vista y apagado hasta entonces. Sin
-    dibujar, porque nadie lo ha pedido: qué pasa al pulsar una cuenta, qué pasa
-    al pulsar una integración del catálogo, y el panel de la asesoría, que sale
-    de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    dibujar, porque nadie lo ha pedido: qué pasa al pulsar una integración del
+    catálogo, y el panel de la asesoría, que sale de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
