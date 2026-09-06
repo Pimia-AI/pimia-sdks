@@ -551,7 +551,19 @@ obtiene en el registro de Pimia o en el panel de integrador).
     `integrador_catalogo_items`, `Tenant::integrador()`, `GET|PUT
     /api/desarrollador/catalogo` (contrato central **1.1.0**, 17 operaciones) y
     la pantalla del cliente (`/billing/plans` con `catalogo`, `/tenant-modules`
-    con `billing: channel`). La activación mayorista es el siguiente PR.
+    con `billing: channel`) — galeote/factSaas#738, SDK 0.23.0, web #416,
+    todo desplegado en dev. **Y la activación mayorista, la misma noche**
+    (galeote/factSaas#739, SDK 0.24.0): el asiento «Desarrollador» pasa a
+    `modules: []` conservando lo encendido como heredado; `channel_activations`
+    es el libro mayor; `ActivacionMayorista` activa la base (el asiento),
+    módulos y apps y los cobra como partidas de la suscripción de canal sin
+    prorrateo (`ajustarPartida`, la única costura con Stripe); el cliente no
+    compra ni apaga lo del canal (`403 white_label` / `403 channel_module`) y
+    una app del canal la instala sin caja; `billing:reconcile-canal` coteja
+    por cartera. Contrato central 1.2.0, 20 operaciones. ⚠️ Los Prices
+    mayoristas (`STRIPE_PRICE_MODULE_ADDON_CANAL`, `apps.channel_stripe_price_id`)
+    los crea 👤 en la cuenta de test; hasta entonces activar contesta
+    `503 stripe_price_missing`.
 
 ## Referencias (repos privados)
 
