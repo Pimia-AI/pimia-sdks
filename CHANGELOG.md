@@ -8,6 +8,41 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.25.0] — 2026-09-07
+
+**El login del integrador entra en el plano central** (regla 5 del punto 12,
+REVISADA por 👤 el 2026-09-07; galeote/factSaas, rama `claude/login-integrador`):
+el nombre donde el cliente de un integrador teclea su contraseña
+(`login.erpstudio.es`) lo sirve el INTEGRADOR en su servidor, con su
+certificado y su DNS, y su proxy reenvía por HTTPS al AS del ápice de Pimia,
+que atiende detrás de un nombre interno `login-<slug>.<central>`. Todo aditivo.
+
+Specs sincronizados con **factSaas@d0bfeaa0** (2026-09-07, galeote/factSaas#741
+mergeado): plano central **1.3.0, 26 operaciones**; `/api/v1` sin cambios.
+
+### Añadido
+
+- **`PimiaCentralClient.dominios.{list,declare,remove}`** y el tipo
+  **`IntegradorDominioRequest`**: el integrador declara el nombre público que
+  sirve (`host`) y su etiqueta interna (`slug`); la respuesta trae `upstream`
+  (a dónde apuntar su proxy) y `proxy` (el bloque de Caddy listo). Pimia no
+  emite certificados ni toca DNS ajenos.
+- **`PimiaCentralClient.tokens.{list,create,revoke}`** y
+  **`IntegradorTokenRequest`**: los tokens de máquina acotados a
+  `desarrollador`, sin entrar en el panel (A3 cerrada: token personal, no
+  `client_credentials`). El token en claro se devuelve UNA vez.
+- **`TokenSet.tenantId`**: el canje del AS del ápice dice a qué instancia
+  pertenece el token (`tenant_id`); ausente cuando el canje es en el AS de un
+  tenant.
+
+### Cambiado
+
+- El alta pública firmada por un integrador (`POST /api/auth/register`, fuera
+  de los dos specs) devuelve `data.verification = { sent_by, url,
+  expires_in_minutes }`: con `sent_by: "integrador"` el correo de verificación
+  lo manda el integrador con `url` y Pimia no envía nada; con `"pimia"`, como
+  siempre. `POST /api/auth/resend-verification` contesta igual.
+
 ## [0.24.0] — 2026-09-06
 
 **La activación mayorista entra en el plano central** (regla 4 del punto 12;

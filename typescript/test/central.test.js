@@ -207,3 +207,53 @@ test('422 y 429 llegan tipados como en el cliente del tenant', async () => {
     (error) => error instanceof RateLimitError && error.retryAfter === 7,
   )
 })
+
+test('declara y retira sus nombres de login, y acuña y revoca tokens de máquina', async () => {
+  const { client, calls } = clientWith((url, init) => {
+    if (url.endsWith('/desarrollador/dominios') && init.method === 'POST') {
+      return json(
+        {
+          message: 'Nombre declarado.',
+          data: {
+            slug: 'zoomo',
+            host: 'login.erpstudio.es',
+            enabled: true,
+            login_url: 'https://login.erpstudio.es',
+            upstream: 'https://login-zoomo.pimia.es',
+            proxy: 'login.erpstudio.es {\n    reverse_proxy https://login-zoomo.pimia.es { … }\n}',
+            created_at: null,
+          },
+        },
+        201,
+      )
+    }
+    if (url.endsWith('/desarrollador/tokens') && init.method === 'POST') {
+      return json({ message: 'Token creado.', data: { token: '12|abc', id: 12, name: 'webhook', abilities: ['desarrollador'] } }, 201)
+    }
+    return json({ message: 'ok' })
+  })
+
+  const declarado = await client.dominios.declare({ slug: 'zoomo', host: 'login.erpstudio.es' })
+  assert.equal(declarado.data.upstream, 'https://login-zoomo.pimia.es')
+  assert.match(declarado.data.proxy, /reverse_proxy/)
+
+  await client.dominios.remove('zoomo')
+  const acunado = await client.tokens.create({ name: 'webhook' })
+  assert.equal(acunado.data.token, '12|abc')
+  await client.tokens.revoke(12)
+  await client.dominios.list()
+  await client.tokens.list()
+
+  assert.deepEqual(
+    calls.map((c) => [c.init.method, c.url.replace(BASE, '')]),
+    [
+      ['POST', '/api/desarrollador/dominios'],
+      ['DELETE', '/api/desarrollador/dominios/zoomo'],
+      ['POST', '/api/desarrollador/tokens'],
+      ['DELETE', '/api/desarrollador/tokens/12'],
+      ['GET', '/api/desarrollador/dominios'],
+      ['GET', '/api/desarrollador/tokens'],
+    ],
+  )
+  assert.equal(JSON.parse(calls[0].init.body).host, 'login.erpstudio.es')
+})

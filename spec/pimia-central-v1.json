@@ -2,8 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.2.0",
-        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad, su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal). Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
+        "version": "1.3.0",
+        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad, su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice) y sus tokens de m\u00e1quina. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
         {
@@ -2106,6 +2106,353 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/dominios": {
+            "get": {
+                "operationId": "integradorDominio.index",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET /api/desarrollador/dominios \u2014 los nombres de login del integrador",
+                "tags": [
+                    "IntegradorDominio"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "host": {
+                                                        "type": "string"
+                                                    },
+                                                    "enabled": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "login_url": {
+                                                        "type": "string"
+                                                    },
+                                                    "upstream": {
+                                                        "type": "string"
+                                                    },
+                                                    "proxy_secret": {
+                                                        "type": "string"
+                                                    },
+                                                    "proxy": {
+                                                        "type": "string"
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slug",
+                                                    "host",
+                                                    "enabled",
+                                                    "login_url",
+                                                    "upstream",
+                                                    "proxy_secret",
+                                                    "proxy",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "post": {
+                "operationId": "integradorDominio.store",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a\n32 caracteres `a-z0-9-`, \u00fanica en Pimia) y `host` el nombre p\u00fablico que\nel integrador sirve. Un nombre bajo un dominio de Pimia responde 422\n(`host`), igual que uno que ya declar\u00f3 otro integrador. La respuesta\ntrae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se\ngenera aqu\u00ed y se rota retirando el nombre y declar\u00e1ndolo otra vez.",
+                "summary": "POST /api/desarrollador/dominios \u2014 declarar un nombre de login",
+                "tags": [
+                    "IntegradorDominio"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "slug": {
+                                        "type": "string",
+                                        "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$"
+                                    },
+                                    "host": {
+                                        "type": "string",
+                                        "maxLength": 260
+                                    }
+                                },
+                                "required": [
+                                    "slug",
+                                    "host"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/dominios/{slug}": {
+            "delete": {
+                "operationId": "integradorDominio.destroy",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nDesde ese momento el host interno contesta 404 y el proxy del\nintegrador deja de tener a d\u00f3nde reenviar. 404 si el nombre no es suyo.",
+                "summary": "DELETE /api/desarrollador/dominios/{slug} \u2014 retirar un nombre de login",
+                "tags": [
+                    "IntegradorDominio"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/tokens": {
+            "get": {
+                "operationId": "integradorToken.index",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET /api/desarrollador/tokens \u2014 los tokens de m\u00e1quina vivos",
+                "tags": [
+                    "IntegradorToken"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "abilities": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "last_used_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "expires_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "abilities",
+                                                    "last_used_at",
+                                                    "expires_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "post": {
+                "operationId": "integradorToken.store",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`name` es para reconocerlo en la lista (\u00abwebhook de producci\u00f3n\u00bb). El\ntoken en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.\nPide la sesi\u00f3n del integrador (403 `session_required` con un token de\nm\u00e1quina): uno filtrado no acu\u00f1a hermanos.",
+                "summary": "POST /api/desarrollador/tokens \u2014 acu\u00f1ar un token de m\u00e1quina",
+                "tags": [
+                    "IntegradorToken"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 2,
+                                        "maxLength": 60
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/tokens/{id}": {
+            "delete": {
+                "operationId": "integradorToken.destroy",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n404 si no es suyo o no es de m\u00e1quina (una sesi\u00f3n del panel se cierra\ndesde el panel, no desde aqu\u00ed).",
+                "summary": "DELETE /api/desarrollador/tokens/{id} \u2014 revocar un token de m\u00e1quina",
+                "tags": [
+                    "IntegradorToken"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 },
                 "x-pimia-required-ability": "desarrollador",
