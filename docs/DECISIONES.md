@@ -839,18 +839,30 @@ obtiene en el registro de Pimia o en el panel de integrador).
     canal no tiene contrato ni plan que cambiarle: la paga su socio, y la ficha
     lo dice en vez de pintar un cero.
 
+    **13.8. El integrador VE el precio mayorista: es su coste real
+    (2026-09-06).** 👤: «el precio mayorista sí lo ve, es su coste real». Se
+    queda en su catálogo y en la ficha de cada cliente, junto a su precio de
+    venta y al margen. La razón importa tanto como la decisión: **no es una
+    referencia** ni un dato interno de Pimia que se le enseñe por cortesía, es
+    **lo que se le factura** cuando le activa algo a un cliente. Consecuencias de
+    redacción, que no son cosméticas: la pantalla lo llama **«te cuesta»** y no
+    «precio de Pimia», y dice que **es el mismo para todos los integradores** —si
+    pareciera negociable, cada conversación con un partner empezaría por ahí—.
+    Por la misma razón se quedan, salvo que 👤 diga lo contrario, las columnas de
+    dinero por cliente de su cartera y el bloque «lo que te deja» de la ficha:
+    son ese mismo coste puesto por cliente.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** los recovecos del §7.8 del estudio del banco
-    —si el integrador ve dinero por cliente y precio mayorista, qué hace cuando
-    un cliente deja de pagarle, si el superadmin gobierna a un socio entero
-    desde algún sitio, qué necesita ver de un plan antes de tocarle el precio, y
-    qué pasa cuando el superadmin entra dentro de una instancia (si deja rastro
-    y si el cliente se entera)—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** los cuatro recovecos del §7.9 del estudio del
+    banco —qué hace el integrador cuando un cliente deja de pagarle, si el
+    superadmin gobierna a un socio entero desde algún sitio, qué necesita ver de
+    un plan antes de tocarle el precio, y qué pasa cuando el superadmin entra
+    dentro de una instancia (si deja rastro y si el cliente se entera)—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
