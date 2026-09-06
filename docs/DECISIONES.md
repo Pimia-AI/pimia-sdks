@@ -820,17 +820,37 @@ obtiene en el registro de Pimia o en el panel de integrador).
     estaba vivo ESE mes**, y escribirla como una lista de totales la condena a
     contradecir la ficha en cuanto alguien mueva una fecha.
 
+    **13.7. La ficha de una instancia es para COBRAR Y CONTRATAR, y el precio
+    vive en el CONTRATO (2026-09-06).** De las cuatro cosas para las que un
+    superadmin abre una instancia —vigilar y desatascar, entrar a resolverla
+    dentro, cobrar y contratar, o responder con contexto—, 👤 eligió **cobrar y
+    contratar**: la ficha la mandan su contrato (plan, qué paga de verdad, desde
+    cuándo, quién paga), sus límites contra su consumo y su historial de cobros.
+    Dos reglas del producto pasan de la prosa al número, y las dos tienen
+    consecuencia técnica: **(a) el precio congelado** — una empresa paga lo que
+    costaba su plan el día que lo contrató, así que **el precio se guarda en el
+    contrato del tenant y NO se lee del plan**; leerlo del plan haría que subirlo
+    le subiera la factura a todo el parque de golpe, que es justo lo que la regla
+    existe para impedir (en la maqueta, arreglarlo bajó el MRR de 869 € a 854 €,
+    y ese es el número correcto); **(b) los límites subidos a mano** por encima
+    de los del plan, que es lo único que solo el superadmin puede hacer, y que la
+    ficha enseña junto al consumo — con quien se pasa de su límite marcado,
+    porque sin ese caso el botón de subirlo parece un capricho. Una instancia de
+    canal no tiene contrato ni plan que cambiarle: la paga su socio, y la ficha
+    lo dice en vez de pintar un cero.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** los recovecos del §7.7 del estudio del banco
+    **Lo que sigue sin decidir:** los recovecos del §7.8 del estudio del banco
     —si el integrador ve dinero por cliente y precio mayorista, qué hace cuando
-    dejan de pagarle, qué hace el superadmin con una instancia y con un socio,
-    qué necesita ver de un plan, y la ficha de instancia del superadmin, que es
-    la que obliga a decidir quién ve qué—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    un cliente deja de pagarle, si el superadmin gobierna a un socio entero
+    desde algún sitio, qué necesita ver de un plan antes de tocarle el precio, y
+    qué pasa cuando el superadmin entra dentro de una instancia (si deja rastro
+    y si el cliente se entera)—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
