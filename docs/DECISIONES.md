@@ -414,6 +414,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
        dominio del integrador; ocho piezas de infraestructura, diseñadas en el
        fork) queda SIN motivo salvo que un contrato lo exija: las direcciones
        de la instancia no las ve nadie.
+       **Revisada el 2026-09-07** (ver «El login del integrador, decidido»,
+       más abajo): el nombre lo sirve el integrador en su servidor y hace
+       proxy a Pimia; no hay CNAME a Pimia ni certificados ajenos en Pimia.
     6. **El dashboard del integrador nace en Next.js + shadcn, en un repo
        NUEVO de primera parte del plano central**, no en `pimia-web-shadcn`
        (ese es el panel de la pyme y es lo que el integrador forkea: meter ahí
@@ -564,6 +567,54 @@ obtiene en el registro de Pimia o en el panel de integrador).
     mayoristas (`STRIPE_PRICE_MODULE_ADDON_CANAL`, `apps.channel_stripe_price_id`)
     los crea 👤 en la cuenta de test; hasta entonces activar contesta
     `503 stripe_price_missing`.
+
+    **El login del integrador, decidido el 2026-09-07 (regla 5, REVISADA).**
+    👤 paró el primer estudio porque partía de una premisa falsa —que
+    `login.<integrador>` sería un CNAME del integrador a los servidores de
+    Pimia— cuando **los integradores tienen servidores y registradores
+    propios, ajenos a Pimia**. Se rehízo desde el mapa del conjunto
+    (`docs/ESTUDIO-LOGIN-DEL-INTEGRADOR.md` del web, con el gráfico de Zoomo,
+    Ana y Pimia): quién sirve cada nombre, quién emite cada certificado y por
+    dónde viaja la contraseña. Lo medido corrige dos cosas del estudio
+    anterior (las rutas centrales SÍ llevan `Route::domain`; `SESSION_DOMAIN`
+    es `.taskai.work`, no host-only) y destapa que `*.erpstudio.es` ya apunta
+    a la caja de Zoomo y que la contraseña del alta ya pasa por el servidor
+    del integrador (su `/registro` reenvía a `/api/auth/register`). Las seis
+    decisiones de 👤: (1) **el nombre de login lo sirve el INTEGRADOR en su
+    servidor, con su certificado y su DNS, y hace proxy al AS del ápice de
+    Pimia** (opción 2 del estudio), elegida sabiendo que la contraseña pasa
+    por su proxy y descartando que Pimia emita u opere certificados de
+    nombres ajenos, que es lo que el «CNAME a Pimia» obligaba. La regla 5 se
+    reescribe: el integrador sirve el nombre y termina el TLS; las
+    credenciales se comprueban y se guardan SOLO en Pimia; el integrador
+    responde de su proxy como responde ya de su app y de los tokens que
+    guarda; el pie de `/entrar` («la contraseña solo en tu dominio») no vale
+    para sus clientes. Forma técnica que se deriva: Pimia da a cada
+    integrador un nombre interno bajo su comodín (`login-<slug>.taskai.work`
+    / `.pimia.es`, ya con DNS y certificado); el proxy reenvía por HTTPS a
+    ese nombre con el público en `X-Forwarded-Host`, que Pimia acepta solo si
+    coincide con el registrado por ese integrador, y con él construye issuer,
+    formularios y redirecciones; las cookies de ese host salen sin dominio;
+    el salto cifrado es obligatorio. (2) **El alta se queda en la app del
+    integrador**: moverla al host de login perdió su motivo, porque con el
+    proxy la contraseña del login también pasa por él. (3) **El selector del
+    AS en ese nombre ofrece solo la cartera del integrador**
+    (`Tenant::integrador()`); un correo sin empresas con él no entra por ahí.
+    (4) **El correo de verificación lo envía el INTEGRADOR** (la opción C
+    aparcada el 06-09): el alta firmada devuelve el enlace de verificación al
+    servidor del integrador; la instancia sigue en espera hasta que se abre;
+    Pimia solo sabe que el correo es real en la medida en que el integrador
+    lo mandó a la dirección buena; el enlace aterriza en su nombre de login.
+    (5) **A3 cerrada: token personal acotado a `desarrollador`, con alta,
+    listado y revocación por API** (`/api/desarrollador/tokens`);
+    `client_credentials` del ápice, no. (6) Los nombres se registran por API
+    (`/api/desarrollador/dominios`) y entran con los tokens en
+    `config/central_surface.php` (contrato central 1.3.0) y en el SDK. Orden
+    de construcción: núcleo (nombres, grupo de rutas del host de login,
+    selector por cartera, pista `tenant` y `tenant_id` en el canje, enlace de
+    verificación en la respuesta del alta firmada, tokens por API) → web y
+    fork (`PIMIA_AUTH_BASE_URL`, el correo desde el integrador, el bloque de
+    Caddy de Zoomo para `login.erpstudio.es`) → medir con Talleres Ana.
 
 ## Referencias (repos privados)
 
