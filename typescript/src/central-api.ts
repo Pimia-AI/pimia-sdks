@@ -248,7 +248,9 @@ export interface paths {
          *     como una partida más de su canal, sin prorrateo, en la factura del mes;
          *     el módulo se enciende en el acto y la app la instala el cliente por
          *     empresa sin pasar por caja. Idempotente: lo ya activo contesta
-         *     `already_active: true` sin tocar Stripe. Cortes, con su código en
+         *     `already_active: true` sin tocar Stripe (y remata lo que se quedó a
+         *     medias); un módulo que el cliente ya tenía encendido por su cuenta
+         *     contesta `already_active` con `inherited: true` y NO se cobra. Cortes, con su código en
          *     `error`: `not_the_integrator` (403), `not_sellable` (422),
          *     `base_required` y `channel_required` (409), `channel_subscription_ending`
          *     (402), `stripe_price_missing` (503), `stripe_addon_failed` (502),
@@ -651,6 +653,10 @@ export interface operations {
                             canal: {
                                 estado: string;
                                 asientos: number;
+                                /**
+                                 * @description Por la partida del PLAN: con un añadido mayorista el
+                                 *     canal es multiprecio y `$canal->quantity` es NULL.
+                                 */
                                 quantity: number;
                                 /** @description Si divergen, manda el número de asientos: es lo servido. */
                                 descuadre: boolean;

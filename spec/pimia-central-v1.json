@@ -483,7 +483,8 @@
                                                             "minimum": 0
                                                         },
                                                         "quantity": {
-                                                            "type": "integer"
+                                                            "type": "integer",
+                                                            "description": "Por la partida del PLAN: con un a\u00f1adido mayorista el\ncanal es multiprecio y `$canal->quantity` es NULL."
                                                         },
                                                         "descuadre": {
                                                             "type": "boolean",
@@ -1425,7 +1426,7 @@
             },
             "post": {
                 "operationId": "integradorActivacion.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`kind` \u2208 `base|module|app` y `slug` (`pimia` para la base). La base es el\nasiento: la primera vez devuelve `checkout_url` (el canal a\u00fan no tiene\nsuscripci\u00f3n) y las siguientes es un asiento m\u00e1s. Un m\u00f3dulo o una app\nexigen la base viva (`409 base_required`) y se cobran al integrador\ncomo una partida m\u00e1s de su canal, sin prorrateo, en la factura del mes;\nel m\u00f3dulo se enciende en el acto y la app la instala el cliente por\nempresa sin pasar por caja. Idempotente: lo ya activo contesta\n`already_active: true` sin tocar Stripe. Cortes, con su c\u00f3digo en\n`error`: `not_the_integrator` (403), `not_sellable` (422),\n`base_required` y `channel_required` (409), `channel_subscription_ending`\n(402), `stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_busy` (409), `module_not_enabled` (422).",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`kind` \u2208 `base|module|app` y `slug` (`pimia` para la base). La base es el\nasiento: la primera vez devuelve `checkout_url` (el canal a\u00fan no tiene\nsuscripci\u00f3n) y las siguientes es un asiento m\u00e1s. Un m\u00f3dulo o una app\nexigen la base viva (`409 base_required`) y se cobran al integrador\ncomo una partida m\u00e1s de su canal, sin prorrateo, en la factura del mes;\nel m\u00f3dulo se enciende en el acto y la app la instala el cliente por\nempresa sin pasar por caja. Idempotente: lo ya activo contesta\n`already_active: true` sin tocar Stripe (y remata lo que se qued\u00f3 a\nmedias); un m\u00f3dulo que el cliente ya ten\u00eda encendido por su cuenta\ncontesta `already_active` con `inherited: true` y NO se cobra. Cortes, con su c\u00f3digo en\n`error`: `not_the_integrator` (403), `not_sellable` (422),\n`base_required` y `channel_required` (409), `channel_subscription_ending`\n(402), `stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_busy` (409), `module_not_enabled` (422).",
                 "summary": "POST /api/desarrollador/tenants/{slug}/activaciones \u2014 activar algo al cliente",
                 "tags": [
                     "IntegradorActivacion"
