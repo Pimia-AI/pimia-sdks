@@ -804,18 +804,33 @@ obtiene en el registro de Pimia o en el panel de integrador).
     recovecos que faltan por acordar están enumerados en el §7.6 del estudio del
     banco.
 
+    **13.6. Hay ficha de cliente en el panel del integrador, y las activaciones
+    llevan FECHA (2026-09-06).** Al pulsar un cliente de su cartera se abre su
+    ficha: qué le tiene activado y **desde cuándo**, cuánto le deja al mes y
+    cuánto lleva pagado por él, su historia (alta, activaciones, bajas, corte) y
+    **qué NO ve de él** —sus facturas, su equipo, sus copias—, que no es un hueco
+    sino el trato y por eso está escrito en la pantalla. Consecuencia para el
+    núcleo y el SDK cuando toque construirlo: la ficha necesita las
+    **activaciones con fecha de alta y de baja** por instancia, no solo la lista
+    de lo activo hoy; `GET /api/desarrollador/tenants/{slug}/activaciones`
+    devuelve el estado, y sin fechas la ficha no puede contar la historia de un
+    cliente ni cuadrar un mes pasado. Lo mismo vale para la ventana de
+    facturación de cada instancia (desde cuándo y hasta cuándo se le cobró el
+    asiento al socio): **la factura de canal de un mes se calcula de lo que
+    estaba vivo ESE mes**, y escribirla como una lista de totales la condena a
+    contradecir la ficha en cuanto alguien mueva una fecha.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** los ocho recovecos del §7.6 del estudio del
-    banco —qué pasa al pulsar un cliente en la cartera, si el integrador ve
-    dinero por cliente y precio mayorista, qué hace cuando dejan de pagarle, qué
-    hace el superadmin con una instancia y con un socio, qué necesita ver de un
-    plan, y la ficha de instancia compartida, que es la que obliga a decidir
-    quién ve qué—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** los recovecos del §7.7 del estudio del banco
+    —si el integrador ve dinero por cliente y precio mayorista, qué hace cuando
+    dejan de pagarle, qué hace el superadmin con una instancia y con un socio,
+    qué necesita ver de un plan, y la ficha de instancia del superadmin, que es
+    la que obliga a decidir quién ve qué—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
