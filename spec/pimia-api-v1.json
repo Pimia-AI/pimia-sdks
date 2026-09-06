@@ -28878,7 +28878,7 @@
         "/billing/plans": {
             "get": {
                 "operationId": "tenantBilling.plans",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSin los planes de canal (`Asesor\u00eda`, `Desarrollador`): esos los contrata\nuna gestor\u00eda o un desarrollador para su cartera, no una pyme. Con la\ninstancia en marca blanca \u2014su licencia la paga un desarrollador\u2014 la lista\nllega VAC\u00cdA y `white_label` a `true`: el cliente vive dentro del producto\ndel partner y no ve precios de Pimia. El corte va en el servidor.\n\n**Cada plan dice adem\u00e1s qu\u00e9 m\u00f3dulos opcionales trae y cu\u00e1les costar\u00edan\naparte** (`optional_modules`), que es lo que la pantalla de contrataci\u00f3n\nnecesita para ofrecer a\u00f1adirlos al contratar: pregunt\u00e1rselo a\n`GET /tenant-modules` ser\u00eda preguntar por el plan de HOY, y quien est\u00e1\neligiendo plan quiere saber lo del plan de MA\u00d1ANA. En un plan gratuito\nno hay ni `included` ni `addon`: no incluye ninguno y no hay\nsuscripci\u00f3n a la que sumarlos (2026-09-04).",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSin los planes de canal (`Asesor\u00eda`, `Desarrollador`): esos los contrata\nuna gestor\u00eda o un desarrollador para su cartera, no una pyme. Con\nINTEGRADOR \u2014su licencia la paga un desarrollador, o entr\u00f3 por la app de\nuno y el v\u00ednculo sigue vivo\u2014 la lista llega VAC\u00cdA y en su lugar va\n`catalogo`: lo que ese integrador revende, a su precio y con su enlace\nde contrataci\u00f3n (regla 4 del punto 12; decisi\u00f3n de \ud83d\udc64 del 2026-09-06: el\ncliente de un integrador no ve un precio de Pimia nunca, ni antes del\nprimer pago). `white_label` sigue diciendo el HECHO de que lo paga un\ntercero; `catalogo` es `null` mientras el integrador no configure el\nsuyo. El corte va en el servidor.\n\n**Cada plan dice adem\u00e1s qu\u00e9 m\u00f3dulos opcionales trae y cu\u00e1les costar\u00edan\naparte** (`optional_modules`), que es lo que la pantalla de contrataci\u00f3n\nnecesita para ofrecer a\u00f1adirlos al contratar: pregunt\u00e1rselo a\n`GET /tenant-modules` ser\u00eda preguntar por el plan de HOY, y quien est\u00e1\neligiendo plan quiere saber lo del plan de MA\u00d1ANA. En un plan gratuito\nno hay ni `included` ni `addon`: no incluye ninguno y no hay\nsuscripci\u00f3n a la que sumarlos (2026-09-04).",
                 "summary": "Los planes que esta instancia puede contratar",
                 "tags": [
                     "TenantBilling"
@@ -28996,12 +28996,105 @@
                                                 "string",
                                                 "null"
                                             ]
+                                        },
+                                        "catalogo": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "properties": {
+                                                "integrador": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "nombre": {
+                                                            "type": "string"
+                                                        },
+                                                        "soporte_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "soporte_email": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "nombre",
+                                                        "soporte_url",
+                                                        "soporte_email"
+                                                    ]
+                                                },
+                                                "currency": {
+                                                    "type": "string"
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "description": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "price_cents": {
+                                                                "type": "integer"
+                                                            },
+                                                            "price": {
+                                                                "type": "string"
+                                                            },
+                                                            "contract_url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "active": {
+                                                                "type": [
+                                                                    "boolean",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "slug",
+                                                            "name",
+                                                            "description",
+                                                            "price_cents",
+                                                            "price",
+                                                            "contract_url",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "integrador",
+                                                "currency",
+                                                "items"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "data",
                                         "white_label",
-                                        "message"
+                                        "message",
+                                        "catalogo"
                                     ]
                                 }
                             }
@@ -29190,6 +29283,34 @@
                                                         "can_manage": {
                                                             "type": "boolean"
                                                         },
+                                                        "integrador": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "nombre": {
+                                                                    "type": "string"
+                                                                },
+                                                                "soporte_url": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "soporte_email": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "nombre",
+                                                                "soporte_url",
+                                                                "soporte_email"
+                                                            ]
+                                                        },
                                                         "seat": {
                                                             "type": [
                                                                 "object",
@@ -29223,6 +29344,7 @@
                                                         "mode",
                                                         "white_label",
                                                         "can_manage",
+                                                        "integrador",
                                                         "seat"
                                                     ]
                                                 },
@@ -30757,7 +30879,7 @@
         "/tenant-modules": {
             "get": {
                 "operationId": "tenantModules.index",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no\nse compran a Pimia: los activa el integrador y los cobra \u00e9l. Cada\nopcional ofrecido lleva entonces `billing: channel`, `price` es el\nprecio MINORISTA de su cat\u00e1logo (`null` si no lo revende), `purchasable`\nes falso y `contract_url` es su enlace de contrataci\u00f3n, con `tenant` e\n`item` puestos.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.",
                 "summary": "Los m\u00f3dulos del registro y en qu\u00e9 estado est\u00e1 cada uno EN ESTA INSTANCIA",
                 "tags": [
                     "TenantModules"
@@ -30829,6 +30951,12 @@
                                                     "purchasable": {
                                                         "type": "boolean"
                                                     },
+                                                    "contract_url": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
                                                     "addon_active": {
                                                         "type": "boolean"
                                                     },
@@ -30884,6 +31012,7 @@
                                                     "price_cents",
                                                     "price",
                                                     "purchasable",
+                                                    "contract_url",
                                                     "addon_active",
                                                     "addon_ends_at",
                                                     "installed_at",

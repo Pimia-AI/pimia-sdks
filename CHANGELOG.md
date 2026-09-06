@@ -8,6 +8,41 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.23.0] — 2026-09-06
+
+**El catálogo del integrador entra en el plano central** (regla 4 del punto 12
+de `docs/DECISIONES.md`; galeote/factSaas#738): qué revende el integrador a
+sus clientes —Pimia base, cada módulo opcional, cada app integrada—, a qué
+precio minorista, en qué moneda y con qué enlace de contratación. Su cliente
+lo ve en la pantalla de plan de su instancia en vez de los precios de Pimia.
+Todo aditivo.
+
+Specs sincronizados con **factSaas@b34e3a8f** (2026-09-06): el plano central
+pasa a **1.1.0 con 17 operaciones** (las 15 de la 0.22.0 más
+`GET|PUT /desarrollador/catalogo`); `/api/v1` sigue en **438** y publica en
+`GET /billing/plans` el objeto `catalogo`, en `GET /billing/subscription`
+`billing.integrador`, y en `GET /tenant-modules` el modo `billing: channel`
+con `contract_url`.
+
+### Añadido
+
+- **`PimiaCentralClient.catalogo.{get,replace}`**: leer el catálogo propio
+  (con `disponibles`, lo que se puede revender) y reemplazarlo entero.
+  Habilidad `desarrollador`.
+- Tipo exportado **`CatalogoDelIntegradorRequest`** (el cuerpo del `PUT`,
+  del schema `IntegradorCatalogoRequest` del contrato).
+
+### Lo que hay que tener delante para integrarlo
+
+- El precio del catálogo es del integrador y **nunca llega al Stripe de
+  Pimia**: lo que Pimia cobra al integrador es su plan de canal y sus añadidos
+  mayoristas (la activación, que llegará en la siguiente versión).
+- A un tenant con integrador —lo paga un desarrollador, o entró por su app y
+  el vínculo vive— el núcleo le contesta `403 white_label` en checkout,
+  cambio de plan y añadidos, con el nombre del integrador en `message`.
+- `@pimia/design-tokens` sube a 0.23.0 **sin cambios de código**. El PHP SDK
+  sigue sin cliente del plano central.
+
 ## [0.22.0] — 2026-09-06
 
 **El plano central entra en el SDK: `PimiaCentralClient` y el segundo

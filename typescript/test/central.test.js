@@ -96,6 +96,32 @@ test('las escrituras van como JSON a la ruta del contrato', async () => {
   assert.equal(calls[6].init.headers['content-type'], undefined, 'sin cuerpo no hay content-type')
 })
 
+test('el catálogo del integrador: leerlo y reemplazarlo entero por la ruta del contrato', async () => {
+  const { client, calls } = clientWith(() =>
+    json({ data: { perfil: null, currency: null, contract_url: null, items: [], disponibles: { base: [], modules: [], apps: [] } } }),
+  )
+
+  const leido = await client.catalogo.get()
+  assert.equal(leido.data.perfil, null)
+
+  await client.catalogo.replace({
+    nombre_comercial: 'Zoomo Estudio',
+    currency: 'EUR',
+    contract_url: 'https://app.erpstudio.es/contratar',
+    items: [
+      { kind: 'base', slug: 'pimia', price_cents: 2900 },
+      { kind: 'module', slug: 'crm', price_cents: 500 },
+    ],
+  })
+
+  assert.deepEqual(
+    calls.map((c) => `${c.init.method} ${c.url.slice(BASE.length)}`),
+    ['GET /api/desarrollador/catalogo', 'PUT /api/desarrollador/catalogo'],
+  )
+  assert.equal(calls[1].init.headers['content-type'], 'application/json')
+  assert.equal(JSON.parse(calls[1].init.body).items.length, 2)
+})
+
 test('un 403 token_sin_habilidad es MissingAbilityError con la habilidad que falta', async () => {
   const { client } = clientWith(() =>
     json(

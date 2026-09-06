@@ -323,7 +323,9 @@ sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un
 cliente) y el traspaso de propiedad. Quince operaciones; no lleva contenido
 fiscal de ningún cliente. Se autentica con el **token personal** de la cuenta,
 acotado por plano (`central`, `desarrollador`; cada operación declara la suya
-en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript.
+en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript
+(desde la 0.23.0, también el catálogo del integrador: `catalogo.get()` y
+`catalogo.replace()`).
 
 ```bash
 ./scripts/sync-spec.sh --api central /ruta/al/checkout/de/factSaas
