@@ -1,0 +1,1808 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Pimia \u2014 plano central, contrato del integrador",
+        "version": "1.0.0",
+        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente) y el traspaso de propiedad. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
+    },
+    "servers": [
+        {
+            "url": "https://taskai.work/api",
+            "description": "Plano central (dev)"
+        },
+        {
+            "url": "https://pimia.es/api",
+            "description": "Plano central (prod)"
+        }
+    ],
+    "security": [
+        {
+            "http": []
+        }
+    ],
+    "paths": {
+        "/billing/sponsorship": {
+            "post": {
+                "operationId": "billing.sponsor",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nMismo mecanismo para las dos figuras intermediarias (gestor\u00eda y\ndesarrollador): una suscripci\u00f3n de canal con `quantity` = asientos y una\nfactura consolidada, en vez de N suscripciones sueltas.",
+                "summary": "POST /api/billing/sponsorship \u2014 asumir la licencia de un cliente",
+                "tags": [
+                    "Billing"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "tenant_slug": {
+                                        "type": "string"
+                                    },
+                                    "plan_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "tenant_slug",
+                                    "plan_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Completa el alta de tu suscripci\u00f3n de canal para activar el patrocinio.",
+                                                        "Asumida la licencia de la instancia."
+                                                    ]
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "checkout_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "checkout_url"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message",
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "delete": {
+                "operationId": "billing.releaseSponsorship",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "DELETE /api/billing/sponsorship \u2014 soltar un cliente patrocinado",
+                "tags": [
+                    "Billing"
+                ],
+                "parameters": [
+                    {
+                        "name": "tenant_slug",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Has dejado de pagar la licencia de esta instancia."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/overview": {
+            "get": {
+                "operationId": "desarrollador.overview",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET /api/desarrollador/overview \u2014 cartera y cuota",
+                "tags": [
+                    "Desarrollador"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "cartera": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "resumen": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "activos": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "suspendidos": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total",
+                                                        "activos",
+                                                        "suspendidos"
+                                                    ]
+                                                },
+                                                "cuota": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "usada": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "limite": {
+                                                            "type": "integer"
+                                                        },
+                                                        "ilimitada": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "usada",
+                                                        "limite",
+                                                        "ilimitada"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "cartera",
+                                                "resumen",
+                                                "cuota"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/salud": {
+            "get": {
+                "operationId": "desarrollador.salud",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLo que un desarrollador necesita y un asesor no: si sus clients siguen\nus\u00e1ndose, si sus webhooks llegan y si tiene propuestas esperando decisi\u00f3n\ndel cliente. Todo son METADATOS de la integraci\u00f3n \u2014 \u00faltimo uso, c\u00f3digos\nde estado, contadores. Nunca el contenido de lo que viaja.",
+                "summary": "GET /api/desarrollador/salud \u2014 estado t\u00e9cnico de sus integraciones",
+                "tags": [
+                    "Desarrollador"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "clients": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "client_id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "revoked_at": {
+                                                                "type": "string"
+                                                            },
+                                                            "tokens_vivos": {
+                                                                "type": "integer"
+                                                            },
+                                                            "ultimo_uso": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "client_id",
+                                                            "name",
+                                                            "revoked_at",
+                                                            "tokens_vivos",
+                                                            "ultimo_uso"
+                                                        ]
+                                                    }
+                                                },
+                                                "webhooks": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "tenant_id": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "url": {
+                                                                "type": "string",
+                                                                "description": "La URL es del desarrollador, no del cliente: puede verla."
+                                                            },
+                                                            "events": {
+                                                                "type": "array",
+                                                                "items": {}
+                                                            },
+                                                            "disabled_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "consecutive_failures": {
+                                                                "type": "integer"
+                                                            },
+                                                            "entregas_7d": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "delivered": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "pending": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "dead": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "delivered",
+                                                                    "pending",
+                                                                    "dead"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "tenant_id",
+                                                            "url",
+                                                            "events",
+                                                            "disabled_at",
+                                                            "consecutive_failures",
+                                                            "entregas_7d"
+                                                        ]
+                                                    }
+                                                },
+                                                "approvals": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "abiertas": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "por_tenant": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "tenant_id": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "abiertas": {
+                                                                                "type": "integer"
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "tenant_id",
+                                                                            "abiertas"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "abiertas",
+                                                                "por_tenant"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "abiertas": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "por_tenant": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "minItems": 0,
+                                                                    "maxItems": 0,
+                                                                    "additionalItems": false
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "abiertas",
+                                                                "por_tenant"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "clients",
+                                                "webhooks",
+                                                "approvals"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/facturacion": {
+            "get": {
+                "operationId": "desarrollador.facturacion",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET /api/desarrollador/facturacion \u2014 su suscripci\u00f3n de canal",
+                "tags": [
+                    "Desarrollador"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "canal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "estado": {
+                                                            "type": "string"
+                                                        },
+                                                        "asientos": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "quantity": {
+                                                            "type": "integer"
+                                                        },
+                                                        "descuadre": {
+                                                            "type": "boolean",
+                                                            "description": "Si divergen, manda el n\u00famero de asientos: es lo servido."
+                                                        },
+                                                        "termina_en": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "estado",
+                                                        "asientos",
+                                                        "quantity",
+                                                        "descuadre",
+                                                        "termina_en"
+                                                    ]
+                                                },
+                                                "asientos": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "tenant_id": {
+                                                                "type": "string"
+                                                            },
+                                                            "rol": {
+                                                                "type": "string"
+                                                            },
+                                                            "en_mora": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "gracia_hasta": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            },
+                                                            "suspendido_desde": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "format": "date-time"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "tenant_id",
+                                                            "rol",
+                                                            "en_mora",
+                                                            "gracia_hasta",
+                                                            "suspendido_desde"
+                                                        ]
+                                                    }
+                                                },
+                                                "en_mora": {
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "canal",
+                                                "asientos",
+                                                "en_mora"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/links": {
+            "get": {
+                "operationId": "desarrolladorLink.index",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "link_code": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "tenant": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name",
+                                                            "status"
+                                                        ]
+                                                    },
+                                                    "requester": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "email": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name",
+                                                            "email"
+                                                        ]
+                                                    },
+                                                    "requested_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "accepted_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "revoked_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "link_code",
+                                                    "status",
+                                                    "tenant",
+                                                    "requester",
+                                                    "requested_at",
+                                                    "accepted_at",
+                                                    "revoked_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/links/generate-code": {
+            "post": {
+                "operationId": "desarrolladorLink.generateCode",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "C\u00f3digo de vinculaci\u00f3n generado."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "link_code": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "tenant": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "status"
+                                                    ]
+                                                },
+                                                "requester": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "email": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "requested_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "accepted_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "revoked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "link_code",
+                                                "status",
+                                                "tenant",
+                                                "requester",
+                                                "requested_at",
+                                                "accepted_at",
+                                                "revoked_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/links/{id}/accept": {
+            "post": {
+                "operationId": "desarrolladorLink.accept",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nAqu\u00ed est\u00e1 LA diferencia con la gestor\u00eda: no se crea ning\u00fan usuario dentro\ndel tenant ni se toca `tenant_users`. El v\u00ednculo solo pasa a `active`.",
+                "summary": "Aceptar la solicitud de una instancia",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Vinculaci\u00f3n aceptada."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "link_code": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "tenant": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "status"
+                                                    ]
+                                                },
+                                                "requester": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "email": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "requested_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "accepted_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "revoked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "link_code",
+                                                "status",
+                                                "tenant",
+                                                "requester",
+                                                "requested_at",
+                                                "accepted_at",
+                                                "revoked_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "An error\n\nAn error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "examples": [
+                                                        "La solicitud no est\u00e1 pendiente."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "examples": [
+                                                        "La solicitud no tiene instancia asociada."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/links/{id}/reject": {
+            "post": {
+                "operationId": "desarrolladorLink.reject",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Solicitud rechazada."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "La solicitud no est\u00e1 pendiente."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/clients": {
+            "get": {
+                "operationId": "desarrolladorLink.clients",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET \u2014 los clients OAuth de este desarrollador",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "client_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "confidential": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "scope": {
+                                                        "type": "string"
+                                                    },
+                                                    "registration_tenant_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "revoked_at": {
+                                                        "type": "string"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "client_id",
+                                                    "name",
+                                                    "confidential",
+                                                    "scope",
+                                                    "registration_tenant_id",
+                                                    "revoked_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/clients/claim": {
+            "post": {
+                "operationId": "desarrolladorLink.claimClient",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nRequiere demostrar posesi\u00f3n del client, no solo conocer su id: el\nclient_id viaja en cada pantalla de consentimiento y en la URL de\nautorizaci\u00f3n, as\u00ed que es p\u00fablico de facto. Para un client confidencial se\nexige el secret; para uno p\u00fablico (PKCE, sin secret) solo puede\nreclamarlo quien lo registr\u00f3 desde un tenant vinculado a esta cuenta.",
+                "summary": "POST \u2014 \u00abeste client es m\u00edo\u00bb",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "client_id": {
+                                        "type": "string",
+                                        "maxLength": 100
+                                    },
+                                    "client_secret": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    }
+                                },
+                                "required": [
+                                    "client_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string",
+                                                    "const": "ownership_not_provable"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Este client es p\u00fablico (sin secret). Solo puedes reclamarlo si se registr\u00f3 desde una instancia vinculada a tu cuenta."
+                                                }
+                                            },
+                                            "required": [
+                                                "error",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string",
+                                                    "const": "invalid_client_secret"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "El client_secret no coincide. Solo quien lo tiene puede reclamar el client."
+                                                }
+                                            },
+                                            "required": [
+                                                "error",
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "already_owned"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Ese client ya pertenece a otra cuenta."
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/tenants/{slug}/transfer-ownership": {
+            "post": {
+                "operationId": "tenant.transferOwnership",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nVersi\u00f3n m\u00ednima y deliberada: el due\u00f1o actual (o el superadmin) pasa la\npropiedad a un usuario que YA pertenece a la instancia. No es un flujo\nself-service con aceptaci\u00f3n por parte del destinatario; es la pieza que\nfaltaba para que el desarrollador que dio de alta un tenant pueda\ndevolv\u00e9rselo a su cliente.\n\nPor qu\u00e9 hace falta: la decisi\u00f3n n\u00ba 4 del fundador permite al\ndesarrollador crear tenants, y entonces \u00e9l queda de owner. El rescate por\nimpago (\u00abtu proveedor dej\u00f3 de pagar; asume t\u00fa la licencia\u00bb) exige que el\ncliente pueda ser due\u00f1o de lo suyo \u2014 si no, la instancia queda de reh\u00e9n.",
+                "summary": "POST /api/tenants/{slug}/transfer-ownership \u2014 traspaso de propiedad",
+                "tags": [
+                    "Tenant"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "user_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "tenant_id": {
+                                                    "type": "string"
+                                                },
+                                                "owner_id": {
+                                                    "type": "integer"
+                                                },
+                                                "billing_mode": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "sponsor",
+                                                        "self"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "tenant_id",
+                                                "owner_id",
+                                                "billing_mode"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                "Solo el propietario actual puede traspasar la instancia."
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/tenant-invitations": {
+            "post": {
+                "operationId": "tenantInvitation.store",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "POST /api/tenant-invitations \u2014 Crear y enviar una invitaci\u00f3n (gestor\u00eda)",
+                "tags": [
+                    "TenantInvitation"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 255
+                                    },
+                                    "company_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 255
+                                    },
+                                    "billing": {
+                                        "type": "string",
+                                        "description": "`despacho|cliente` es el vocabulario de la gestor\u00eda; `sponsor|self`\nel general del modelo de facturaci\u00f3n (Tenant::BILLING_*). Se\naceptan los dos y se guarda el de siempre, para no partir la\ncolumna ni el asistente en dos.",
+                                        "enum": [
+                                            "despacho",
+                                            "cliente",
+                                            "sponsor",
+                                            "self"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "email"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "email": {
+                                                    "type": "string"
+                                                },
+                                                "company_name": {
+                                                    "type": "string"
+                                                },
+                                                "billing": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                },
+                                                "accepted_tenant_id": {
+                                                    "type": "string"
+                                                },
+                                                "accepted_at": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "email",
+                                                "company_name",
+                                                "billing",
+                                                "status",
+                                                "expires_at",
+                                                "accepted_tenant_id",
+                                                "accepted_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "No se pudo enviar el email de invitaci\u00f3n. Revisa la configuraci\u00f3n de correo e int\u00e9ntalo de nuevo."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string",
+                                                    "const": "invitation_quota_exceeded"
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "error",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "examples": [
+                                                        "Solo las gestor\u00edas y los desarrolladores pueden enviar invitaciones a clientes."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "get": {
+                "operationId": "tenantInvitation.index",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "GET /api/tenant-invitations \u2014 Invitaciones de la gestor\u00eda autenticada",
+                "tags": [
+                    "TenantInvitation"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "email": {
+                                                        "type": "string"
+                                                    },
+                                                    "company_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "billing": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "expires_at": {
+                                                        "type": "string"
+                                                    },
+                                                    "accepted_tenant_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "accepted_at": {
+                                                        "type": "string"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "email",
+                                                    "company_name",
+                                                    "billing",
+                                                    "status",
+                                                    "expires_at",
+                                                    "accepted_tenant_id",
+                                                    "accepted_at",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/tenant-invitations/{invitation}": {
+            "delete": {
+                "operationId": "tenantInvitation.destroy",
+                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "DELETE /api/tenant-invitations/{invitation} \u2014 Revocar una invitaci\u00f3n",
+                "tags": [
+                    "TenantInvitation"
+                ],
+                "parameters": [
+                    {
+                        "name": "invitation",
+                        "in": "path",
+                        "required": true,
+                        "description": "The invitation ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Invitaci\u00f3n revocada."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Solo se pueden revocar invitaciones pendientes."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "http": {
+                "type": "http",
+                "description": "Token personal de Sanctum de la cuenta de desarrollador, acotado por plano (galeote/factSaas#731): `central` abre el grupo compartido (invitaciones, patrocinio, traspaso) y `desarrollador` abre `/api/desarrollador/*`. El token de una sesi\u00f3n del panel lleva los dos; un token de m\u00e1quina puede acu\u00f1arse solo con `desarrollador`. Cada operaci\u00f3n declara la suya en `x-pimia-required-ability`. Un token sin la habilidad recibe `403 token_sin_habilidad`; uno sin acotar (`*`), `401 token_sin_habilidades`.",
+                "scheme": "bearer"
+            }
+        },
+        "responses": {
+            "ValidationException": {
+                "description": "Validation error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Errors overview."
+                                },
+                                "errors": {
+                                    "type": "object",
+                                    "description": "A detailed description of each field that failed validation.",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "message",
+                                "errors"
+                            ]
+                        }
+                    }
+                }
+            },
+            "AuthenticationException": {
+                "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

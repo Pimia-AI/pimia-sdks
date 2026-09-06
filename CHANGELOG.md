@@ -8,6 +8,59 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.22.0] — 2026-09-06
+
+**El plano central entra en el SDK: `PimiaCentralClient` y el segundo
+contrato, `spec/pimia-central-v1.json`.** Es el contrato del integrador
+(cuenta de desarrollador) —cartera, vínculos, clients OAuth, invitaciones,
+patrocinio y traspaso—, la condición que el punto 12 de `docs/DECISIONES.md`
+(regla 6) ponía antes del dashboard del integrador, y que ese dashboard
+consumirá por este SDK. Todo aditivo.
+
+Specs sincronizados con **factSaas@__CORE__** (2026-09-06): `/api/v1` con
+**431 operaciones** (las 428 de la 0.21.0 más las tres de
+`/desarrollador-link/*`, que no salían en ningún contrato porque el segmento
+no estaba en el mapa de dominios del guard) y el plano central con **15**.
+
+### Añadido
+
+- **`PimiaCentralClient`** (`baseUrl` = el ápice, `token` = el token personal
+  de la cuenta de desarrollador, acotado por plano): `overview()`, `salud()`,
+  `facturacion()`, `links.{list,generateCode,accept,reject}`,
+  `clients.{list,claim}`, `invitations.{list,create,revoke}`,
+  `sponsorship.{sponsor,release}` y `tenants.transferOwnership`, más
+  `request()` / `requestWithMeta()` para lo que no tenga helper. Sin refresh
+  (el token personal no rota) y sin contenido fiscal de ningún cliente (eso
+  es OAuth por instancia, con `PimiaClient`).
+- **`MissingAbilityError`** (403 `token_sin_habilidad`, con `ability`): al
+  token le falta la habilidad del plano —`central` o `desarrollador`— que la
+  operación declara en `x-pimia-required-ability`. Un token con `*` sin
+  acotar recibe `401 token_sin_habilidades` (`UnauthorizedError`).
+- **`spec/pimia-central-v1.json`** y los tipos `@pimia/sdk/central-api`
+  (`src/central-api.ts`), generados con el mismo `generate:types`.
+  `scripts/sync-spec.sh --api central` los trae del núcleo con el mismo
+  guardarraíl («un contrato no encoge por accidente»).
+- Tipos exportados: `SponsorshipRequest`, `TenantInvitationRequest`,
+  `TransferOwnershipRequest`, `PimiaCentralClientOptions`,
+  `CentralRequestOptions`, `CentralResponseWithMeta`.
+
+### Cambiado
+
+- `/api/v1`: entran `GET /desarrollador-link/status`,
+  `POST /desarrollador-link/request` y `DELETE /desarrollador-link/revoke`,
+  marcadas `first-party-only` (`admin:*`): la mitad TENANT del vínculo con un
+  integrador, que la pyme pide y revoca desde su instancia. Un integrador las
+  ve y no puede pedir el scope, como `gestoria-link`.
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` sube a 0.22.0 **sin cambios de código**.
+- El PHP SDK no lleva cliente del plano central en esta versión: el primer
+  consumidor es el dashboard (Next.js) y la máquina del integrador con
+  webhooks en Node; se añadirá cuando un integrador PHP lo pida.
+- El token personal se acuña hoy entrando en el panel central; el alta y la
+  rotación desde el dashboard llegan con él.
+
 ## [0.21.0] — 2026-09-03
 
 **⚠️ SEGUNDO CAMBIO INCOMPATIBLE DE SCOPE del mismo día: la campana sale del

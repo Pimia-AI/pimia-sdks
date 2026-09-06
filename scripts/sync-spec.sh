@@ -20,14 +20,16 @@ set -euo pipefail
 REF="origin/main"
 FORCE=0
 CORE=""
-SOURCE_REL="docs/openapi/pimia-api-v1.json"
+API="default"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="$ROOT/spec/pimia-api-v1.json"
 
 uso() {
   cat >&2 <<'USO'
-uso: sync-spec.sh [--ref <git-ref>] [--force] /ruta/al/checkout/de/factSaas
+uso: sync-spec.sh [--api default|central] [--ref <git-ref>] [--force] /ruta/al/checkout/de/factSaas
 
+  --api <nombre>   qué documento: `default` (el contrato de partner de /api/v1,
+                   spec/pimia-api-v1.json) o `central` (el contrato del plano
+                   central para el integrador, spec/pimia-central-v1.json)
   --ref <git-ref>  ref del core de donde leer el spec (por defecto origin/main)
   --force          sigue adelante aunque el spec nuevo tenga MENOS operaciones
 USO
@@ -36,6 +38,8 @@ USO
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --api) [[ $# -ge 2 ]] || uso; API="$2"; shift 2 ;;
+    --api=*) API="${1#--api=}"; shift ;;
     --ref) [[ $# -ge 2 ]] || uso; REF="$2"; shift 2 ;;
     --ref=*) REF="${1#--ref=}"; shift ;;
     --force) FORCE=1; shift ;;
@@ -46,6 +50,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$CORE" ]] || uso
+
+# Un documento, un fichero: los dos salen del mismo `spec:export` del núcleo
+# (con `--api`), y aquí se copian uno a uno con el mismo guardarraíl.
+case "$API" in
+  default) SOURCE_REL="docs/openapi/pimia-api-v1.json"; DEST="$ROOT/spec/pimia-api-v1.json" ;;
+  central) SOURCE_REL="docs/openapi/pimia-central-v1.json"; DEST="$ROOT/spec/pimia-central-v1.json" ;;
+  *) echo "documento desconocido: $API (default | central)" >&2; uso ;;
+esac
 
 if ! git -C "$CORE" rev-parse --git-dir >/dev/null 2>&1; then
   echo "no es un repositorio git: $CORE" >&2
@@ -85,7 +97,7 @@ git -C "$CORE" fetch --quiet origin
 
 if ! git -C "$CORE" cat-file -e "$REF:$SOURCE_REL" 2>/dev/null; then
   echo "no encuentro $SOURCE_REL en $REF (dentro de $CORE)" >&2
-  echo "genéralo en el core con: php artisan scramble:export, y súbelo a $REF" >&2
+  echo "genéralo en el core con: scripts/spec-export.sh --api $API, y súbelo a $REF" >&2
   exit 66
 fi
 
@@ -104,7 +116,7 @@ else
   OPS_ACTUALES=0
 fi
 
-echo "› spec en $REF ($COMMIT_CORTO, $FECHA): $OPS_NUEVAS operaciones"
+echo "› spec \`$API\` en $REF ($COMMIT_CORTO, $FECHA): $OPS_NUEVAS operaciones"
 echo "› spec en este repo:                    $OPS_ACTUALES operaciones"
 
 if (( OPS_NUEVAS < OPS_ACTUALES )); then
@@ -135,9 +147,9 @@ echo
 
 if command -v npm >/dev/null 2>&1; then
   (cd "$ROOT/typescript" && npm run --silent generate:types)
-  echo "✓ tipos de TypeScript regenerados (src/api.ts; api.d.ts sale del build)"
+  echo "✓ tipos de TypeScript regenerados (src/api.ts y src/central-api.ts; los .d.ts salen del build)"
 else
   echo "npm no disponible: regenera los tipos con 'cd typescript && npm run generate:types'" >&2
 fi
 
-git -C "$ROOT" --no-pager diff --stat -- spec typescript/src/api.ts || true
+git -C "$ROOT" --no-pager diff --stat -- spec typescript/src/api.ts typescript/src/central-api.ts || true

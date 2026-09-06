@@ -5,7 +5,14 @@
 `php artisan scramble:export`). Se versiona aquí para que los SDKs tengan un
 contrato reproducible sin depender del core.
 
-No lo edites a mano: refréscalo con `../scripts/sync-spec.sh <checkout-del-core>`.
+`pimia-central-v1.json` es el **segundo** contrato: el del plano central para
+el integrador (cuenta de desarrollador), generado con
+`scripts/spec-export.sh --api central` en el núcleo. Quince operaciones,
+autenticadas con el token personal acotado por plano; cada una declara su
+habilidad en `x-pimia-required-ability`. Se refresca con
+`../scripts/sync-spec.sh --api central <checkout-del-core>`.
+
+No los edites a mano: refréscalos con `../scripts/sync-spec.sh [--api central] <checkout-del-core>`.
 El script hace `git fetch` y lee el artefacto de `origin/main` del núcleo (no
 del working tree del checkout, que suele estar en otra rama) y **aborta si el
 spec nuevo tiene menos operaciones** que el que ya está aquí.

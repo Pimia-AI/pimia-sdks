@@ -31,6 +31,17 @@ export type {
   WriteOptions,
 } from './client.js'
 
+export { PimiaCentralClient } from './central.js'
+export type {
+  CentralRequestOptions,
+  CentralResponseMeta,
+  CentralResponseWithMeta,
+  PimiaCentralClientOptions,
+  SponsorshipRequest,
+  TenantInvitationRequest,
+  TransferOwnershipRequest,
+} from './central.js'
+
 export { OAuth, createPkceChallenge, createState } from './oauth.js'
 export type {
   AuthorizationServerMetadata,
@@ -45,6 +56,7 @@ export type { TokenSet, TokenStore } from './tokens.js'
 export {
   DuplicateExternalRefError,
   ForbiddenError,
+  MissingAbilityError,
   MissingScopeError,
   NotAuthenticatedError,
   NotFoundError,
