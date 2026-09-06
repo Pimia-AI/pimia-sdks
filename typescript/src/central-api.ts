@@ -221,6 +221,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/tenants/{slug}/activaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/tenants/{slug}/activaciones — lo activado a este cliente
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `base` es su licencia (el asiento de canal); `items`, los módulos y apps
+         *     activos con lo que cuestan al integrador al mes; `total` lo suma.
+         */
+        get: operations["integradorActivacion.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/tenants/{slug}/activaciones — activar algo al cliente
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `kind` ∈ `base|module|app` y `slug` (`pimia` para la base). La base es el
+         *     asiento: la primera vez devuelve `checkout_url` (el canal aún no tiene
+         *     suscripción) y las siguientes es un asiento más. Un módulo o una app
+         *     exigen la base viva (`409 base_required`) y se cobran al integrador
+         *     como una partida más de su canal, sin prorrateo, en la factura del mes;
+         *     el módulo se enciende en el acto y la app la instala el cliente por
+         *     empresa sin pasar por caja. Idempotente: lo ya activo contesta
+         *     `already_active: true` sin tocar Stripe. Cortes, con su código en
+         *     `error`: `not_the_integrator` (403), `not_sellable` (422),
+         *     `base_required` y `channel_required` (409), `channel_subscription_ending`
+         *     (402), `stripe_price_missing` (503), `stripe_addon_failed` (502),
+         *     `addon_busy` (409), `module_not_enabled` (422).
+         */
+        post: operations["integradorActivacion.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}/activaciones/{kind}/{item}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/tenants/{slug}/activaciones/{kind}/{item} — dar de baja
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Un módulo se apaga en el acto y deja de cobrarse desde la próxima
+         *     factura; una app se desinstala de todas las empresas del cliente. La
+         *     base suelta el asiento (el cliente baja a Free y con él caen sus
+         *     activaciones). Cortes: `not_active` (404), `has_dependents` (422),
+         *     `not_the_integrator` (403).
+         */
+        delete: operations["integradorActivacion.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/desarrollador/catalogo": {
         parameters: {
             query?: never;
@@ -600,6 +666,11 @@ export interface operations {
                                 suspendido_desde: string | null;
                             }[];
                             en_mora: number;
+                            /**
+                             * @description Lo que paga en añadidos mayoristas de toda su cartera
+                             *     (módulos y apps activados a sus clientes).
+                             */
+                            anadidos: string;
                         };
                     };
                 };
@@ -902,6 +973,109 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "integradorActivacion.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            base: {
+                                active: boolean;
+                                price_cents: number | null;
+                                price: string | null;
+                                plan: string | null;
+                            };
+                            items: {
+                                kind: string;
+                                slug: string;
+                                name: string;
+                                active_since: string;
+                                price_cents: number | null;
+                                price: string | null;
+                            }[];
+                            total_cents: number;
+                            total: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorActivacion.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "base" | "module" | "app";
+                    slug: string;
+                    plan_id?: number | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorActivacion.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                kind: string;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            quantity: number | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
     "integradorCatalogo.show": {
         parameters: {
             query?: never;
@@ -940,16 +1114,22 @@ export interface operations {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                                 modules: {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                                 apps: {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                             };
                         };
@@ -1001,16 +1181,22 @@ export interface operations {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                                 modules: {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                                 apps: {
                                     slug: string;
                                     name: string;
                                     description: string | null;
+                                    wholesale_price_cents: number | null;
+                                    wholesale_price: string | null;
                                 }[];
                             };
                         };

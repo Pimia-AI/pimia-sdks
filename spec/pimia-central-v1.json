@@ -2,8 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.1.0",
-        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad y su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n). Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
+        "version": "1.2.0",
+        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad, su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal). Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
         {
@@ -542,12 +542,17 @@
                                                 "en_mora": {
                                                     "type": "integer",
                                                     "minimum": 0
+                                                },
+                                                "anadidos": {
+                                                    "type": "string",
+                                                    "description": "Lo que paga en a\u00f1adidos mayoristas de toda su cartera\n(m\u00f3dulos y apps activados a sus clientes)."
                                                 }
                                             },
                                             "required": [
                                                 "canal",
                                                 "asientos",
-                                                "en_mora"
+                                                "en_mora",
+                                                "anadidos"
                                             ]
                                         }
                                     },
@@ -1288,6 +1293,289 @@
                 "x-pimia-partner-availability": "developer-account"
             }
         },
+        "/desarrollador/tenants/{slug}/activaciones": {
+            "get": {
+                "operationId": "integradorActivacion.index",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`base` es su licencia (el asiento de canal); `items`, los m\u00f3dulos y apps\nactivos con lo que cuestan al integrador al mes; `total` lo suma.",
+                "summary": "GET /api/desarrollador/tenants/{slug}/activaciones \u2014 lo activado a este cliente",
+                "tags": [
+                    "IntegradorActivacion"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "base": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "active": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "price_cents": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "price": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "plan": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "active",
+                                                        "price_cents",
+                                                        "price",
+                                                        "plan"
+                                                    ]
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "active_since": {
+                                                                "type": "string"
+                                                            },
+                                                            "price_cents": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "price": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "slug",
+                                                            "name",
+                                                            "active_since",
+                                                            "price_cents",
+                                                            "price"
+                                                        ]
+                                                    }
+                                                },
+                                                "total_cents": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "base",
+                                                "items",
+                                                "total_cents",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "post": {
+                "operationId": "integradorActivacion.store",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`kind` \u2208 `base|module|app` y `slug` (`pimia` para la base). La base es el\nasiento: la primera vez devuelve `checkout_url` (el canal a\u00fan no tiene\nsuscripci\u00f3n) y las siguientes es un asiento m\u00e1s. Un m\u00f3dulo o una app\nexigen la base viva (`409 base_required`) y se cobran al integrador\ncomo una partida m\u00e1s de su canal, sin prorrateo, en la factura del mes;\nel m\u00f3dulo se enciende en el acto y la app la instala el cliente por\nempresa sin pasar por caja. Idempotente: lo ya activo contesta\n`already_active: true` sin tocar Stripe. Cortes, con su c\u00f3digo en\n`error`: `not_the_integrator` (403), `not_sellable` (422),\n`base_required` y `channel_required` (409), `channel_subscription_ending`\n(402), `stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_busy` (409), `module_not_enabled` (422).",
+                "summary": "POST /api/desarrollador/tenants/{slug}/activaciones \u2014 activar algo al cliente",
+                "tags": [
+                    "IntegradorActivacion"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                            "base",
+                                            "module",
+                                            "app"
+                                        ]
+                                    },
+                                    "slug": {
+                                        "type": "string",
+                                        "maxLength": 63
+                                    },
+                                    "plan_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "kind",
+                                    "slug"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/tenants/{slug}/activaciones/{kind}/{item}": {
+            "delete": {
+                "operationId": "integradorActivacion.destroy",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nUn m\u00f3dulo se apaga en el acto y deja de cobrarse desde la pr\u00f3xima\nfactura; una app se desinstala de todas las empresas del cliente. La\nbase suelta el asiento (el cliente baja a Free y con \u00e9l caen sus\nactivaciones). Cortes: `not_active` (404), `has_dependents` (422),\n`not_the_integrator` (403).",
+                "summary": "DELETE /api/desarrollador/tenants/{slug}/activaciones/{kind}/{item} \u2014 dar de baja",
+                "tags": [
+                    "IntegradorActivacion"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "kind",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "quantity": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "quantity"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
         "/desarrollador/catalogo": {
             "get": {
                 "operationId": "integradorCatalogo.show",
@@ -1417,12 +1705,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         },
@@ -1442,12 +1744,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         },
@@ -1467,12 +1783,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         }
@@ -1645,12 +1975,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         },
@@ -1670,12 +2014,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         },
@@ -1695,12 +2053,26 @@
                                                                             "string",
                                                                             "null"
                                                                         ]
+                                                                    },
+                                                                    "wholesale_price_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "wholesale_price": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "slug",
                                                                     "name",
-                                                                    "description"
+                                                                    "description",
+                                                                    "wholesale_price_cents",
+                                                                    "wholesale_price"
                                                                 ]
                                                             }
                                                         }

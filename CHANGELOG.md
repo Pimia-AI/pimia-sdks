@@ -8,6 +8,41 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.24.0] — 2026-09-06
+
+**La activación mayorista entra en el plano central** (regla 4 del punto 12;
+decisiones 1 y 3 de 👤; galeote/factSaas#739): el integrador activa la base,
+un módulo o una app a su cliente y Pimia se lo cobra a él en su suscripción
+de canal —una partida por Price, cantidad = activaciones vivas de toda su
+cartera, sin prorrateo, en la factura del mes— con Prices mayoristas propios
+del canal. Todo aditivo.
+
+Specs sincronizados con la rama del núcleo (`d636e1de`): plano central
+**1.2.0, 20 operaciones** (`GET|POST /desarrollador/tenants/{slug}/activaciones`,
+`DELETE …/activaciones/{kind}/{item}`); `/api/v1` sigue en 438 y en
+`GET /tenant-modules` la baja de un módulo del canal por el cliente contesta
+`403 channel_module`.
+
+### Añadido
+
+- **`PimiaCentralClient.activaciones.{list,activate,deactivate}`** y el tipo
+  **`ActivacionMayoristaRequest`**. Es lo que llama el webhook del integrador
+  cuando su cliente le compra algo: `activate(slug, { kind: 'base', slug:
+  'pimia' })` patrocina (la primera vez devuelve `checkout_url`), y después
+  `{ kind: 'module', slug: 'crm' }` o `{ kind: 'app', slug: 'wabai' }`.
+- `GET /desarrollador/catalogo` publica en `disponibles` el
+  `wholesale_price` de cada cosa (lo que le cuesta al integrador), y
+  `GET /desarrollador/facturacion` un bloque `anadidos` con lo que paga por
+  activaciones en toda su cartera.
+
+### Lo que hay que tener delante para integrarlo
+
+- Un módulo o una app exigen la base viva (`409 base_required`); sin Price
+  mayorista, `503 stripe_price_missing`; lo ya activo es `already_active`
+  sin tocar Stripe.
+- `@pimia/design-tokens` sube a 0.24.0 **sin cambios de código**. El PHP SDK
+  sigue sin cliente del plano central.
+
 ## [0.23.0] — 2026-09-06
 
 **El catálogo del integrador entra en el plano central** (regla 4 del punto 12
