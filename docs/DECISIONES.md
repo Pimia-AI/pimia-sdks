@@ -708,6 +708,70 @@ obtiene en el registro de Pimia o en el panel de integrador).
     0.26.0 en npm. Siguiente: las pantallas de escritura y H6 (clients).
 
 
+13. **El panel central se DIBUJA antes de construirse, y el dashboard del
+    integrador es un mini-superadmin de dos verbos (2026-09-06).** 👤 paró la
+    cadena del panel del integrador —«nada de mergear ni desplegar nada de
+    esto […] primero debatir y ver antes de continuar»— porque se estaban
+    decidiendo detalles técnicos (rotación de secretos, cascadas de
+    revocación, `redirect_uris`) sin haber acordado el MARCO: qué es el
+    dashboard de un integrador. Su frase es la definición: «solo veo sentido a
+    cartera y catálogo […] el dashboard de un integrador es lo más parecido a
+    mi superadmin. Puede generar instancias, ver sus clientes, gestionar el
+    precio de los productos y servicios. No estoy entendiendo absolutamente
+    nada de oauths, tokens, es más ni tan siquiera sé por qué es necesario
+    meter aquí el sdk».
+
+    **Cómo se trabaja a partir de ahora:** las pantallas del panel central se
+    maquetan primero en el BANCO (`galeote/shadcn-admin-clone`, rutas
+    `/central/{superadmin,asesoria,integrador}`) con datos de mentira, y el
+    debate con 👤 se hace SOBRE ESAS PANTALLAS, en lenguaje de producto
+    (clientes, licencia, añadidos, precio, margen) y nunca de fontanería. El
+    estudio previo —qué hace hoy cada figura en el SPA Vue, funciones y no
+    estética— vive en `docs/research/ESTUDIO-PANEL-CENTRAL-TRES-FIGURAS.md`
+    del banco, con las decisiones en su §7. Las tres figuras están maquetadas
+    (integrador: visión general, cartera, catálogo y precios, facturación;
+    asesoría: panel operativo, clientes, bandeja de revisión, VeriFactu;
+    superadmin: visión general, instancias, cuentas, planes e integraciones).
+
+    **13.1. Un integrador NO da de alta a sus clientes.** 👤: «en integrador
+    vamos a suprimir dar de alta a un cliente. Sus clientes ya tienen la vía
+    de registro y login desde su dominio. Si quiere dar de alta un cliente que
+    lo haga como si lo hiciera su cliente». Consecuencias: no hay pantalla de
+    alta ni invitaciones desde el panel del integrador, y **la cuota de altas
+    del desarrollador deja de gobernar nada visible** —contaba un gesto que ya
+    no existe—. El vocabulario cambia: una instancia **nace en su web** (el
+    alta se le atribuye por su client) o **se vincula después**; nunca «la
+    creó él». Y con eso se cierra sola la tensión que el estudio había medido:
+    por el camino «crearla yo» el integrador quedaba de `owner` del tenant de
+    su cliente, y siéndolo podía entrar por SSO, gestionar su equipo y
+    descargarse un backup, mientras el panel prometía por escrito que no veía
+    nada suyo. Si nunca la crea, nunca es su dueño.
+
+    **13.2. No hay traspaso de propiedad, y la iniciativa es del CLIENTE.**
+    👤: «es el cliente de Zoomo el que realiza la reclamación, no Zoomo el que
+    le traspasa la propiedad. […] El cliente de Zoomo puede hacer algo tan
+    sencillo como un backup que otro integrador de Pimia puede restaurar.
+    Olvidémonos de esta funcionalidad, que parece compleja de integrar y solo
+    complica». La portabilidad entre integradores se resuelve con lo que ya
+    existe y es simple —copia de seguridad del cliente, restaurada por el
+    integrador nuevo—, no con una operación de traspaso. ⛔ No volver a
+    proponerla.
+
+    **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
+    se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
+    `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
+    `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
+    pierde operaciones: dejan de usarse.
+
+    **Lo que sigue sin decidir, en el orden que puso 👤** («eso ahora mismo es
+    lo menos relevante»): qué se hace con las pantallas ya desplegadas en
+    `central.taskai.work` que no son cartera ni catálogo —licencia y
+    activaciones, portal de pago, dominio de acceso, llaves de máquina—:
+    esconder, quitar o dejar; y si el integrador ve algo más que cartera y
+    catálogo, en concreto si puede suspender a un cliente que no le paga y si
+    ve dinero por cliente. ⛔ Ninguna pregunta técnica: eso fue lo que hizo
+    parar la cadena.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
