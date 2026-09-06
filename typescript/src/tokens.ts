@@ -21,6 +21,12 @@ export interface TokenSet {
   expiresAt?: number
   scope?: string
   tokenType?: string
+  /**
+   * A qué instancia pertenece el token. Lo dice el canje del AS del ÁPICE
+   * (`tenant_id`), donde la app no lo sabe por el host; el AS de un tenant no
+   * lo manda (ahí el host ya lo dice).
+   */
+  tenantId?: string
 }
 
 export interface TokenStore {
@@ -60,6 +66,7 @@ export function tokenSetFromResponse(
     expires_in?: number
     scope?: string
     token_type?: string
+    tenant_id?: string
   },
   now = Date.now(),
 ): TokenSet {
@@ -69,5 +76,8 @@ export function tokenSetFromResponse(
     expiresAt: payload.expires_in ? now + payload.expires_in * 1000 : undefined,
     scope: payload.scope,
     tokenType: payload.token_type ?? 'bearer',
+    ...(typeof payload.tenant_id === 'string' && payload.tenant_id !== ''
+      ? { tenantId: payload.tenant_id }
+      : {}),
   }
 }

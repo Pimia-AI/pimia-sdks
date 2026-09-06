@@ -62,6 +62,8 @@ export type CatalogoDelIntegradorRequest = Body<'integradorCatalogo.update'>
  * planes de canal).
  */
 export type ActivacionMayoristaRequest = Body<'integradorActivacion.store'>
+export type IntegradorDominioRequest = Body<'integradorDominio.store'>
+export type IntegradorTokenRequest = Body<'integradorToken.store'>
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -225,6 +227,60 @@ export class PimiaCentralClient {
           `/desarrollador/tenants/${encodeURIComponent(tenantSlug)}/activaciones/${kind}/${encodeURIComponent(item)}`,
           { method: 'DELETE' },
         ),
+    }
+  }
+
+  // ── Su login: el nombre que sirve en su servidor y reenvía al AS del ──
+  //    ápice (habilidad `desarrollador`; regla 5 del punto 12, revisada el
+  //    2026-09-07)
+
+  get dominios() {
+    return {
+      /** `GET /desarrollador/dominios`: sus nombres de login, con el `upstream` y el bloque de proxy de cada uno. */
+      list: () => this.request<Ok<'integradorDominio.index'>>('/desarrollador/dominios'),
+      /**
+       * `POST /desarrollador/dominios`: declarar el nombre público que el
+       * integrador sirve (`host`, p. ej. `login.erpstudio.es`) y su etiqueta
+       * interna (`slug`). Pimia no emite certificados ni toca DNS: devuelve
+       * `upstream` (`https://login-<slug>.<central>`), a donde su proxy tiene
+       * que reenviar con `Host` interno y el nombre público en
+       * `X-Forwarded-Host`, y `proxy`, el bloque de Caddy listo para pegar.
+       */
+      declare: (body: IntegradorDominioRequest) =>
+        this.request<Ok<'integradorDominio.store'>>('/desarrollador/dominios', {
+          method: 'POST',
+          body,
+        }),
+      /** `DELETE /desarrollador/dominios/{slug}`: retirar el nombre; el host interno deja de contestar. */
+      remove: (slug: string) =>
+        this.request<Ok<'integradorDominio.destroy'>>(
+          `/desarrollador/dominios/${encodeURIComponent(slug)}`,
+          { method: 'DELETE' },
+        ),
+    }
+  }
+
+  // ── Sus tokens de máquina (habilidad `desarrollador`; A3 cerrada) ───────
+
+  get tokens() {
+    return {
+      /** `GET /desarrollador/tokens`: los tokens de máquina vivos (nunca los de una sesión del panel). */
+      list: () => this.request<Ok<'integradorToken.index'>>('/desarrollador/tokens'),
+      /**
+       * `POST /desarrollador/tokens`: acuñar un token de máquina, acotado a la
+       * habilidad `desarrollador` y nada más. El token en claro (`data.token`)
+       * se devuelve UNA vez: guárdalo en tu servidor.
+       */
+      create: (body: IntegradorTokenRequest) =>
+        this.request<Ok<'integradorToken.store'>>('/desarrollador/tokens', {
+          method: 'POST',
+          body,
+        }),
+      /** `DELETE /desarrollador/tokens/{id}`: revocarlo. */
+      revoke: (id: number | string) =>
+        this.request<Ok<'integradorToken.destroy'>>(`/desarrollador/tokens/${id}`, {
+          method: 'DELETE',
+        }),
     }
   }
 

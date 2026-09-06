@@ -38,6 +38,8 @@ export type {
   CentralRequestOptions,
   CentralResponseMeta,
   CentralResponseWithMeta,
+  IntegradorDominioRequest,
+  IntegradorTokenRequest,
   PimiaCentralClientOptions,
   SponsorshipRequest,
   TenantInvitationRequest,

@@ -323,6 +323,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/dominios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/dominios — los nombres de login del integrador
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        get: operations["integradorDominio.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/dominios — declarar un nombre de login
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a
+         *     32 caracteres `a-z0-9-`, única en Pimia) y `host` el nombre público que
+         *     el integrador sirve. Un nombre bajo un dominio de Pimia responde 422
+         *     (`host`), igual que uno que ya declaró otro integrador.
+         */
+        post: operations["integradorDominio.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/dominios/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/dominios/{slug} — retirar un nombre de login
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Desde ese momento el host interno contesta 404 y el proxy del
+         *     integrador deja de tener a dónde reenviar. 404 si el nombre no es suyo.
+         */
+        delete: operations["integradorDominio.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/tokens — los tokens de máquina vivos
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        get: operations["integradorToken.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/tokens — acuñar un token de máquina
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `name` es para reconocerlo en la lista («webhook de producción»). El
+         *     token en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.
+         */
+        post: operations["integradorToken.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tokens/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/tokens/{id} — revocar un token de máquina
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     404 si no es suyo o no es de máquina (una sesión del panel se cierra
+         *     desde el panel, no desde aquí).
+         */
+        delete: operations["integradorToken.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants/{slug}/transfer-ownership": {
         parameters: {
             query?: never;
@@ -1211,6 +1313,168 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorDominio.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            slug: string;
+                            host: string;
+                            enabled: boolean;
+                            login_url: string;
+                            upstream: string;
+                            proxy: string;
+                            created_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorDominio.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slug: string;
+                    host: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorDominio.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorToken.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                            abilities: string[];
+                            last_used_at: string | null;
+                            expires_at: string | null;
+                            created_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorToken.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorToken.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "tenant.transferOwnership": {
