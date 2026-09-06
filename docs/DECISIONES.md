@@ -903,6 +903,23 @@ obtiene en el registro de Pimia o en el panel de integrador).
     instancia o a un socio que ya no está — un enlace roto es peor que no tener
     enlace.
 
+    **13.12. Una integración SÍ tiene ficha, y un recuento suelto siempre acaba
+    mintiendo (2026-09-07).** Pulsar una integración del catálogo abre su ficha,
+    porque hay una pregunta que la tabla no responde y es la única que importa
+    antes de retirarla o de tocarle el precio: **quiénes la tienen instalada**.
+    La ficha es esa lista —con enlace a cada instancia—, más **quién la revende**
+    y por dónde entraron las que la tienen; y **no** lleva permisos, eventos,
+    credenciales ni webhooks: una tarjeta dice que existen y dónde viven, sin
+    desplegarlos. **Lo que enseñó construirla, y vale para el núcleo:** el
+    recuento de instalaciones estaba escrito a mano y **mentía** —VeriFactu decía
+    17 y el censo tenía 16 con VeriFactu configurado— sin que nadie pudiera
+    notarlo mirando la tabla. Regla: **la lista es el dato y el número se cuenta
+    de ella**, nunca al revés. Es la tercera vez que aparece lo mismo en esta
+    maqueta (las facturas de canal, la historia de un cliente y ahora esto): un
+    total que no se puede contrastar con nada acaba contradiciendo a la pantalla
+    de al lado. Lo mismo con los revendedores de una app: son **los que la tienen
+    encendida en algún cliente**, no los que figuren en una lista aparte.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
@@ -912,8 +929,8 @@ obtiene en el registro de Pimia o en el panel de integrador).
     **Lo que sigue sin decidir:** ningún recoveco de marco. Lo único aparcado a
     propósito es, por 13.9c, si entrar dentro de una instancia deja rastro y si
     el cliente se entera; el botón está a la vista y apagado hasta entonces. Sin
-    dibujar, porque nadie lo ha pedido: qué pasa al pulsar una integración del
-    catálogo, y el panel de la asesoría, que sale de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    dibujar, porque nadie lo ha pedido: el panel de la asesoría, que sale de
+    cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
