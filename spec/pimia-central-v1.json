@@ -2148,6 +2148,9 @@
                                                     "upstream": {
                                                         "type": "string"
                                                     },
+                                                    "proxy_secret": {
+                                                        "type": "string"
+                                                    },
                                                     "proxy": {
                                                         "type": "string"
                                                     },
@@ -2164,6 +2167,7 @@
                                                     "enabled",
                                                     "login_url",
                                                     "upstream",
+                                                    "proxy_secret",
                                                     "proxy",
                                                     "created_at"
                                                 ]
@@ -2186,7 +2190,7 @@
             },
             "post": {
                 "operationId": "integradorDominio.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a\n32 caracteres `a-z0-9-`, \u00fanica en Pimia) y `host` el nombre p\u00fablico que\nel integrador sirve. Un nombre bajo un dominio de Pimia responde 422\n(`host`), igual que uno que ya declar\u00f3 otro integrador.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a\n32 caracteres `a-z0-9-`, \u00fanica en Pimia) y `host` el nombre p\u00fablico que\nel integrador sirve. Un nombre bajo un dominio de Pimia responde 422\n(`host`), igual que uno que ya declar\u00f3 otro integrador. La respuesta\ntrae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se\ngenera aqu\u00ed y se rota retirando el nombre y declar\u00e1ndolo otra vez.",
                 "summary": "POST /api/desarrollador/dominios \u2014 declarar un nombre de login",
                 "tags": [
                     "IntegradorDominio"
@@ -2362,7 +2366,7 @@
             },
             "post": {
                 "operationId": "integradorToken.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`name` es para reconocerlo en la lista (\u00abwebhook de producci\u00f3n\u00bb). El\ntoken en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`name` es para reconocerlo en la lista (\u00abwebhook de producci\u00f3n\u00bb). El\ntoken en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.\nPide la sesi\u00f3n del integrador (403 `session_required` con un token de\nm\u00e1quina): uno filtrado no acu\u00f1a hermanos.",
                 "summary": "POST /api/desarrollador/tokens \u2014 acu\u00f1ar un token de m\u00e1quina",
                 "tags": [
                     "IntegradorToken"

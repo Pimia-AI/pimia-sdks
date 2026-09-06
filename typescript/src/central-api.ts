@@ -343,7 +343,9 @@ export interface paths {
          *     `slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a
          *     32 caracteres `a-z0-9-`, única en Pimia) y `host` el nombre público que
          *     el integrador sirve. Un nombre bajo un dominio de Pimia responde 422
-         *     (`host`), igual que uno que ya declaró otro integrador.
+         *     (`host`), igual que uno que ya declaró otro integrador. La respuesta
+         *     trae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se
+         *     genera aquí y se rota retirando el nombre y declarándolo otra vez.
          */
         post: operations["integradorDominio.store"];
         delete?: never;
@@ -394,6 +396,8 @@ export interface paths {
          *
          *     `name` es para reconocerlo en la lista («webhook de producción»). El
          *     token en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.
+         *     Pide la sesión del integrador (403 `session_required` con un token de
+         *     máquina): uno filtrado no acuña hermanos.
          */
         post: operations["integradorToken.store"];
         delete?: never;
@@ -1336,6 +1340,7 @@ export interface operations {
                             enabled: boolean;
                             login_url: string;
                             upstream: string;
+                            proxy_secret: string;
                             proxy: string;
                             created_at: string | null;
                         }[];

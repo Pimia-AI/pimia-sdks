@@ -17,7 +17,7 @@ el nombre donde el cliente de un integrador teclea su contraseña
 certificado y su DNS, y su proxy reenvía por HTTPS al AS del ápice de Pimia,
 que atiende detrás de un nombre interno `login-<slug>.<central>`. Todo aditivo.
 
-Specs sincronizados con **factSaas@dbab9d2f** (2026-09-06, rama del núcleo;
+Specs sincronizados con **factSaas@6d0e1a55** (2026-09-07, rama del núcleo;
 se resincroniza contra `origin/main` al mergear): plano central **1.3.0, 26
 operaciones**; `/api/v1` sin cambios.
 
