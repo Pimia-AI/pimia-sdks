@@ -325,7 +325,8 @@ fiscal de ningún cliente. Se autentica con el **token personal** de la cuenta,
 acotado por plano (`central`, `desarrollador`; cada operación declara la suya
 en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript
 (desde la 0.23.0, también el catálogo del integrador: `catalogo.get()` y
-`catalogo.replace()`).
+`catalogo.replace()`; desde la 0.24.0, la activación mayorista:
+`activaciones.list()`, `activate()` y `deactivate()`).
 
 ```bash
 ./scripts/sync-spec.sh --api central /ruta/al/checkout/de/factSaas

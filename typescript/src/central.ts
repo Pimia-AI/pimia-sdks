@@ -56,6 +56,12 @@ export type TransferOwnershipRequest = Body<'tenant.transferOwnership'>
  * de existir.
  */
 export type CatalogoDelIntegradorRequest = Body<'integradorCatalogo.update'>
+/**
+ * Cuerpo de `POST /desarrollador/tenants/{slug}/activaciones`: qué se activa al
+ * cliente (`kind` ∈ `base|module|app`, `slug`; `plan_id` solo si hay varios
+ * planes de canal).
+ */
+export type ActivacionMayoristaRequest = Body<'integradorActivacion.store'>
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -180,6 +186,45 @@ export class PimiaCentralClient {
           method: 'PUT',
           body,
         }),
+    }
+  }
+
+  // ── La activación mayorista: lo que activa a cada cliente y paga en su ──
+  //    canal (habilidad `desarrollador`; regla 4 del punto 12)
+
+  get activaciones() {
+    return {
+      /**
+       * `GET /desarrollador/tenants/{slug}/activaciones`: la base (su asiento),
+       * los módulos y apps activos y lo que le cuestan al integrador al mes.
+       */
+      list: (tenantSlug: string) =>
+        this.request<Ok<'integradorActivacion.index'>>(
+          `/desarrollador/tenants/${encodeURIComponent(tenantSlug)}/activaciones`,
+        ),
+      /**
+       * `POST /desarrollador/tenants/{slug}/activaciones`: activar la base, un
+       * módulo o una app. La base es el asiento (la primera vez devuelve
+       * `checkout_url`); un módulo o una app exigen la base viva y se cobran
+       * al integrador como partida de su canal, sin prorrateo, en la factura
+       * del mes. Idempotente (`already_active`). Es lo que llama el webhook del
+       * integrador cuando su cliente le compra algo.
+       */
+      activate: (tenantSlug: string, body: ActivacionMayoristaRequest) =>
+        this.request<Ok<'integradorActivacion.store'>>(
+          `/desarrollador/tenants/${encodeURIComponent(tenantSlug)}/activaciones`,
+          { method: 'POST', body },
+        ),
+      /**
+       * `DELETE /desarrollador/tenants/{slug}/activaciones/{kind}/{item}`: dar de
+       * baja. El módulo se apaga y deja de cobrarse; la app se desinstala de
+       * todas las empresas; la base suelta el asiento.
+       */
+      deactivate: (tenantSlug: string, kind: 'base' | 'module' | 'app', item: string) =>
+        this.request<Ok<'integradorActivacion.destroy'>>(
+          `/desarrollador/tenants/${encodeURIComponent(tenantSlug)}/activaciones/${kind}/${encodeURIComponent(item)}`,
+          { method: 'DELETE' },
+        ),
     }
   }
 

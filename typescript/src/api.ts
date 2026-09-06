@@ -5929,6 +5929,10 @@ export interface paths {
          *
          *     Un heredado (encendido sin marca) o un añadido sin partida se apaga en
          *     el acto, como siempre: no hay nada pagado que respetar.
+         *
+         *     **Un módulo activado por el integrador** (`meta.channel`, lo paga su
+         *     canal) no lo apaga el cliente: `403 channel_module`, con el nombre del
+         *     integrador en `message`.
          */
         post: operations["tenantModules.disable"];
         delete?: never;

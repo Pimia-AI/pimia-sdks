@@ -122,6 +122,38 @@ test('el catálogo del integrador: leerlo y reemplazarlo entero por la ruta del 
   assert.equal(JSON.parse(calls[1].init.body).items.length, 2)
 })
 
+test('la activación mayorista: listar, activar y dar de baja por la ruta del contrato', async () => {
+  const { client, calls } = clientWith((url, init) =>
+    json(
+      init.method === 'POST'
+        ? { message: 'Activado', data: { already_active: false, checkout_url: null, quantity: 1, activation: { kind: 'module', slug: 'crm' } } }
+        : { data: { base: { active: true }, items: [], total_cents: 4900, total: '49,00 €' } },
+      init.method === 'POST' ? 201 : 200,
+    ),
+  )
+
+  const lista = await client.activaciones.list('talleres ana')
+  assert.equal(lista.data.base.active, true)
+
+  const alta = await client.activaciones.activate('talleres-ana', { kind: 'module', slug: 'crm' })
+  assert.equal(alta.data.quantity, 1)
+
+  await client.activaciones.deactivate('talleres-ana', 'module', 'crm')
+  await client.activaciones.activate('talleres-ana', { kind: 'base', slug: 'pimia', plan_id: 6 })
+
+  assert.deepEqual(
+    calls.map((c) => `${c.init.method} ${c.url.slice(BASE.length)}`),
+    [
+      'GET /api/desarrollador/tenants/talleres%20ana/activaciones',
+      'POST /api/desarrollador/tenants/talleres-ana/activaciones',
+      'DELETE /api/desarrollador/tenants/talleres-ana/activaciones/module/crm',
+      'POST /api/desarrollador/tenants/talleres-ana/activaciones',
+    ],
+  )
+  assert.deepEqual(JSON.parse(calls[1].init.body), { kind: 'module', slug: 'crm' })
+  assert.deepEqual(JSON.parse(calls[3].init.body), { kind: 'base', slug: 'pimia', plan_id: 6 })
+})
+
 test('un 403 token_sin_habilidad es MissingAbilityError con la habilidad que falta', async () => {
   const { client } = clientWith(() =>
     json(
