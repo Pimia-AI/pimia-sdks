@@ -871,16 +871,35 @@ obtiene en el registro de Pimia o en el panel de integrador).
     apagado, no borrado: pendiente de decidir si deja rastro y si el cliente se
     entera.
 
+    **13.10. A cuántos afecta un cambio de precio se ve ANTES de aplicarlo, y un
+    socio de canal tiene precio propio (2026-09-07).** 👤: «necesito ver a
+    cuántos afecta un cambio de precio antes de aplicarlo». El botón de precio de
+    cada plan abre un diálogo que lo responde. La respuesta corta es siempre la
+    misma —**a ninguno de los que ya lo tienen**— y por eso el diálogo no se
+    queda ahí: enseña **quiénes lo tienen y a cuánto, con nombres**, porque de
+    ahí sale la pregunta de verdad (cuánto se deja de ingresar por los contratos
+    viejos), y separa **lo que cambia hoy** (nada) de **lo que cambiaría si todos
+    pasaran**, dicho como hipótesis y no como previsión; juntarlas en un solo
+    número sería la confusión que el diálogo existe para evitar. **El agujero que
+    destapó, y que hay que arreglar al construirlo: un socio de canal no tenía
+    precio propio.** El asiento se leía del plan, así que la respuesta habría
+    sido «a ninguno» para los planes de pyme y **una mentira para los de canal**.
+    Regla, ahora sí universal: **el precio se guarda en quien lo contrató** —el
+    contrato de la pyme y el asiento del socio—, nunca se lee del plan. En la
+    maqueta, arreglarlo bajó el MRR de 854 € a 834 €.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** uno solo (§7.10 del estudio del banco) — qué
-    necesita ver el superadmin de un plan antes de tocarle el precio: a cuántos
-    afectaría uno nuevo y a cuántos no. Y, aparcado por 13.9c, si entrar dentro
-    de una instancia deja rastro y si el cliente se entera. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** ningún recoveco de marco. Lo único aparcado a
+    propósito es, por 13.9c, si entrar dentro de una instancia deja rastro y si
+    el cliente se entera; el botón está a la vista y apagado hasta entonces. Sin
+    dibujar, porque nadie lo ha pedido: qué pasa al pulsar una cuenta, qué pasa
+    al pulsar una integración del catálogo, y el panel de la asesoría, que sale
+    de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
