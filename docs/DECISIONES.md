@@ -463,6 +463,36 @@ obtiene en el registro de Pimia o en el panel de integrador).
     patrocinio se puede ensayar de punta a punta con Zoomo. «Asesoría» (id 3)
     sigue sin precio; prod sigue sin precios.
 
+    **La contraseña, resuelta el 2026-09-06 (galeote/factSaas#724).** Medido
+    antes de tocar: el alta manual pedía `min:6` mientras el registro público y
+    la aceptación de una invitación exigen `Password::min(8)`, y ninguno de los
+    cuatro tests que mandan `admin_password` fijaba el suelo flojo. 👤 decidió
+    que **el método «Crear manualmente» se mantiene tal cual, con el suelo
+    igualado a ocho**, y que **el «cambio obligatorio al primer acceso» queda
+    APARCADO con fecha**: no existe nada parecido en el núcleo y solo podría
+    vivir en el SPA Vue de la pyme, que la decisión 1 congela y por el que el
+    cliente de un integrador ya no pasa —con la redirección dura D3 entra por
+    la app del integrador vía OAuth—, así que protegería la puerta que ese
+    cliente no usa. Se retomará **cuando la web shadcn sustituya a ese SPA**,
+    que es donde el guard sí llegaría a todos. Queda medido, para cuando se
+    retome, que la vía «pon tú tu contraseña en tu dominio» ya existe:
+    `SsoDestination` deja `forgot-password` y `reset-password/*` fuera de la
+    redirección dura, y el broker del tenant está montado. El estudio, en
+    `docs/ESTUDIO-CONTRASENA-ALTA-POR-TERCERO.md`.
+
+    **El contrato del plano central, estudiado el 2026-09-06** en
+    `docs/ESTUDIO-CONTRATO-PLANO-CENTRAL.md`, con dos preguntas abiertas
+    (vocabulario y prefijo; dónde se publica el spec). Lo medido que cambia la
+    forma del trabajo: el perímetro del integrador **no** son las nueve rutas
+    de `/api/desarrollador/*`, porque patrocinar y traspasar —dos de las cuatro
+    pantallas del dashboard— viven fuera del prefijo, y las cuatro rutas ya
+    existen: falta la pantalla, no la API. Con `statefulApi()`, un token Bearer
+    de una cuenta de desarrollador abre hoy **todo** el grupo `auth:sanctum`
+    del plano central, no solo su prefijo. Y un segundo documento OpenAPI no
+    pide paquete nuevo: la versión instalada de Scramble ya trae
+    `registerApi()` y `scramble:export --api=<nombre>` con `export_path`
+    propio.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
