@@ -17,8 +17,8 @@ precio minorista, en qué moneda y con qué enlace de contratación. Su cliente
 lo ve en la pantalla de plan de su instancia en vez de los precios de Pimia.
 Todo aditivo.
 
-Specs sincronizados con **factSaas@b34e3a8f** (2026-09-06): el plano central
-pasa a **1.1.0 con 17 operaciones** (las 15 de la 0.22.0 más
+Specs sincronizados con **factSaas@457d423a** (2026-09-06, galeote/factSaas#738
+mergeado): el plano central pasa a **1.1.0 con 17 operaciones** (las 15 de la 0.22.0 más
 `GET|PUT /desarrollador/catalogo`); `/api/v1` sigue en **438** y publica en
 `GET /billing/plans` el objeto `catalogo`, en `GET /billing/subscription`
 `billing.integrador`, y en `GET /tenant-modules` el modo `billing: channel`
