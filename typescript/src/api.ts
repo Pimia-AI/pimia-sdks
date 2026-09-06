@@ -5477,10 +5477,15 @@ export interface paths {
          * @description **Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Sin los planes de canal (`Asesoría`, `Desarrollador`): esos los contrata
-         *     una gestoría o un desarrollador para su cartera, no una pyme. Con la
-         *     instancia en marca blanca —su licencia la paga un desarrollador— la lista
-         *     llega VACÍA y `white_label` a `true`: el cliente vive dentro del producto
-         *     del partner y no ve precios de Pimia. El corte va en el servidor.
+         *     una gestoría o un desarrollador para su cartera, no una pyme. Con
+         *     INTEGRADOR —su licencia la paga un desarrollador, o entró por la app de
+         *     uno y el vínculo sigue vivo— la lista llega VACÍA y en su lugar va
+         *     `catalogo`: lo que ese integrador revende, a su precio y con su enlace
+         *     de contratación (regla 4 del punto 12; decisión de 👤 del 2026-09-06: el
+         *     cliente de un integrador no ve un precio de Pimia nunca, ni antes del
+         *     primer pago). `white_label` sigue diciendo el HECHO de que lo paga un
+         *     tercero; `catalogo` es `null` mientras el integrador no configure el
+         *     suyo. El corte va en el servidor.
          *
          *     **Cada plan dice además qué módulos opcionales trae y cuáles costarían
          *     aparte** (`optional_modules`), que es lo que la pantalla de contratación
@@ -5828,6 +5833,13 @@ export interface paths {
          *
          *     `available_in_plan` se conserva y ahora es «incluido o añadible»: lo que
          *     la instancia puede llegar a tener.
+         *
+         *     **Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no
+         *     se compran a Pimia: los activa el integrador y los cobra él. Cada
+         *     opcional ofrecido lleva entonces `billing: channel`, `price` es el
+         *     precio MINORISTA de su catálogo (`null` si no lo revende), `purchasable`
+         *     es falso y `contract_url` es su enlace de contratación, con `tenant` e
+         *     `item` puestos.
          *
          *     **`addon_ends_at`** (desde el 2026-09-04, noche): un añadido dado de
          *     baja no se apaga, deja de RENOVARSE — sigue encendido hasta esa fecha
@@ -22742,6 +22754,24 @@ export interface operations {
                         }[];
                         white_label: boolean;
                         message: string | null;
+                        catalogo: {
+                            integrador: {
+                                nombre: string;
+                                soporte_url: string | null;
+                                soporte_email: string | null;
+                            };
+                            currency: string;
+                            items: {
+                                kind: string;
+                                slug: string;
+                                name: string;
+                                description: string | null;
+                                price_cents: number;
+                                price: string;
+                                contract_url: string | null;
+                                active: boolean | null;
+                            }[];
+                        } | null;
                     };
                 };
             };
@@ -22799,6 +22829,11 @@ export interface operations {
                                 mode: string;
                                 white_label: boolean;
                                 can_manage: boolean;
+                                integrador: {
+                                    nombre: string;
+                                    soporte_url: string | null;
+                                    soporte_email: string | null;
+                                } | null;
                                 seat: {
                                     role: string;
                                     grace_until: string | null;
@@ -23274,6 +23309,7 @@ export interface operations {
                             price_cents: number | null;
                             price: string | null;
                             purchasable: boolean;
+                            contract_url: string | null;
                             addon_active: boolean;
                             addon_ends_at: string | null;
                             installed_at: string | null;

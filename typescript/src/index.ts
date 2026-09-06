@@ -33,6 +33,7 @@ export type {
 
 export { PimiaCentralClient } from './central.js'
 export type {
+  CatalogoDelIntegradorRequest,
   CentralRequestOptions,
   CentralResponseMeta,
   CentralResponseWithMeta,

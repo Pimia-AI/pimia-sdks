@@ -528,6 +528,31 @@ obtiene en el registro de Pimia o en el panel de integrador).
     la lista:** el catálogo del integrador y la activación mayorista (estudio
     primero) → el login del integrador → el dashboard.
 
+    **El catálogo del integrador, estudiado y decidido el mismo 2026-09-06
+    (noche)** en `docs/ESTUDIO-CATALOGO-DEL-INTEGRADOR.md`. Lo medido que
+    cambia la forma del trabajo: el asiento del canal «Desarrollador» (plan 6,
+    `modules NULL`) **lo incluye todo** —un cliente patrocinado enciende los
+    siete opcionales gratis y Pimia solo cobra los 49 € del asiento—, así que
+    la «activación que dispara el cobro mayorista» de la regla 4 no tenía
+    objeto; el mecanismo de añadidos rechaza el asiento patrocinado en cinco
+    sitios; el integrador no puede activar nada (ni ruta ni actor: instalar
+    exige ser el DUEÑO del tenant); y la marca blanca exige el asiento, que el
+    alta atribuida no crea — Talleres Ana, traída por Zoomo, veía los planes
+    de Pimia. Decisiones de 👤: (1) **el asiento es Pimia base y los módulos y
+    apps son añadidos mayoristas con Prices PROPIOS del canal** (plan 6 pasa a
+    `modules: []`); (2) **el catálogo se enseña a TODO tenant con integrador**
+    —lo paga un desarrollador, o entró por su app y el vínculo vive— y a ese
+    tenant se le cierran checkout, cambio de plan y añadidos de Pimia desde el
+    alta, no desde el primer pago; (3) **el añadido mayorista se cobra como el
+    asiento**: partida de canal sin prorrateo en la factura del mes, alta y
+    baja en el acto; (4) una **moneda por integrador**; (5) **perfil comercial
+    mínimo ahora** (nombre, soporte); (6) filas **siempre con precio**. El
+    catálogo entra en el núcleo con `integrador_perfiles`,
+    `integrador_catalogo_items`, `Tenant::integrador()`, `GET|PUT
+    /api/desarrollador/catalogo` (contrato central **1.1.0**, 17 operaciones) y
+    la pantalla del cliente (`/billing/plans` con `catalogo`, `/tenant-modules`
+    con `billing: channel`). La activación mayorista es el siguiente PR.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:

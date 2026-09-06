@@ -48,6 +48,14 @@ export type SponsorshipRequest = Body<'billing.sponsor'>
 export type TenantInvitationRequest = Body<'tenantInvitation.store'>
 /** Cuerpo de `POST /tenants/{slug}/transfer-ownership`: el usuario de la instancia que pasa a ser dueño. */
 export type TransferOwnershipRequest = Body<'tenant.transferOwnership'>
+/**
+ * Cuerpo de `PUT /desarrollador/catalogo`: el catálogo del integrador ENTERO —
+ * cabecera (nombre comercial, soporte, moneda ISO 4217, enlace de contratación)
+ * y filas (`kind` ∈ `base|module|app`, `slug`, `price_cents` en subunidades de
+ * esa moneda, `contract_url` propio opcional, `enabled`)—. Lo que no venga deja
+ * de existir.
+ */
+export type CatalogoDelIntegradorRequest = Body<'integradorCatalogo.update'>
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -145,6 +153,31 @@ export class PimiaCentralClient {
       claim: (body: Body<'desarrolladorLink.claimClient'>) =>
         this.request<Ok<'desarrolladorLink.claimClient'>>('/desarrollador/clients/claim', {
           method: 'POST',
+          body,
+        }),
+    }
+  }
+
+  // ── Su catálogo: qué revende, a cuánto y a dónde manda a contratar ──────
+  //    (habilidad `desarrollador`; punto 12 de DECISIONES.md, regla 4)
+
+  get catalogo() {
+    return {
+      /**
+       * `GET /desarrollador/catalogo`: el catálogo propio (`perfil`, `currency`,
+       * `items`) y lo que se puede revender (`disponibles`: Pimia base, los
+       * módulos opcionales ofrecidos y las apps integradas activas).
+       */
+      get: () => this.request<Ok<'integradorCatalogo.show'>>('/desarrollador/catalogo'),
+      /**
+       * `PUT /desarrollador/catalogo`: reemplaza el catálogo ENTERO. Es lo que
+       * el cliente del integrador ve en la pantalla de plan de su instancia en
+       * vez de los precios de Pimia; el precio es minorista y no toca el
+       * dinero de Pimia.
+       */
+      replace: (body: CatalogoDelIntegradorRequest) =>
+        this.request<Ok<'integradorCatalogo.update'>>('/desarrollador/catalogo', {
+          method: 'PUT',
           body,
         }),
     }

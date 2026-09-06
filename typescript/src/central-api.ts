@@ -221,6 +221,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/catalogo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/catalogo — el catálogo propio y lo que se puede revender
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `perfil` y `currency` van a `null` mientras el integrador no haya
+         *     guardado nada; `disponibles` dice qué puede entrar en `items` (es la
+         *     lista contra la que valida el `PUT`).
+         */
+        get: operations["integradorCatalogo.show"];
+        /**
+         * PUT /api/desarrollador/catalogo — reemplaza el catálogo entero
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Cabecera (nombre comercial, soporte, moneda ISO 4217 y enlace de
+         *     contratación por defecto) y filas (`kind` ∈ `base|module|app`, `slug`,
+         *     `price_cents` en subunidades de esa moneda —siempre una cifra—,
+         *     `contract_url` propio opcional, `enabled`). Una fila que no venga deja de
+         *     existir. Un slug que no sea revendible responde 422.
+         */
+        put: operations["integradorCatalogo.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants/{slug}/transfer-ownership": {
         parameters: {
             query?: never;
@@ -299,7 +333,39 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /**
+         * IntegradorCatalogoRequest
+         * @description Cuerpo de `PUT /api/desarrollador/catalogo`: el catálogo del integrador
+         *     ENTERO —cabecera y filas—, que sustituye al que hubiera.
+         *
+         *     Lo que se defiende: que cada fila revenda algo que existe (un módulo
+         *     opcional ofrecido, una app activa del catálogo de Pimia, o `base`/`pimia`),
+         *     que no haya dos filas para lo mismo, que el precio sea SIEMPRE una cifra en
+         *     subunidades (👤, 2026-09-06: sin filas «incluido»; 0 vale) y que la moneda
+         *     sea un código ISO 4217. El precio minorista no se valida contra ningún
+         *     precio de Pimia: es del integrador (regla 4 del punto 12).
+         */
+        IntegradorCatalogoRequest: {
+            nombre_comercial: string;
+            /** Format: uri */
+            soporte_url?: string | null;
+            /** Format: email */
+            soporte_email?: string | null;
+            currency: string;
+            /** Format: uri */
+            contract_url?: string | null;
+            items: {
+                /** @enum {string} */
+                kind: "base" | "module" | "app";
+                slug: string;
+                price_cents: number;
+                /** Format: uri */
+                contract_url?: string | null;
+                enabled?: boolean;
+            }[];
+        };
+    };
     responses: {
         /** @description Validation error */
         ValidationException: {
@@ -833,6 +899,125 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorCatalogo.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            perfil: {
+                                nombre_comercial: string;
+                                soporte_url: string | null;
+                                soporte_email: string | null;
+                            } | null;
+                            currency: string | null;
+                            contract_url: string | null;
+                            items: {
+                                kind: string;
+                                slug: string;
+                                name: string;
+                                description: string | null;
+                                price_cents: number;
+                                price: string | null;
+                                contract_url: string | null;
+                                enabled: boolean;
+                            }[];
+                            disponibles: {
+                                base: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                                modules: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                                apps: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorCatalogo.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorCatalogoRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            perfil: {
+                                nombre_comercial: string;
+                                soporte_url: string | null;
+                                soporte_email: string | null;
+                            } | null;
+                            currency: string | null;
+                            contract_url: string | null;
+                            items: {
+                                kind: string;
+                                slug: string;
+                                name: string;
+                                description: string | null;
+                                price_cents: number;
+                                price: string | null;
+                                contract_url: string | null;
+                                enabled: boolean;
+                            }[];
+                            disponibles: {
+                                base: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                                modules: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                                apps: {
+                                    slug: string;
+                                    name: string;
+                                    description: string | null;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
         };
     };

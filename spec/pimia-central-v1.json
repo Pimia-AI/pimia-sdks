@@ -2,8 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.0.0",
-        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente) y el traspaso de propiedad. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
+        "version": "1.1.0",
+        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad y su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n). Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
         {
@@ -1288,6 +1288,457 @@
                 "x-pimia-partner-availability": "developer-account"
             }
         },
+        "/desarrollador/catalogo": {
+            "get": {
+                "operationId": "integradorCatalogo.show",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`perfil` y `currency` van a `null` mientras el integrador no haya\nguardado nada; `disponibles` dice qu\u00e9 puede entrar en `items` (es la\nlista contra la que valida el `PUT`).",
+                "summary": "GET /api/desarrollador/catalogo \u2014 el cat\u00e1logo propio y lo que se puede revender",
+                "tags": [
+                    "IntegradorCatalogo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "perfil": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "nombre_comercial": {
+                                                            "type": "string"
+                                                        },
+                                                        "soporte_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "soporte_email": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "nombre_comercial",
+                                                        "soporte_url",
+                                                        "soporte_email"
+                                                    ]
+                                                },
+                                                "currency": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "contract_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "description": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "price_cents": {
+                                                                "type": "integer"
+                                                            },
+                                                            "price": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "contract_url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "enabled": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "slug",
+                                                            "name",
+                                                            "description",
+                                                            "price_cents",
+                                                            "price",
+                                                            "contract_url",
+                                                            "enabled"
+                                                        ]
+                                                    }
+                                                },
+                                                "disponibles": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "base": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "modules": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "apps": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "base",
+                                                        "modules",
+                                                        "apps"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "perfil",
+                                                "currency",
+                                                "contract_url",
+                                                "items",
+                                                "disponibles"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "put": {
+                "operationId": "integradorCatalogo.update",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCabecera (nombre comercial, soporte, moneda ISO 4217 y enlace de\ncontrataci\u00f3n por defecto) y filas (`kind` \u2208 `base|module|app`, `slug`,\n`price_cents` en subunidades de esa moneda \u2014siempre una cifra\u2014,\n`contract_url` propio opcional, `enabled`). Una fila que no venga deja de\nexistir. Un slug que no sea revendible responde 422.",
+                "summary": "PUT /api/desarrollador/catalogo \u2014 reemplaza el cat\u00e1logo entero",
+                "tags": [
+                    "IntegradorCatalogo"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IntegradorCatalogoRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "perfil": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "nombre_comercial": {
+                                                            "type": "string"
+                                                        },
+                                                        "soporte_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "soporte_email": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "nombre_comercial",
+                                                        "soporte_url",
+                                                        "soporte_email"
+                                                    ]
+                                                },
+                                                "currency": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "contract_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "description": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "price_cents": {
+                                                                "type": "integer"
+                                                            },
+                                                            "price": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "contract_url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "enabled": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "slug",
+                                                            "name",
+                                                            "description",
+                                                            "price_cents",
+                                                            "price",
+                                                            "contract_url",
+                                                            "enabled"
+                                                        ]
+                                                    }
+                                                },
+                                                "disponibles": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "base": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "modules": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "apps": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "description": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "description"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "base",
+                                                        "modules",
+                                                        "apps"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "perfil",
+                                                "currency",
+                                                "contract_url",
+                                                "items",
+                                                "disponibles"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
         "/tenants/{slug}/transfer-ownership": {
             "post": {
                 "operationId": "tenant.transferOwnership",
@@ -1732,6 +2183,95 @@
                 "type": "http",
                 "description": "Token personal de Sanctum de la cuenta de desarrollador, acotado por plano (galeote/factSaas#731): `central` abre el grupo compartido (invitaciones, patrocinio, traspaso) y `desarrollador` abre `/api/desarrollador/*`. El token de una sesi\u00f3n del panel lleva los dos; un token de m\u00e1quina puede acu\u00f1arse solo con `desarrollador`. Cada operaci\u00f3n declara la suya en `x-pimia-required-ability`. Un token sin la habilidad recibe `403 token_sin_habilidad`; uno sin acotar (`*`), `401 token_sin_habilidades`.",
                 "scheme": "bearer"
+            }
+        },
+        "schemas": {
+            "IntegradorCatalogoRequest": {
+                "type": "object",
+                "description": "Cuerpo de `PUT /api/desarrollador/catalogo`: el cat\u00e1logo del integrador\nENTERO \u2014cabecera y filas\u2014, que sustituye al que hubiera.\n\nLo que se defiende: que cada fila revenda algo que existe (un m\u00f3dulo\nopcional ofrecido, una app activa del cat\u00e1logo de Pimia, o `base`/`pimia`),\nque no haya dos filas para lo mismo, que el precio sea SIEMPRE una cifra en\nsubunidades (\ud83d\udc64, 2026-09-06: sin filas \u00abincluido\u00bb; 0 vale) y que la moneda\nsea un c\u00f3digo ISO 4217. El precio minorista no se valida contra ning\u00fan\nprecio de Pimia: es del integrador (regla 4 del punto 12).",
+                "properties": {
+                    "nombre_comercial": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                    },
+                    "soporte_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri",
+                        "maxLength": 2048
+                    },
+                    "soporte_email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "currency": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z]{3}$"
+                    },
+                    "contract_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri",
+                        "maxLength": 2048
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                        "base",
+                                        "module",
+                                        "app"
+                                    ]
+                                },
+                                "slug": {
+                                    "type": "string",
+                                    "maxLength": 63
+                                },
+                                "price_cents": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000000
+                                },
+                                "contract_url": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "kind",
+                                "slug",
+                                "price_cents"
+                            ]
+                        },
+                        "maxItems": 100
+                    }
+                },
+                "required": [
+                    "nombre_comercial",
+                    "currency",
+                    "items"
+                ],
+                "title": "IntegradorCatalogoRequest"
             }
         },
         "responses": {
