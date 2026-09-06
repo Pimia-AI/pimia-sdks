@@ -148,6 +148,14 @@ export const SCOPES = {
   notificationsRead: 'notifications:read',
   /** Marcar avisos como leídos y borrarlos. */
   notificationsWrite: 'notifications:write',
+  /**
+   * Leer el catálogo de apps integradas y qué tiene instalada la empresa
+   * (`/apps`, `/apps/{slug}`, `/apps/{slug}/config`). Entra en la 0.22.0 con
+   * la fase 1 de apps integradas del núcleo (galeote/factSaas#697-#702).
+   */
+  appsRead: 'apps:read',
+  /** Instalar y desinstalar una app en la empresa, ajustar su configuración y acuñar su credencial de entrada. */
+  appsWrite: 'apps:write',
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',

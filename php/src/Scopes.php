@@ -69,6 +69,16 @@ final class Scopes
     /** Marcar avisos como leídos y borrarlos. */
     public const NOTIFICATIONS_WRITE = 'notifications:write';
 
+    /**
+     * Leer el catálogo de apps integradas y qué tiene instalada la empresa
+     * (`/apps`, `/apps/{slug}`, `/apps/{slug}/config`). Entra en la 0.22.0 con
+     * la fase 1 de apps integradas del núcleo (galeote/factSaas#697-#702).
+     */
+    public const APPS_READ = 'apps:read';
+
+    /** Instalar y desinstalar una app en la empresa, ajustar su configuración y acuñar su credencial de entrada. */
+    public const APPS_WRITE = 'apps:write';
+
     public const AGENDA_READ = 'agenda:read';
 
     public const AGENDA_WRITE = 'agenda:write';

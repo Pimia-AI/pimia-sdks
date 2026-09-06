@@ -18,12 +18,21 @@ patrocinio y traspaso—, la condición que el punto 12 de `docs/DECISIONES.md`
 consumirá por este SDK. Todo aditivo.
 
 Specs sincronizados con **factSaas@b48dc290** (2026-09-06): `/api/v1` con
-**431 operaciones** (las 428 de la 0.21.0 más las tres de
-`/desarrollador-link/*`, que no salían en ningún contrato porque el segmento
-no estaba en el mapa de dominios del guard) y el plano central con **15**.
+**438 operaciones** (las 428 de la 0.21.0 más las siete de `/apps/*` de la
+fase 1 de apps integradas, que el núcleo publicó el 05-09 y el SDK aún no
+llevaba, y las tres de `/desarrollador-link/*`, que no salían en ningún
+contrato porque el segmento no estaba en el mapa de dominios del guard) y el
+plano central con **15**.
 
 ### Añadido
 
+- **`SCOPES.appsRead` / `SCOPES.appsWrite`** (TS) y **`Scopes::APPS_READ` /
+  `Scopes::APPS_WRITE`** (PHP): el dominio de las apps integradas
+  (galeote/factSaas#697-#702, punto 11 de `docs/DECISIONES.md`). Sus siete
+  operaciones —`GET /apps`, `GET /apps/{slug}`, `POST`/`DELETE
+  /apps/{slug}/install`, `GET`/`PUT /apps/{slug}/config`, `POST
+  /apps/{slug}/credential`— entran marcadas `first-party-only`: las consume
+  la pantalla Ajustes → Integraciones del panel de Pimia.
 - **`PimiaCentralClient`** (`baseUrl` = el ápice, `token` = el token personal
   de la cuenta de desarrollador, acotado por plano): `overview()`, `salud()`,
   `facturacion()`, `links.{list,generateCode,accept,reject}`,
