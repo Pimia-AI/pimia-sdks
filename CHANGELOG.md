@@ -17,8 +17,8 @@ de canal —una partida por Price, cantidad = activaciones vivas de toda su
 cartera, sin prorrateo, en la factura del mes— con Prices mayoristas propios
 del canal. Todo aditivo.
 
-Specs sincronizados con la rama del núcleo (`d636e1de`): plano central
-**1.2.0, 20 operaciones** (`GET|POST /desarrollador/tenants/{slug}/activaciones`,
+Specs sincronizados con **factSaas@a0dc94c4** (2026-09-06, galeote/factSaas#739
+mergeado): plano central **1.2.0, 20 operaciones** (`GET|POST /desarrollador/tenants/{slug}/activaciones`,
 `DELETE …/activaciones/{kind}/{item}`); `/api/v1` sigue en 438 y en
 `GET /tenant-modules` la baja de un módulo del canal por el cliente contesta
 `403 channel_module`.
