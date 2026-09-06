@@ -17,7 +17,7 @@ patrocinio y traspaso—, la condición que el punto 12 de `docs/DECISIONES.md`
 (regla 6) ponía antes del dashboard del integrador, y que ese dashboard
 consumirá por este SDK. Todo aditivo.
 
-Specs sincronizados con **factSaas@__CORE__** (2026-09-06): `/api/v1` con
+Specs sincronizados con **factSaas@b48dc290** (2026-09-06): `/api/v1` con
 **431 operaciones** (las 428 de la 0.21.0 más las tres de
 `/desarrollador-link/*`, que no salían en ningún contrato porque el segmento
 no estaba en el mapa de dominios del guard) y el plano central con **15**.

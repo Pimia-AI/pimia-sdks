@@ -302,6 +302,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El catálogo de integraciones con el estado de cada una EN ESTA EMPRESA
+         * @description **Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `status` distingue tres cosas y no dos: `not_installed` (no hay fila),
+         *     `installed` y `disabled` (la hubo y se apagó, con su config a salvo).
+         *
+         *     `authorization` dice si el grant que sostiene la instalación sigue vivo.
+         *     Hasta #699 nadie lo enlaza, así que hoy es `null` en todas; la forma está
+         *     para que la pantalla no cambie cuando deje de serlo.
+         *
+         *     ⚠️ `price_cents` va en subunidades y SIN formatear: formatearlo aquí
+         *     clavaría el euro en un quinto sitio (#517), y el precio de una app es
+         *     suyo. Quien lo pinte ya sabe en qué moneda cobra.
+         */
+        get: operations["apps.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * La ficha de una integración: manifiesto, estado y su configuración
+         *     ENMASCARADA (un secreto sale como si existe y sus últimos cuatro, nunca
+         *     entero — ver {@see AppRegistry})
+         * @description **Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["apps.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{slug}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Instalar la integración en esta empresa: la ceremonia completa
+         * @description **Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Enlaza el grant OAuth de quien instala —el patrón Slack: la app se
+         *     instala con el token de quien la instaló, y si esa persona se va, la
+         *     empresa reinstala— y registra los endpoints de webhook que declara el
+         *     manifiesto, con el `client_id` de la app y esta company. La app puede
+         *     devolver en su callback la URL de entrega (`webhook_url`), que manda
+         *     sobre la del manifiesto.
+         *
+         *     `webhook_secret` viene SOLO cuando se acaba de crear el endpoint: es lo
+         *     que la app necesita para verificar la firma HMAC, y no se vuelve a
+         *     enseñar (ni se rota en un reintento, que dejaría a la app verificando con
+         *     uno viejo).
+         *
+         *     Idempotente: si ya estaba instalada responde 200 sin reescribir
+         *     `installed_at` —el día que #702 cobre, volver a pulsar no puede volver a
+         *     cobrar— pero sí reintenta los enganches que falten. Si estaba apagada, la
+         *     reenciende conservando su config.
+         *
+         *     ⚠️ Desde el #710 puede responder **409 `app_retired`**: el superadmin
+         *     retiró la app del catálogo. No es un 404 —la integración existe y quien la
+         *     tenga puesta la sigue viendo y la puede desinstalar—; lo que ya no se
+         *     puede es darla de alta. Quien lo pinte tiene que clasificar por el `error`
+         *     del cuerpo, no por el status.
+         */
+        post: operations["apps.install"];
+        /**
+         * Desinstalar: un botón, tres efectos
+         * @description **Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Revoca el grant que la sostenía (cascada de `TokenLifecycle`: sella el
+         *     grant y sus refresh, borra los PAT de ese client en el esquema del
+         *     tenant y emite `app.revoked` una sola vez), borra los endpoints de
+         *     webhook de esta app en esta company, y apaga la fila.
+         *
+         *     ⚠️ `billing.released` solo es `true` cuando de verdad había una partida
+         *     que retirar, y **solo entonces `paid_until` significa algo** (#715). Si la
+         *     app se cobra hoy pero esta suscripción nunca tuvo su partida —la
+         *     instalación es anterior al precio, o la suscripción ya estaba cancelada—
+         *     viene `nothing_to_release`. Quien pinte la frase no puede afirmar un mes
+         *     pagado sin mirar cuál de las dos es.
+         *
+         *     ⛔ Y hay un tercer «no se dio de baja» que **no se puede callar**:
+         *     `release_failed`. Ahí la partida existía y Stripe no dejó quitarla, así
+         *     que la integración queda desinstalada y **la suscripción la sigue
+         *     cobrando** hasta que el reconciliador la cace. Callarlo es peor que
+         *     equivocarse de frase: la empresa creería que dejó de pagar algo que se le
+         *     sigue cobrando.
+         *
+         *     La fila no se borra: «desinstalada» es un estado consultable, no la
+         *     ausencia de información, y volver a instalar sale barato. La config se
+         *     CONSERVA salvo que el manifiesto declare lo contrario, y la respuesta lo
+         *     dice en `config_kept` — desinstalar por error no debe perder lo
+         *     configurado.
+         */
+        delete: operations["apps.uninstall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{slug}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * La configuración de la integración, enmascarada
+         * @description **Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["apps.config"];
+        /**
+         * Guardar configuración, validada contra el `config_schema` del manifiesto
+         * @description **Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Es un MERGE: lo que no viene, no se toca. Tiene que serlo porque quien
+         *     edita desde una pantalla no tiene los secretos —solo ha visto sus últimos
+         *     cuatro—, y un reemplazo los borraría cada vez que se cambia una URL. Para
+         *     quitar un campo se manda `null`.
+         *
+         *     Y se comprueba el resultado, no la entrada: si TRAS el merge faltara
+         *     algún campo obligatorio, se rechaza con 422. Así la config no queda a
+         *     medias sin que nadie lo note, y guardar solo un campo sigue valiendo.
+         */
+        put: operations["apps.updateConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/apps/{slug}/credential": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acuñar o ROTAR la credencial de entrada de la app en esta empresa
+         * @description **Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Devuelve el secreto EN CLARO, y es la única vez que sale: en la base solo
+         *     queda su hash. Rotar es sobrescribir —la anterior deja de valer en el
+         *     acto, sin ventana de gracia—, que es lo que se espera de una rotación y lo
+         *     que la hace útil como respuesta a una fuga.
+         *
+         *     ⛔ Esto es acuñar una credencial, o sea justo lo que la decisión 4 de
+         *     `docs/DECISIONES.md` deja fuera del mapa para los integradores. Sigue
+         *     fuera: `apps:write` es `first_party_only` y además hace falta
+         *     `manage company`. Lo que cambia es que la primera parte, con el dueño
+         *     dentro, hace lo que hasta hoy hacía infra editando el `.env` del host.
+         */
+        post: operations["apps.rotateCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/crm/assignable-users": {
         parameters: {
             query?: never;
@@ -1559,6 +1748,66 @@ export interface paths {
         post?: never;
         /** Delete a delivery note */
         delete: operations["delivery-notes.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador-link/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET — estado del vínculo de esta instancia
+         * @description **Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["desarrolladorLink.status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador-link/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST — la instancia solicita vincularse con un código DEV-XXXX-XXXX
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["desarrolladorLink.request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador-link/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE — la instancia rompe el vínculo. Siempre puede
+         * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["desarrolladorLink.revoke"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5232,6 +5481,14 @@ export interface paths {
          *     instancia en marca blanca —su licencia la paga un desarrollador— la lista
          *     llega VACÍA y `white_label` a `true`: el cliente vive dentro del producto
          *     del partner y no ve precios de Pimia. El corte va en el servidor.
+         *
+         *     **Cada plan dice además qué módulos opcionales trae y cuáles costarían
+         *     aparte** (`optional_modules`), que es lo que la pantalla de contratación
+         *     necesita para ofrecer añadirlos al contratar: preguntárselo a
+         *     `GET /tenant-modules` sería preguntar por el plan de HOY, y quien está
+         *     eligiendo plan quiere saber lo del plan de MAÑANA. En un plan gratuito
+         *     no hay ni `included` ni `addon`: no incluye ninguno y no hay
+         *     suscripción a la que sumarlos (2026-09-04).
          */
         get: operations["tenantBilling.plans"];
         put?: never;
@@ -5263,6 +5520,33 @@ export interface paths {
          *     `usage.storage` es `null` cuando no se puede medir (esquema a medias) y
          *     `subscription.current_period_end` es `null` cuando Stripe no contesta:
          *     un dato que no consta se dice como tal, no se inventa un cero.
+         *
+         *     **`addons` es lo que la suscripción paga en módulos añadidos** (desde
+         *     el 2026-09-04): cuántos, a cuánto, y la cuota mensual DE LISTA —plan
+         *     más añadidos **más integraciones**, sin prorrateos, cupones, impuestos
+         *     ni prueba: no es el próximo cargo— ya formateada. Existe porque el panel
+         *     enseñaba «Tu plan: Pimia, 12,00 € al mes» a una empresa que pagaba 14:
+         *     el precio del plan no es la cuota. La cantidad es la de la partida de
+         *     Stripe (copia local), no un recuento de filas —que contaría también los
+         *     heredados, que no se cobran—. `null` sin suscripción, y `null` en un
+         *     asiento PATROCINADO: su suscripción es la del canal, y la partida de ésa
+         *     la comparten todas sus instancias; la instancia no paga nada.
+         *
+         *     **`apps` son las integraciones de pago, una a una** (desde el
+         *     2026-09-05, #716), con su total propio. Salen de las partidas de la
+         *     suscripción, igual que la cantidad de módulos: ⛔ contar `company_apps`
+         *     diría de más en cuanto dos empresas de la instancia tuvieran la misma
+         *     —la segunda no vuelve a pagar—.
+         *
+         *     ⛔ **Y el mismo defecto ha pasado DOS VECES en este campo.** `addons`
+         *     nació porque el total decía 12 y se pagaban 14 (el plan no es la cuota);
+         *     el 2026-09-05 decía 16 y se pagaban 25,90 (los módulos tampoco lo son).
+         *     Las dos veces el cálculo de los sumandos conocidos era correcto y lo que
+         *     faltaba era un sumando nuevo. La decisión que esto sirve —«una sola
+         *     cesta en el producto: el sitio donde la pyme ve lo que paga es uno»—
+         *     significa que **quien añada una partida de cobro tiene que sumarla en
+         *     `addonsPayload()`**, y que un total que no la incluya no es un total
+         *     incompleto: es una cifra falsa en la pantalla que la pyme lee.
          */
         get: operations["tenantBilling.subscription"];
         put?: never;
@@ -5297,9 +5581,19 @@ export interface paths {
          *     `true`, `checkout_url` es `null` y `plan` dice a cuál: el panel no tiene
          *     a dónde ir, solo refrescar.
          *
+         *     **Los módulos opcionales se pueden comprar aquí mismo** (`modules`, lista
+         *     de slugs): la sesión de Stripe nace con dos partidas —el plan y «Módulo
+         *     adicional» con tantas unidades como módulos—, y al confirmarse el pago
+         *     quedan encendidos y marcados como añadidos. Se validan contra el plan que
+         *     se contrata, no contra el actual: lo que la instancia tiene hoy no dice
+         *     nada de lo que tendría mañana. Lo que ofrece cada plan lo publica
+         *     `GET /billing/plans` en `optional_modules`.
+         *
          *     Errores, con su código en `error`: `white_label` (403), `no_payer` (409),
          *     `free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),
-         *     `stripe_resume_failed` (502), `stripe_price_missing` (503).
+         *     `invalid_addon_module` y `addon_included_in_plan` (422),
+         *     `stripe_resume_failed` (502), `stripe_price_missing` (503),
+         *     `stripe_addon_price_missing` (503).
          */
         post: operations["tenantBilling.checkoutFromPanel"];
         delete?: never;
@@ -5521,6 +5815,25 @@ export interface paths {
          *     publicaba, así que el panel web enseñaba un botón de «Desactivar» sobre
          *     `compliance-es` y otro de «Instalar» sobre `compliance-fr` en una empresa
          *     española (épica #677).
+         *
+         *     **Los añadidos (2026-09-03).** Un opcional que el plan NO incluye se
+         *     puede añadir pagando, y la respuesta lo dice con cuatro campos:
+         *     `billing` (`core` no se vende, `included` lo trae el plan, `addon` se
+         *     paga aparte), `price_cents` y `price` (lo que costaría al mes; `null` si
+         *     no se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:
+         *     tiene plan de pago y quien mira es su dueño) y `addon_active` (si ya lo
+         *     está pagando). Con `billing: addon` y `purchasable: false` la pantalla
+         *     lleva a contratar un plan, que es lo que el `402 subscription_required`
+         *     del alta también dice.
+         *
+         *     `available_in_plan` se conserva y ahora es «incluido o añadible»: lo que
+         *     la instancia puede llegar a tener.
+         *
+         *     **`addon_ends_at`** (desde el 2026-09-04, noche): un añadido dado de
+         *     baja no se apaga, deja de RENOVARSE — sigue encendido hasta esa fecha
+         *     (el fin del periodo ya pagado) y ahí se apaga. Mientras tanto
+         *     `addon_active` sigue en `true` (este periodo está pagado) y volver a
+         *     activarlo no cobra: lo «mantiene». `null` en todo lo demás.
          */
         get: operations["tenantModules.index"];
         put?: never;
@@ -5544,9 +5857,30 @@ export interface paths {
          * Instala un módulo en la instancia, y con él sus dependencias
          * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
-         *     Un módulo que no existe, uno que el plan de la instancia no incluye, o una
-         *     dependencia que no se puede satisfacer, salen como `422` con el motivo en
-         *     `message`.
+         *     Un módulo que no existe, uno que el plan de la instancia no incluye y no
+         *     se puede comprar, o una dependencia que no se puede satisfacer, salen
+         *     como `422` con el motivo en `message`.
+         *
+         *     **Si el plan no lo incluye pero se vende** (`billing: addon`), instalarlo
+         *     es COMPRARLO: se cobra HOY el mes entero (una factura aparte al pagador)
+         *     y se suma a la suscripción de Stripe de la instancia para la
+         *     renovación, antes de activarlo; la fila queda marcada como añadido. Sin
+         *     plan de pago la respuesta es `402 subscription_required` con
+         *     `plan_url`; los demás cortes, con su código en `error`: `white_label`
+         *     (403), `not_the_payer` (403), `channel_seat` (422),
+         *     `stripe_price_missing` (503), `stripe_addon_failed` (502),
+         *     `addon_payment_failed` (402: la tarjeta no pasó; no se activa nada). Un
+         *     añadido que ya se está pagando no se cobra dos veces, y uno **pendiente
+         *     de baja** (`addon_ends_at`) se MANTIENE sin cobrar: vuelve a renovar
+         *     (`kept: true`, `charged: false`).
+         *
+         *     Si el cobro entra pero el encendido revienta, la respuesta es `202` con
+         *     `status: pending` y `message`: el módulo se activa solo en unos minutos
+         *     (cola) y volver a pulsar no cobra otra vez. Otros cortes del cobro, con
+         *     su código: `addon_payment_requires_action` (402, el banco pide
+         *     confirmar y el panel aún no puede), `addon_payment_method_unsupported`
+         *     (402, sin tarjeta), `subscription_ending` (402, cancelada o en mora),
+         *     `addon_busy` (409), `addon_expired` (409).
          */
         post: operations["tenantModules.install"];
         delete?: never;
@@ -5565,12 +5899,24 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Desactiva un módulo de la instancia
+         * Desactiva un módulo opcional de la instancia
          * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
-         *     Un módulo `core` no se puede desactivar, y tampoco uno del que dependa
-         *     otro que siga instalado: los dos casos son `422` con el motivo en
-         *     `message`.
+         *     Un básico, o un módulo del que dependa otro instalado, sale como `422`
+         *     con el motivo en `message`.
+         *
+         *     **Si se estaba pagando como añadido** (fila `installed` con `meta.addon`
+         *     y una suscripción con partida), desactivarlo es **dejar de RENOVARLO**:
+         *     se resta de la partida de Stripe sin abono —el mes está pagado— y el
+         *     módulo SIGUE encendido hasta el fin del periodo (`addon_ends_at`); ahí
+         *     lo apaga `billing:apagar-anadidos-vencidos` (o la factura de
+         *     renovación). La respuesta lo dice: `status: installed`, `addon_released:
+         *     true`, `addon_ends_at`. Uno ya pendiente no cambia. Si Stripe no
+         *     contesta, el módulo sigue encendido y renovando: `502
+         *     stripe_addon_release_failed` o `stripe_period_unknown`.
+         *
+         *     Un heredado (encendido sin marca) o un añadido sin partida se apaga en
+         *     el acto, como siempre: no hay nada pagado que respetar.
          */
         post: operations["tenantModules.disable"];
         delete?: never;
@@ -11178,6 +11524,354 @@ export interface operations {
             };
         };
     };
+    "apps.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        apps: {
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            publisher: string | null;
+                            kind: string;
+                            install: string[];
+                            scopes: string[];
+                            webhook_events: string[];
+                            config_url: string | null;
+                            price_cents: number | null;
+                            listed: boolean;
+                            status: string;
+                            installed: boolean;
+                            installed_at: string | null;
+                            disabled_at: string | null;
+                            installed_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            authorization: {
+                                id: number;
+                                revoked: boolean;
+                                last_used_at: string | null;
+                            } | null;
+                            missing_required: string[];
+                            entry_credential: {
+                                set: boolean;
+                                last_four: string | null;
+                                created_at: string | null;
+                                last_used_at: string | null;
+                            };
+                        }[];
+                        installed_slugs: string[];
+                    };
+                };
+            };
+        };
+    };
+    "apps.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        app: {
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            publisher: string | null;
+                            kind: string;
+                            install: string[];
+                            scopes: string[];
+                            webhook_events: string[];
+                            config_url: string | null;
+                            price_cents: number | null;
+                            listed: boolean;
+                            status: string;
+                            installed: boolean;
+                            installed_at: string | null;
+                            disabled_at: string | null;
+                            installed_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            authorization: {
+                                id: number;
+                                revoked: boolean;
+                                last_used_at: string | null;
+                            } | null;
+                            missing_required: string[];
+                            entry_credential: {
+                                set: boolean;
+                                last_four: string | null;
+                                created_at: string | null;
+                                last_used_at: string | null;
+                            };
+                            config_schema: {
+                                [key: string]: {
+                                    type: string;
+                                    required: boolean;
+                                    secret: boolean;
+                                };
+                            };
+                            config: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "apps.install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    webhook_url?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        app: {
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            publisher: string | null;
+                            kind: string;
+                            install: string[];
+                            scopes: string[];
+                            webhook_events: string[];
+                            config_url: string | null;
+                            price_cents: number | null;
+                            listed: boolean;
+                            status: string;
+                            installed: boolean;
+                            installed_at: string | null;
+                            disabled_at: string | null;
+                            installed_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            authorization: {
+                                id: number;
+                                revoked: boolean;
+                                last_used_at: string | null;
+                            } | null;
+                            missing_required: string[];
+                            entry_credential: {
+                                set: boolean;
+                                last_four: string | null;
+                                created_at: string | null;
+                                last_used_at: string | null;
+                            };
+                        };
+                        webhook_secret?: string;
+                        entry_credential?: string;
+                        billing: {
+                            ok: boolean;
+                            charged?: boolean;
+                            already_paid?: boolean;
+                            free?: boolean;
+                            invoice?: string;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "apps.uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        app: {
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            publisher: string | null;
+                            kind: string;
+                            install: string[];
+                            scopes: string[];
+                            webhook_events: string[];
+                            config_url: string | null;
+                            price_cents: number | null;
+                            listed: boolean;
+                            status: string;
+                            installed: boolean;
+                            installed_at: string | null;
+                            disabled_at: string | null;
+                            installed_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            authorization: {
+                                id: number;
+                                revoked: boolean;
+                                last_used_at: string | null;
+                            } | null;
+                            missing_required: string[];
+                            entry_credential: {
+                                set: boolean;
+                                last_four: string | null;
+                                created_at: string | null;
+                                last_used_at: string | null;
+                            };
+                        };
+                        revoked_tokens: number;
+                        webhooks_removed: number;
+                        config_kept: boolean;
+                        billing: {
+                            ok: boolean;
+                            released?: boolean;
+                            kept_for_others?: boolean;
+                            free?: boolean;
+                            nothing_to_release?: boolean;
+                            release_failed?: boolean;
+                            paid_until?: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "apps.config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        config: {
+                            [key: string]: unknown;
+                        };
+                        config_schema: {
+                            [key: string]: {
+                                type: string;
+                                required: boolean;
+                                secret: boolean;
+                            };
+                        };
+                        missing_required: string[];
+                    };
+                };
+            };
+        };
+    };
+    "apps.updateConfig": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        config: {
+                            [key: string]: unknown;
+                        };
+                        config_schema: {
+                            [key: string]: {
+                                type: string;
+                                required: boolean;
+                                secret: boolean;
+                            };
+                        };
+                        missing_required: string[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "apps.rotateCredential": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entry_credential: string;
+                        app: string;
+                    };
+                };
+            };
+        };
+    };
     "crm.assignableUsers": {
         parameters: {
             query?: never;
@@ -13771,6 +14465,121 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "desarrolladorLink.status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            status: string;
+                            link_code: string;
+                            /** Format: date-time */
+                            requested_at: string | null;
+                            /** Format: date-time */
+                            accepted_at: string | null;
+                            desarrollador: {
+                                id: string | null;
+                                name: string | null;
+                                email: string | null;
+                            };
+                            /**
+                             * @description Lo que el dueño de la instancia debe tener claro al vincular.
+                             * @constant
+                             */
+                            alcance: "Este vínculo es administrativo y de facturación. No da acceso a tus datos: eso lo autorizas tú desde «Apps conectadas», permiso a permiso.";
+                        } | {
+                            /** @constant */
+                            status: "none";
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "desarrolladorLink.request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    link_code: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Solicitud enviada al desarrollador.";
+                        data: {
+                            id: number;
+                            status: string;
+                            link_code: string;
+                            /** Format: date-time */
+                            requested_at: string | null;
+                            /** Format: date-time */
+                            accepted_at: string | null;
+                            desarrollador: {
+                                id: string | null;
+                                name: string | null;
+                                email: string | null;
+                            };
+                            /**
+                             * @description Lo que el dueño de la instancia debe tener claro al vincular.
+                             * @constant
+                             */
+                            alcance: "Este vínculo es administrativo y de facturación. No da acceso a tus datos: eso lo autorizas tú desde «Apps conectadas», permiso a permiso.";
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "desarrolladorLink.revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Vinculación revocada.";
+                    };
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "eInvoice.download": {
@@ -21921,6 +22730,15 @@ export interface operations {
                             max_storage_mb: number;
                             features: string[];
                             is_free: boolean;
+                            optional_modules: {
+                                slug: string;
+                                name: string;
+                                description: string | null;
+                                included: boolean;
+                                addon: boolean;
+                                price_cents: number | null;
+                                price: string | null;
+                            }[];
                         }[];
                         white_label: boolean;
                         message: string | null;
@@ -21993,6 +22811,24 @@ export interface operations {
                                 cancel_at_period_end: boolean;
                                 ends_at: string | null;
                             } | null;
+                            apps: {
+                                items: {
+                                    slug: string;
+                                    name: string;
+                                    price_cents: number;
+                                    price: string;
+                                    quantity: number;
+                                }[];
+                                total_cents: number;
+                                total: string;
+                            } | null;
+                            addons: {
+                                quantity: number;
+                                price_cents: number;
+                                price: string;
+                                total_cents: number;
+                                total: string;
+                            } | null;
                             status: string;
                         };
                     };
@@ -22008,7 +22844,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_id: number;
+                    modules?: string[];
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -22020,10 +22863,14 @@ export interface operations {
                             checkout_url: string | null;
                             resumed: boolean;
                             plan: string | null;
+                            addons: string[];
+                            addons_failed: boolean;
+                            addons_message: string | null;
                         };
                     };
                 };
             };
+            422: components["responses"]["ValidationException"];
         };
     };
     "tenantBilling.portal": {
@@ -22423,6 +23270,12 @@ export interface operations {
                             abilities_namespace: string | null;
                             status: string;
                             available_in_plan: boolean;
+                            billing: string;
+                            price_cents: number | null;
+                            price: string | null;
+                            purchasable: boolean;
+                            addon_active: boolean;
+                            addon_ends_at: string | null;
                             installed_at: string | null;
                             disabled_at: string | null;
                             version: string | null;
@@ -22432,6 +23285,12 @@ export interface operations {
                             dependents: string[];
                         }[];
                         installed_slugs: string[];
+                        addons: {
+                            price_cents: number;
+                            price: string;
+                            quantity: number;
+                            purchasable: boolean;
+                        };
                     };
                 };
             };
@@ -22462,6 +23321,9 @@ export interface operations {
                         status: string;
                         installed_at: string | null;
                         installed_slugs: string[];
+                        addon: boolean;
+                        charged: boolean;
+                        kept: boolean;
                     };
                 };
             };
@@ -22490,6 +23352,8 @@ export interface operations {
                         status: string;
                         disabled_at: string | null;
                         installed_slugs: string[];
+                        addon_released: boolean;
+                        addon_ends_at: string | null;
                     };
                 };
             };
