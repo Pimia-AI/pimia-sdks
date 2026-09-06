@@ -787,19 +787,36 @@ obtiene en el registro de Pimia o en el panel de integrador).
     del ingreso; quitarlas habría falseado la plataforma para no dibujar unas
     pantallas.
 
+    **13.5. EL MARCO: la maqueta es el CONTRATO, y sustituye a
+    `central.taskai.work` (2026-09-06).** 👤: «por eso estamos primero creando
+    esto. Hasta llegar a un consenso real no cerraremos el mockup de superadmin
+    e integradores. Una vez definido cada recoveco, central.taskai.work será
+    sustituido por lo que estamos creando en el mockup». Consecuencias, y son
+    las que ordenan todo lo demás: **(1)** lo desplegado hoy en
+    `central.taskai.work` (`Pimia-AI/pimia-central-web`) es un BORRADOR que va a
+    ser reemplazado, no un producto que haya que podar — con lo que **desaparece
+    la pregunta** de qué hacer con sus pantallas (esconderlas, quitarlas,
+    dejarlas); **(2)** lo que no esté dibujado y acordado en el banco no se
+    construye allí, y lo acordado se porta tal cual; **(3)** el mockup **no se
+    cierra** hasta que cada recoveco tenga consenso —«casi definido» no vale: la
+    cadena se paró por dar por hecho un marco que nadie había acordado—; **(4)**
+    cada decisión se aplica el MISMO DÍA a la maqueta y a este punto 13. Los
+    recovecos que faltan por acordar están enumerados en el §7.6 del estudio del
+    banco.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir, en el orden que puso 👤** («eso ahora mismo es
-    lo menos relevante»): qué se hace con las pantallas ya desplegadas en
-    `central.taskai.work` que no son cartera ni catálogo —licencia y
-    activaciones, portal de pago, dominio de acceso, llaves de máquina—:
-    esconder, quitar o dejar; y si el integrador ve dinero por cliente, que la
-    maqueta ya enseña en tres columnas de la cartera. ⛔ Ninguna pregunta
-    técnica: eso fue lo que hizo parar la cadena.
+    **Lo que sigue sin decidir:** los ocho recovecos del §7.6 del estudio del
+    banco —qué pasa al pulsar un cliente en la cartera, si el integrador ve
+    dinero por cliente y precio mayorista, qué hace cuando dejan de pagarle, qué
+    hace el superadmin con una instancia y con un socio, qué necesita ver de un
+    plan, y la ficha de instancia compartida, que es la que obliga a decidir
+    quién ve qué—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    cadena.
 
 ## Referencias (repos privados)
 
