@@ -757,6 +757,19 @@ obtiene en el registro de Pimia o en el panel de integrador).
     integrador nuevo—, no con una operación de traspaso. ⛔ No volver a
     proponerla.
 
+    **13.3. El integrador no entra en el Pimia de su cliente, y suspender se
+    queda (2026-09-06).** 👤: «quita también entrar en su Pimia. Suspender es
+    necesario para que pueda dar de baja a su cliente». Cae la entrada por SSO
+    desde el panel del integrador: era la última puerta abierta a los libros de
+    un cliente, y sin ella la promesa del panel —que no ve sus datos— pasa a ser
+    cierta sin excepciones ni notas al pie. **Suspender se queda, y con un
+    porqué que conviene no perder: no es un castigo ni una herramienta de cobro,
+    es CÓMO un integrador da de baja a un cliente** que se va, cierra o deja de
+    pagarle; sin ella seguiría pagando a Pimia el asiento de alguien que ya no
+    es suyo, sin forma de pararlo desde su panel. El menú de un cliente en su
+    cartera queda en dos acciones, y ninguna toca datos: cambiar sus añadidos y
+    suspender el servicio.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
@@ -767,10 +780,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
     lo menos relevante»): qué se hace con las pantallas ya desplegadas en
     `central.taskai.work` que no son cartera ni catálogo —licencia y
     activaciones, portal de pago, dominio de acceso, llaves de máquina—:
-    esconder, quitar o dejar; y si el integrador ve algo más que cartera y
-    catálogo, en concreto si puede suspender a un cliente que no le paga y si
-    ve dinero por cliente. ⛔ Ninguna pregunta técnica: eso fue lo que hizo
-    parar la cadena.
+    esconder, quitar o dejar; y si el integrador ve dinero por cliente, que la
+    maqueta ya enseña en tres columnas de la cartera. ⛔ Ninguna pregunta
+    técnica: eso fue lo que hizo parar la cadena.
 
 ## Referencias (repos privados)
 
