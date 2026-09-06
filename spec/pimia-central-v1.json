@@ -2,8 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.3.0",
-        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad, su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice) y sus tokens de m\u00e1quina. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
+        "version": "1.4.0",
+        "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), el traspaso de propiedad, su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice), sus tokens de m\u00e1quina, qui\u00e9n pertenece a cada instancia (para traspasarla) y el portal de Stripe de su canal. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
         {
@@ -21,10 +21,93 @@
         }
     ],
     "paths": {
+        "/billing/portal": {
+            "post": {
+                "operationId": "billing.portal",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nAllows users to manage payment methods, view invoices, cancel subscriptions.",
+                "summary": "POST /api/billing/portal \u2014 Get Stripe Customer Portal URL",
+                "tags": [
+                    "Billing"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "return_url": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 2000
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "portal_url": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "portal_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "No billing account found. Subscribe to a plan first."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
         "/billing/sponsorship": {
             "post": {
                 "operationId": "billing.sponsor",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nMismo mecanismo para las dos figuras intermediarias (gestor\u00eda y\ndesarrollador): una suscripci\u00f3n de canal con `quantity` = asientos y una\nfactura consolidada, en vez de N suscripciones sueltas.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nMismo mecanismo para las dos figuras intermediarias (gestor\u00eda y\ndesarrollador): una suscripci\u00f3n de canal con `quantity` = asientos y una\nfactura consolidada, en vez de N suscripciones sueltas.",
                 "summary": "POST /api/billing/sponsorship \u2014 asumir la licencia de un cliente",
                 "tags": [
                     "Billing"
@@ -41,6 +124,14 @@
                                     },
                                     "plan_id": {
                                         "type": "integer"
+                                    },
+                                    "return_url": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "A d\u00f3nde vuelve desde el Checkout del canal: el panel central en\nReact (1.4.0). Solo se acepta su origen; si no, el panel Vue.",
+                                        "maxLength": 2000
                                     }
                                 },
                                 "required": [
@@ -111,7 +202,7 @@
             },
             "delete": {
                 "operationId": "billing.releaseSponsorship",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "DELETE /api/billing/sponsorship \u2014 soltar un cliente patrocinado",
                 "tags": [
                     "Billing"
@@ -170,7 +261,7 @@
         "/desarrollador/overview": {
             "get": {
                 "operationId": "desarrollador.overview",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCada fila de `cartera` lleva `origen`: el client OAuth de ESTE\ndesarrollador por el que se le atribuye el tenant \u2014con\n`atribuido: true` si el alta lo dej\u00f3 escrito (`origin_client_id`,\n#726) y `false` si se infiere porque el v\u00ednculo est\u00e1 vivo y el\ndesarrollador tiene un \u00fanico client con or\u00edgenes (la red de\n`IntegradorDelTenant::clientDe`)\u2014 o `null`. Nunca el client de otro\ndesarrollador aunque el tenant lo recuerde: es su relaci\u00f3n comercial,\nno la de quien mira.\n\nEl cuerpo se declara entero porque el generador no sigue el `map()`\nsobre la colecci\u00f3n de tenants: en la 1.3.0 `cartera` sal\u00eda como una\nlista de `string` y el panel no pod\u00eda tipar ni una fila.",
                 "summary": "GET /api/desarrollador/overview \u2014 cartera y cuota",
                 "tags": [
                     "Desarrollador"
@@ -189,23 +280,99 @@
                                                 "cartera": {
                                                     "type": "array",
                                                     "items": {
-                                                        "type": "string"
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "plan": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "trial_ends_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "relacion": {
+                                                                "type": "string"
+                                                            },
+                                                            "billing_mode": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "la_pago_yo": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "marca_blanca": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "origen": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "client_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "atribuido": {
+                                                                        "type": "boolean"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "client_id",
+                                                                    "name",
+                                                                    "atribuido"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name",
+                                                            "status",
+                                                            "plan",
+                                                            "created_at",
+                                                            "trial_ends_at",
+                                                            "relacion",
+                                                            "billing_mode",
+                                                            "la_pago_yo",
+                                                            "marca_blanca",
+                                                            "origen"
+                                                        ]
                                                     }
                                                 },
                                                 "resumen": {
                                                     "type": "object",
                                                     "properties": {
                                                         "total": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "activos": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "suspendidos": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         }
                                                     },
                                                     "required": [
@@ -218,8 +385,7 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "usada": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "limite": {
                                                             "type": "integer"
@@ -260,7 +426,7 @@
         "/desarrollador/salud": {
             "get": {
                 "operationId": "desarrollador.salud",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLo que un desarrollador necesita y un asesor no: si sus clients siguen\nus\u00e1ndose, si sus webhooks llegan y si tiene propuestas esperando decisi\u00f3n\ndel cliente. Todo son METADATOS de la integraci\u00f3n \u2014 \u00faltimo uso, c\u00f3digos\nde estado, contadores. Nunca el contenido de lo que viaja.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLo que un desarrollador necesita y un asesor no: si sus clients siguen\nus\u00e1ndose, si sus webhooks llegan y si tiene propuestas esperando decisi\u00f3n\ndel cliente. Todo son METADATOS de la integraci\u00f3n \u2014 \u00faltimo uso, c\u00f3digos\nde estado, contadores. Nunca el contenido de lo que viaja.\n\nDeclarado entero por lo mismo que `overview`: el generador publicaba\n`revoked_at` como `string` a secas (es `null` casi siempre) y\n`approvals.por_tenant` como una uni\u00f3n con `string[]`.",
                 "summary": "GET /api/desarrollador/salud \u2014 estado t\u00e9cnico de sus integraciones",
                 "tags": [
                     "Desarrollador"
@@ -288,7 +454,10 @@
                                                                 "type": "string"
                                                             },
                                                             "revoked_at": {
-                                                                "type": "string"
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
                                                             },
                                                             "tokens_vivos": {
                                                                 "type": "integer"
@@ -324,19 +493,19 @@
                                                                 ]
                                                             },
                                                             "url": {
-                                                                "type": "string",
-                                                                "description": "La URL es del desarrollador, no del cliente: puede verla."
+                                                                "type": "string"
                                                             },
                                                             "events": {
                                                                 "type": "array",
-                                                                "items": {}
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
                                                             },
                                                             "disabled_at": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             },
                                                             "consecutive_failures": {
                                                                 "type": "integer"
@@ -373,58 +542,33 @@
                                                     }
                                                 },
                                                 "approvals": {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "abiertas": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "por_tenant": {
-                                                                    "type": "array",
-                                                                    "items": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "tenant_id": {
-                                                                                "type": "string"
-                                                                            },
-                                                                            "abiertas": {
-                                                                                "type": "integer"
-                                                                            }
-                                                                        },
-                                                                        "required": [
-                                                                            "tenant_id",
-                                                                            "abiertas"
-                                                                        ]
-                                                                    }
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "abiertas",
-                                                                "por_tenant"
-                                                            ]
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "abiertas": {
+                                                            "type": "integer"
                                                         },
-                                                        {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "abiertas": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "por_tenant": {
-                                                                    "type": "array",
-                                                                    "items": {
+                                                        "por_tenant": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "tenant_id": {
                                                                         "type": "string"
                                                                     },
-                                                                    "minItems": 0,
-                                                                    "maxItems": 0,
-                                                                    "additionalItems": false
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "abiertas",
-                                                                "por_tenant"
-                                                            ]
+                                                                    "abiertas": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "tenant_id",
+                                                                    "abiertas"
+                                                                ]
+                                                            }
                                                         }
+                                                    },
+                                                    "required": [
+                                                        "abiertas",
+                                                        "por_tenant"
                                                     ]
                                                 }
                                             },
@@ -479,19 +623,19 @@
                                                             "type": "string"
                                                         },
                                                         "asientos": {
-                                                            "type": "integer",
-                                                            "minimum": 0
+                                                            "type": "integer"
                                                         },
                                                         "quantity": {
-                                                            "type": "integer",
-                                                            "description": "Por la partida del PLAN: con un a\u00f1adido mayorista el\ncanal es multiprecio y `$canal->quantity` es NULL."
+                                                            "type": "integer"
                                                         },
                                                         "descuadre": {
-                                                            "type": "boolean",
-                                                            "description": "Si divergen, manda el n\u00famero de asientos: es lo servido."
+                                                            "type": "boolean"
                                                         },
                                                         "termina_en": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
@@ -520,15 +664,13 @@
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             },
                                                             "suspendido_desde": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
@@ -541,12 +683,49 @@
                                                     }
                                                 },
                                                 "en_mora": {
-                                                    "type": "integer",
-                                                    "minimum": 0
+                                                    "type": "integer"
                                                 },
                                                 "anadidos": {
-                                                    "type": "string",
-                                                    "description": "Lo que paga en a\u00f1adidos mayoristas de toda su cartera\n(m\u00f3dulos y apps activados a sus clientes)."
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "activaciones": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "string"
+                                                        },
+                                                        "por_tenant": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "tenant_id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "activaciones": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "total_cents": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "tenant_id",
+                                                                    "activaciones",
+                                                                    "total_cents"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "activaciones",
+                                                        "total_cents",
+                                                        "total",
+                                                        "por_tenant"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1426,7 +1605,7 @@
             },
             "post": {
                 "operationId": "integradorActivacion.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`kind` \u2208 `base|module|app` y `slug` (`pimia` para la base). La base es el\nasiento: la primera vez devuelve `checkout_url` (el canal a\u00fan no tiene\nsuscripci\u00f3n) y las siguientes es un asiento m\u00e1s. Un m\u00f3dulo o una app\nexigen la base viva (`409 base_required`) y se cobran al integrador\ncomo una partida m\u00e1s de su canal, sin prorrateo, en la factura del mes;\nel m\u00f3dulo se enciende en el acto y la app la instala el cliente por\nempresa sin pasar por caja. Idempotente: lo ya activo contesta\n`already_active: true` sin tocar Stripe (y remata lo que se qued\u00f3 a\nmedias); un m\u00f3dulo que el cliente ya ten\u00eda encendido por su cuenta\ncontesta `already_active` con `inherited: true` y NO se cobra. Cortes, con su c\u00f3digo en\n`error`: `not_the_integrator` (403), `not_sellable` (422),\n`base_required` y `channel_required` (409), `channel_subscription_ending`\n(402), `stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_busy` (409), `module_not_enabled` (422).",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`kind` \u2208 `base|module|app` y `slug` (`pimia` para la base). La base es el\nasiento: la primera vez devuelve `checkout_url` (el canal a\u00fan no tiene\nsuscripci\u00f3n) y las siguientes es un asiento m\u00e1s. Un m\u00f3dulo o una app\nexigen la base viva (`409 base_required`) y se cobran al integrador\ncomo una partida m\u00e1s de su canal, sin prorrateo, en la factura del mes;\nel m\u00f3dulo se enciende en el acto y la app la instala el cliente por\nempresa sin pasar por caja. Idempotente: lo ya activo contesta\n`already_active: true` sin tocar Stripe (y remata lo que se qued\u00f3 a\nmedias); un m\u00f3dulo que el cliente ya ten\u00eda encendido por su cuenta\ncontesta `already_active` con `inherited: true` y NO se cobra. Cortes, con su c\u00f3digo en\n`error`: `not_the_integrator` (403), `not_sellable` (422),\n`base_required` y `channel_required` (409), `channel_subscription_ending`\n(402), `stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_busy` (409), `module_not_enabled` (422).\n\nContesta **201** cuando activa algo nuevo y **200** cuando ya estaba\nactivo o cuando lo que devuelve es el Checkout del canal; los dos\n`return` llevan el c\u00f3digo escrito para que el generador publique los\ndos cuerpos (\u26d4 no con `@response 201`: esa etiqueta Scramble la lee\ncomo el TIPO `201` y el cuerpo desaparece del contrato \u2014 pas\u00f3 en la\n1.3.0, lo midi\u00f3 el estudio del panel central). `return_url` (1.4.0):\na d\u00f3nde vuelve desde el Checkout; solo se acepta el origen del panel\ncentral o el del \u00e1pice.",
                 "summary": "POST /api/desarrollador/tenants/{slug}/activaciones \u2014 activar algo al cliente",
                 "tags": [
                     "IntegradorActivacion"
@@ -1465,6 +1644,13 @@
                                             "integer",
                                             "null"
                                         ]
+                                    },
+                                    "return_url": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 2000
                                     }
                                 },
                                 "required": [
@@ -1476,13 +1662,133 @@
                     }
                 },
                 "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Completa el alta de tu suscripci\u00f3n de canal para activar la licencia de este cliente.",
+                                                "El cliente ya lo ten\u00eda encendido por su cuenta: no se te cobra ni se le toca.",
+                                                "Ya estaba activo.",
+                                                "Activado: se cobra en tu canal desde la pr\u00f3xima factura."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "already_active": {
+                                                    "type": "boolean"
+                                                },
+                                                "inherited": {
+                                                    "type": "boolean"
+                                                },
+                                                "checkout_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "quantity": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "activation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "additionalProperties": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "already_active",
+                                                "inherited",
+                                                "checkout_url",
+                                                "quantity",
+                                                "activation"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "integer",
-                                    "const": 201
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Completa el alta de tu suscripci\u00f3n de canal para activar la licencia de este cliente.",
+                                                        "El cliente ya lo ten\u00eda encendido por su cuenta: no se te cobra ni se le toca.",
+                                                        "Ya estaba activo.",
+                                                        "Activado: se cobra en tu canal desde la pr\u00f3xima factura."
+                                                    ]
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "already_active": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "inherited": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "checkout_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "quantity": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "activation": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "additionalProperties": {}
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "already_active",
+                                                        "inherited",
+                                                        "checkout_url",
+                                                        "quantity",
+                                                        "activation"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message",
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -2190,7 +2496,7 @@
             },
             "post": {
                 "operationId": "integradorDominio.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a\n32 caracteres `a-z0-9-`, \u00fanica en Pimia) y `host` el nombre p\u00fablico que\nel integrador sirve. Un nombre bajo un dominio de Pimia responde 422\n(`host`), igual que uno que ya declar\u00f3 otro integrador. La respuesta\ntrae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se\ngenera aqu\u00ed y se rota retirando el nombre y declar\u00e1ndolo otra vez.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`slug` es la etiqueta interna (`login-<slug>.<dominio central>`, de 1 a\n32 caracteres `a-z0-9-`, \u00fanica en Pimia) y `host` el nombre p\u00fablico que\nel integrador sirve. Un nombre bajo un dominio de Pimia responde 422\n(`host`), igual que uno que ya declar\u00f3 otro integrador. La respuesta\ntrae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se\ngenera aqu\u00ed y se rota retirando el nombre y declar\u00e1ndolo otra vez.\n\nSin `@response 201`: Scramble la lee como el tipo `201` y el cuerpo\n\u2014con el `proxy_secret`\u2014 desaparec\u00eda del contrato (1.3.0). El cuerpo\nsale de `presentar()`, que el generador s\u00ed lee.",
                 "summary": "POST /api/desarrollador/dominios \u2014 declarar un nombre de login",
                 "tags": [
                     "IntegradorDominio"
@@ -2220,13 +2526,64 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "integer",
-                                    "const": 201
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Nombre declarado. Apunta tu proxy al upstream y reenv\u00eda el nombre p\u00fablico en X-Forwarded-Host."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "host": {
+                                                    "type": "string"
+                                                },
+                                                "enabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "login_url": {
+                                                    "type": "string"
+                                                },
+                                                "upstream": {
+                                                    "type": "string"
+                                                },
+                                                "proxy_secret": {
+                                                    "type": "string"
+                                                },
+                                                "proxy": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "host",
+                                                "enabled",
+                                                "login_url",
+                                                "upstream",
+                                                "proxy_secret",
+                                                "proxy",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
                                 }
                             }
                         }
@@ -2366,7 +2723,7 @@
             },
             "post": {
                 "operationId": "integradorToken.store",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`name` es para reconocerlo en la lista (\u00abwebhook de producci\u00f3n\u00bb). El\ntoken en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.\nPide la sesi\u00f3n del integrador (403 `session_required` con un token de\nm\u00e1quina): uno filtrado no acu\u00f1a hermanos.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`name` es para reconocerlo en la lista (\u00abwebhook de producci\u00f3n\u00bb). El\ntoken en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.\nPide la sesi\u00f3n del integrador (403 `session_required` con un token de\nm\u00e1quina): uno filtrado no acu\u00f1a hermanos.\n\nEl cuerpo del 201 se escribe LITERAL y sin `@response`: Scramble lee\nesa etiqueta como el tipo `201` y el token en claro desaparec\u00eda del\ncontrato (1.3.0; medido por el estudio del panel central).",
                 "summary": "POST /api/desarrollador/tokens \u2014 acu\u00f1ar un token de m\u00e1quina",
                 "tags": [
                     "IntegradorToken"
@@ -2392,13 +2749,91 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "integer",
-                                    "const": 201
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Token creado. Gu\u00e1rdalo ahora: no se vuelve a ense\u00f1ar."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                },
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "abilities": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "last_used_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "expires_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "token",
+                                                "id",
+                                                "name",
+                                                "abilities",
+                                                "last_used_at",
+                                                "expires_at",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "session_required"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Un token de m\u00e1quina no acu\u00f1a otros: entra con tu cuenta (o usa el token de la sesi\u00f3n del panel) para crearlo."
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "message"
+                                    ]
                                 }
                             }
                         }
@@ -2462,7 +2897,7 @@
         "/tenants/{slug}/transfer-ownership": {
             "post": {
                 "operationId": "tenant.transferOwnership",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.\n\nVersi\u00f3n m\u00ednima y deliberada: el due\u00f1o actual (o el superadmin) pasa la\npropiedad a un usuario que YA pertenece a la instancia. No es un flujo\nself-service con aceptaci\u00f3n por parte del destinatario; es la pieza que\nfaltaba para que el desarrollador que dio de alta un tenant pueda\ndevolv\u00e9rselo a su cliente.\n\nPor qu\u00e9 hace falta: la decisi\u00f3n n\u00ba 4 del fundador permite al\ndesarrollador crear tenants, y entonces \u00e9l queda de owner. El rescate por\nimpago (\u00abtu proveedor dej\u00f3 de pagar; asume t\u00fa la licencia\u00bb) exige que el\ncliente pueda ser due\u00f1o de lo suyo \u2014 si no, la instancia queda de reh\u00e9n.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nVersi\u00f3n m\u00ednima y deliberada: el due\u00f1o actual (o el superadmin) pasa la\npropiedad a un usuario que YA pertenece a la instancia. No es un flujo\nself-service con aceptaci\u00f3n por parte del destinatario; es la pieza que\nfaltaba para que el desarrollador que dio de alta un tenant pueda\ndevolv\u00e9rselo a su cliente.\n\nPor qu\u00e9 hace falta: la decisi\u00f3n n\u00ba 4 del fundador permite al\ndesarrollador crear tenants, y entonces \u00e9l queda de owner. El rescate por\nimpago (\u00abtu proveedor dej\u00f3 de pagar; asume t\u00fa la licencia\u00bb) exige que el\ncliente pueda ser due\u00f1o de lo suyo \u2014 si no, la instancia queda de reh\u00e9n.",
                 "summary": "POST /api/tenants/{slug}/transfer-ownership \u2014 traspaso de propiedad",
                 "tags": [
                     "Tenant"
@@ -2571,10 +3006,89 @@
                 "x-pimia-partner-availability": "developer-account"
             }
         },
+        "/tenants/{slug}/users": {
+            "get": {
+                "operationId": "tenant.users",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).\n\nEn el contrato del plano central desde la 1.4.0: es a qui\u00e9n puede\ntraspasar la instancia el integrador que la cre\u00f3\n(`POST /tenants/{slug}/transfer-ownership` pide un `user_id` de aqu\u00ed).\nContesta SOLO para las instancias que el que pregunta administra\n\u2014due\u00f1o o con asiento (`manageableTenants`)\u2014; una instancia de la\ncartera solo VINCULADA (`relacion: vinculada` en `overview`) responde\n404, que es lo mismo que le pasar\u00eda al traspaso.",
+                "summary": "GET /api/tenants/{slug}/users \u2014 List users with access to this tenant",
+                "tags": [
+                    "Tenant"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "email": {
+                                                        "type": "string"
+                                                    },
+                                                    "role": {
+                                                        "type": "string"
+                                                    },
+                                                    "invited_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "is_owner": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "name",
+                                                    "email",
+                                                    "role",
+                                                    "invited_at",
+                                                    "is_owner"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "central",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
         "/tenant-invitations": {
             "post": {
                 "operationId": "tenantInvitation.store",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "POST /api/tenant-invitations \u2014 Crear y enviar una invitaci\u00f3n (gestor\u00eda)",
                 "tags": [
                     "TenantInvitation"
@@ -2752,7 +3266,7 @@
             },
             "get": {
                 "operationId": "tenantInvitation.index",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "GET /api/tenant-invitations \u2014 Invitaciones de la gestor\u00eda autenticada",
                 "tags": [
                     "TenantInvitation"
@@ -2830,7 +3344,7 @@
         "/tenant-invitations/{invitation}": {
             "delete": {
                 "operationId": "tenantInvitation.destroy",
-                "description": "**Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesi\u00f3n de cualquier figura; aqu\u00ed, la del integrador).",
                 "summary": "DELETE /api/tenant-invitations/{invitation} \u2014 Revocar una invitaci\u00f3n",
                 "tags": [
                     "TenantInvitation"

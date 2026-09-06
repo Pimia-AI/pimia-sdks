@@ -42,6 +42,7 @@ export type {
   IntegradorTokenRequest,
   PimiaCentralClientOptions,
   SponsorshipRequest,
+  BillingPortalRequest,
   TenantInvitationRequest,
   TransferOwnershipRequest,
 } from './central.js'

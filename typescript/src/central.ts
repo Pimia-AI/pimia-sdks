@@ -42,8 +42,15 @@ type Body<O extends keyof operations> = operations[O] extends {
     ? B
     : never
 
-/** Cuerpo de `POST /billing/sponsorship`: la instancia y el plan de canal con que se paga. */
+/**
+ * Cuerpo de `POST /billing/sponsorship`: la instancia y el plan de canal con
+ * que se paga; `return_url` (1.4.0) es a dónde vuelve el integrador desde el
+ * Checkout del canal —solo se acepta el origen del panel central o el del
+ * ápice; lo demás vuelve al panel Vue—.
+ */
 export type SponsorshipRequest = Body<'billing.sponsor'>
+/** Cuerpo de `POST /billing/portal` (1.4.0): `return_url`, con la misma regla que el patrocinio. */
+export type BillingPortalRequest = Body<'billing.portal'>
 /** Cuerpo de `POST /tenant-invitations`: a quién se invita y quién paga (`billing`). */
 export type TenantInvitationRequest = Body<'tenantInvitation.store'>
 /** Cuerpo de `POST /tenants/{slug}/transfer-ownership`: el usuario de la instancia que pasa a ser dueño. */
@@ -299,6 +306,19 @@ export class PimiaCentralClient {
     }
   }
 
+  get billing() {
+    return {
+      /**
+       * `POST /billing/portal` (1.4.0): la URL del portal de Stripe de la
+       * cuenta del integrador —las facturas del canal y el método de pago
+       * viven allí, no en Pimia—. 404 si la cuenta no tiene cliente de Stripe
+       * todavía (nunca patrocinó a nadie).
+       */
+      portal: (body: BillingPortalRequest = {}) =>
+        this.request<Ok<'billing.portal'>>('/billing/portal', { method: 'POST', body }),
+    }
+  }
+
   get sponsorship() {
     return {
       /** Asumir la licencia de un cliente: un asiento más en el plan de canal. */
@@ -315,6 +335,13 @@ export class PimiaCentralClient {
 
   get tenants() {
     return {
+      /**
+       * `GET /tenants/{slug}/users` (1.4.0): quién pertenece a la instancia
+       * —nombre, correo, rol, `is_owner`—. Es a quién se le puede traspasar:
+       * `transferOwnership` pide el `user_id` de alguien que ya está dentro.
+       */
+      users: (slug: string) =>
+        this.request<Ok<'tenant.users'>>(`/tenants/${encodeURIComponent(slug)}/users`),
       /** Traspasar la propiedad de la instancia a un usuario de la misma, antes de entregarla. */
       transferOwnership: (slug: string, body: TransferOwnershipRequest) =>
         this.request<Ok<'tenant.transferOwnership'>>(

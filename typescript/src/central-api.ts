@@ -8,6 +8,28 @@
  */
 
 export interface paths {
+    "/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/billing/portal — Get Stripe Customer Portal URL
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
+         *
+         *     Allows users to manage payment methods, view invoices, cancel subscriptions.
+         */
+        post: operations["billing.portal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/billing/sponsorship": {
         parameters: {
             query?: never;
@@ -19,7 +41,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/billing/sponsorship — asumir la licencia de un cliente
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          *
          *     Mismo mecanismo para las dos figuras intermediarias (gestoría y
          *     desarrollador): una suscripción de canal con `quantity` = asientos y una
@@ -28,7 +50,7 @@ export interface paths {
         post: operations["billing.sponsor"];
         /**
          * DELETE /api/billing/sponsorship — soltar un cliente patrocinado
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         delete: operations["billing.releaseSponsorship"];
         options?: never;
@@ -46,6 +68,19 @@ export interface paths {
         /**
          * GET /api/desarrollador/overview — cartera y cuota
          * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Cada fila de `cartera` lleva `origen`: el client OAuth de ESTE
+         *     desarrollador por el que se le atribuye el tenant —con
+         *     `atribuido: true` si el alta lo dejó escrito (`origin_client_id`,
+         *     #726) y `false` si se infiere porque el vínculo está vivo y el
+         *     desarrollador tiene un único client con orígenes (la red de
+         *     `IntegradorDelTenant::clientDe`)— o `null`. Nunca el client de otro
+         *     desarrollador aunque el tenant lo recuerde: es su relación comercial,
+         *     no la de quien mira.
+         *
+         *     El cuerpo se declara entero porque el generador no sigue el `map()`
+         *     sobre la colección de tenants: en la 1.3.0 `cartera` salía como una
+         *     lista de `string` y el panel no podía tipar ni una fila.
          */
         get: operations["desarrollador.overview"];
         put?: never;
@@ -71,6 +106,10 @@ export interface paths {
          *     usándose, si sus webhooks llegan y si tiene propuestas esperando decisión
          *     del cliente. Todo son METADATOS de la integración — último uso, códigos
          *     de estado, contadores. Nunca el contenido de lo que viaja.
+         *
+         *     Declarado entero por lo mismo que `overview`: el generador publicaba
+         *     `revoked_at` como `string` a secas (es `null` casi siempre) y
+         *     `approvals.por_tenant` como una unión con `string[]`.
          */
         get: operations["desarrollador.salud"];
         put?: never;
@@ -255,6 +294,15 @@ export interface paths {
          *     `base_required` y `channel_required` (409), `channel_subscription_ending`
          *     (402), `stripe_price_missing` (503), `stripe_addon_failed` (502),
          *     `addon_busy` (409), `module_not_enabled` (422).
+         *
+         *     Contesta **201** cuando activa algo nuevo y **200** cuando ya estaba
+         *     activo o cuando lo que devuelve es el Checkout del canal; los dos
+         *     `return` llevan el código escrito para que el generador publique los
+         *     dos cuerpos (⛔ no con `@response 201`: esa etiqueta Scramble la lee
+         *     como el TIPO `201` y el cuerpo desaparece del contrato — pasó en la
+         *     1.3.0, lo midió el estudio del panel central). `return_url` (1.4.0):
+         *     a dónde vuelve desde el Checkout; solo se acepta el origen del panel
+         *     central o el del ápice.
          */
         post: operations["integradorActivacion.store"];
         delete?: never;
@@ -346,6 +394,10 @@ export interface paths {
          *     (`host`), igual que uno que ya declaró otro integrador. La respuesta
          *     trae `proxy_secret`, que el proxy manda en `X-Pimia-Login-Secret`: se
          *     genera aquí y se rota retirando el nombre y declarándolo otra vez.
+         *
+         *     Sin `@response 201`: Scramble la lee como el tipo `201` y el cuerpo
+         *     —con el `proxy_secret`— desaparecía del contrato (1.3.0). El cuerpo
+         *     sale de `presentar()`, que el generador sí lee.
          */
         post: operations["integradorDominio.store"];
         delete?: never;
@@ -398,6 +450,10 @@ export interface paths {
          *     token en claro (`token`) se devuelve UNA vez: Pimia solo guarda su hash.
          *     Pide la sesión del integrador (403 `session_required` con un token de
          *     máquina): uno filtrado no acuña hermanos.
+         *
+         *     El cuerpo del 201 se escribe LITERAL y sin `@response`: Scramble lee
+         *     esa etiqueta como el tipo `201` y el token en claro desaparecía del
+         *     contrato (1.3.0; medido por el estudio del panel central).
          */
         post: operations["integradorToken.store"];
         delete?: never;
@@ -440,7 +496,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/tenants/{slug}/transfer-ownership — traspaso de propiedad
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          *
          *     Versión mínima y deliberada: el dueño actual (o el superadmin) pasa la
          *     propiedad a un usuario que YA pertenece a la instancia. No es un flujo
@@ -460,6 +516,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenants/{slug}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/tenants/{slug}/users — List users with access to this tenant
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
+         *
+         *     En el contrato del plano central desde la 1.4.0: es a quién puede
+         *     traspasar la instancia el integrador que la creó
+         *     (`POST /tenants/{slug}/transfer-ownership` pide un `user_id` de aquí).
+         *     Contesta SOLO para las instancias que el que pregunta administra
+         *     —dueño o con asiento (`manageableTenants`)—; una instancia de la
+         *     cartera solo VINCULADA (`relacion: vinculada` en `overview`) responde
+         *     404, que es lo mismo que le pasaría al traspaso.
+         */
+        get: operations["tenant.users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenant-invitations": {
         parameters: {
             query?: never;
@@ -469,13 +553,13 @@ export interface paths {
         };
         /**
          * GET /api/tenant-invitations — Invitaciones de la gestoría autenticada
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         get: operations["tenantInvitation.index"];
         put?: never;
         /**
          * POST /api/tenant-invitations — Crear y enviar una invitación (gestoría)
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         post: operations["tenantInvitation.store"];
         delete?: never;
@@ -496,7 +580,7 @@ export interface paths {
         post?: never;
         /**
          * DELETE /api/tenant-invitations/{invitation} — Revocar una invitación
-         * @description **Exige la habilidad `central`** en el token, y que la cuenta sea de desarrollador.
+         * @description **Exige la habilidad `central`** en el token (grupo compartido del plano central: lo abre la sesión de cualquier figura; aquí, la del integrador).
          */
         delete: operations["tenantInvitation.destroy"];
         options?: never;
@@ -589,6 +673,48 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "billing.portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    return_url?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            portal_url: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No billing account found. Subscribe to a plan first.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "billing.sponsor": {
         parameters: {
             query?: never;
@@ -601,6 +727,11 @@ export interface operations {
                 "application/json": {
                     tenant_slug: string;
                     plan_id: number;
+                    /**
+                     * @description A dónde vuelve desde el Checkout del canal: el panel central en
+                     *     React (1.4.0). Solo se acepta su origen; si no, el panel Vue.
+                     */
+                    return_url?: string | null;
                 };
             };
         };
@@ -667,7 +798,23 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            cartera: string[];
+                            cartera: {
+                                id: string;
+                                name: string;
+                                status: string;
+                                plan: string | null;
+                                created_at: string | null;
+                                trial_ends_at: string | null;
+                                relacion: string;
+                                billing_mode: string | null;
+                                la_pago_yo: boolean;
+                                marca_blanca: boolean;
+                                origen: {
+                                    client_id: string;
+                                    name: string;
+                                    atribuido: boolean;
+                                } | null;
+                            }[];
                             resumen: {
                                 total: number;
                                 activos: number;
@@ -704,17 +851,15 @@ export interface operations {
                             clients: {
                                 client_id: string;
                                 name: string;
-                                revoked_at: string;
+                                revoked_at: string | null;
                                 tokens_vivos: number;
                                 ultimo_uso: string | null;
                             }[];
                             webhooks: {
                                 id: number;
                                 tenant_id: string | null;
-                                /** @description La URL es del desarrollador, no del cliente: puede verla. */
                                 url: string;
-                                events: unknown[];
-                                /** Format: date-time */
+                                events: string[];
                                 disabled_at: string | null;
                                 consecutive_failures: number;
                                 entregas_7d: {
@@ -729,9 +874,6 @@ export interface operations {
                                     tenant_id: string;
                                     abiertas: number;
                                 }[];
-                            } | {
-                                abiertas: number;
-                                por_tenant: string[];
                             };
                         };
                     };
@@ -759,30 +901,28 @@ export interface operations {
                             canal: {
                                 estado: string;
                                 asientos: number;
-                                /**
-                                 * @description Por la partida del PLAN: con un añadido mayorista el
-                                 *     canal es multiprecio y `$canal->quantity` es NULL.
-                                 */
                                 quantity: number;
-                                /** @description Si divergen, manda el número de asientos: es lo servido. */
                                 descuadre: boolean;
-                                termina_en: string;
+                                termina_en: string | null;
                             } | null;
                             asientos: {
                                 tenant_id: string;
                                 rol: string;
                                 en_mora: boolean;
-                                /** Format: date-time */
                                 gracia_hasta: string | null;
-                                /** Format: date-time */
                                 suspendido_desde: string | null;
                             }[];
                             en_mora: number;
-                            /**
-                             * @description Lo que paga en añadidos mayoristas de toda su cartera
-                             *     (módulos y apps activados a sus clientes).
-                             */
-                            anadidos: string;
+                            anadidos: {
+                                activaciones: number;
+                                total_cents: number;
+                                total: string;
+                                por_tenant: {
+                                    tenant_id: string;
+                                    activaciones: number;
+                                    total_cents: number;
+                                }[];
+                            };
                         };
                     };
                 };
@@ -1142,6 +1282,7 @@ export interface operations {
                     kind: "base" | "module" | "app";
                     slug: string;
                     plan_id?: number | null;
+                    return_url?: string | null;
                 };
             };
         };
@@ -1151,7 +1292,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": 201;
+                    "application/json": {
+                        /** @enum {string} */
+                        message: "Completa el alta de tu suscripción de canal para activar la licencia de este cliente." | "El cliente ya lo tenía encendido por su cuenta: no se te cobra ni se le toca." | "Ya estaba activo." | "Activado: se cobra en tu canal desde la próxima factura.";
+                        data: {
+                            already_active: boolean;
+                            inherited: boolean;
+                            checkout_url: string | null;
+                            quantity: number | null;
+                            activation: {
+                                [key: string]: unknown;
+                            } | null;
+                        };
+                    } | string;
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        message: "Completa el alta de tu suscripción de canal para activar la licencia de este cliente." | "El cliente ya lo tenía encendido por su cuenta: no se te cobra ni se le toca." | "Ya estaba activo." | "Activado: se cobra en tu canal desde la próxima factura.";
+                        data: {
+                            already_active: boolean;
+                            inherited: boolean;
+                            checkout_url: string | null;
+                            quantity: number | null;
+                            activation: {
+                                [key: string]: unknown;
+                            } | null;
+                        };
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1366,12 +1539,25 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": 201;
+                    "application/json": {
+                        /** @constant */
+                        message: "Nombre declarado. Apunta tu proxy al upstream y reenvía el nombre público en X-Forwarded-Host.";
+                        data: {
+                            slug: string;
+                            host: string;
+                            enabled: boolean;
+                            login_url: string;
+                            upstream: string;
+                            proxy_secret: string;
+                            proxy: string;
+                            created_at: string | null;
+                        };
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1446,15 +1632,40 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": 201;
+                    "application/json": {
+                        /** @constant */
+                        message: "Token creado. Guárdalo ahora: no se vuelve a enseñar.";
+                        data: {
+                            token: string;
+                            id: number;
+                            name: string;
+                            abilities: unknown[];
+                            last_used_at: string | null;
+                            expires_at: string | null;
+                            created_at: string | null;
+                        };
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "session_required";
+                        /** @constant */
+                        message: "Un token de máquina no acuña otros: entra con tu cuenta (o usa el token de la sesión del panel) para crearlo.";
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -1532,6 +1743,37 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "tenant.users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                            email: string;
+                            role: string;
+                            invited_at: string | null;
+                            is_owner: boolean;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "tenantInvitation.index": {
