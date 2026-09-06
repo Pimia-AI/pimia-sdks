@@ -920,17 +920,35 @@ obtiene en el registro de Pimia o en el panel de integrador).
     de al lado. Lo mismo con los revendedores de una app: son **los que la tienen
     encendida en algún cliente**, no los que figuren en una lista aparte.
 
+    **13.13. El orden del trabajo, y los módulos entran en el catálogo del
+    superadmin (2026-09-07).** 👤 fijó el orden: **la asesoría va la última**
+    porque es la más compleja; primero se termina de definir superadmin e
+    integrador y **se compila para probarlo en real antes** de ponerse con ella.
+    Y señaló un hueco —«ni en superadmin ni en integradores se pueden modificar
+    los precios de los módulos como CRM, Trabajo»— que medido era la mitad
+    exacta: el integrador **sí** cambia su precio de venta en su catálogo, pero
+    el **precio mayorista de CRM y Partes de trabajo no tenía pantalla en ningún
+    sitio** (las dos apps sí salían en Integraciones). Ahora el catálogo del
+    superadmin son **tres tablas: planes, módulos e integraciones**, y la lista
+    de módulos **se deriva de lo que Pimia vende**, no se escribe — un módulo
+    nuevo aparece solo y ninguno puede volver a quedarse sin pantalla. **Asimetría
+    que queda POR DECIDIR:** a diferencia de un plan o de un asiento, el precio
+    de un módulo **no está congelado**; subirlo le sube la factura, el mes
+    siguiente, a todos los socios que lo tengan encendido. La pantalla lo dice
+    arriba y con nombres en vez de esconderlo, pero si debe seguir siendo así es
+    una decisión que no se toma dibujando.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** ningún recoveco de marco. Lo único aparcado a
-    propósito es, por 13.9c, si entrar dentro de una instancia deja rastro y si
-    el cliente se entera; el botón está a la vista y apagado hasta entonces. Sin
-    dibujar, porque nadie lo ha pedido: el panel de la asesoría, que sale de
-    cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** (1) si el precio de un módulo **se congela**
+    como el de un plan y el de un asiento — hoy no, y es la única regla de precio
+    que se comporta distinta (13.13); (2) aparcado por 13.9c, si entrar dentro de
+    una instancia deja rastro y si el cliente se entera. Y después de compilar y
+    probar en real, el panel de la asesoría, que sale de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
