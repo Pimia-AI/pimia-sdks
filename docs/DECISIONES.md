@@ -852,17 +852,35 @@ obtiene en el registro de Pimia o en el panel de integrador).
     dinero por cliente de su cartera y el bloque «lo que te deja» de la ficha:
     son ese mismo coste puesto por cliente.
 
+    **13.9. Treinta días de cortesía, ficha de socio para el superadmin, y
+    entrar dentro de una instancia queda APAGADO (2026-09-06).** Tres de un
+    tirón. **(a)** 👤: «el integrador puede suspender a su cliente por impago,
+    debe ofrecer **30 días de cortesía**». «En mora» deja de ser una etiqueta y
+    pasa a ser una cuenta atrás: hace falta guardar **desde cuándo debe** cada
+    cliente, y el botón de darle de baja está deshabilitado hasta que se agoten
+    los treinta días —la regla vive en el botón, no en un aviso que se puede
+    ignorar—. Invariante para quien lo construya: **nadie puede haber sido
+    cortado antes de agotar su cortesía**. **(b)** El superadmin tiene **índice y
+    ficha de socio**: quién es, qué le factura Pimia mes a mes, la cartera que ha
+    traído y **a cuánto revende** — Pimia conoce los precios de venta de sus
+    socios porque el catálogo vive dentro, así que la ficha los enseña Y dice de
+    dónde salen; un dato así sin explicar es lo que hace que un partner deje de
+    fiarse. Consecuencia técnica: la factura de canal debe poder calcularse
+    **para cualquier socio**, no solo para el que tenga pantalla. **(c)** El
+    botón de **entrar dentro de una instancia queda deshabilitado**, a la vista y
+    apagado, no borrado: pendiente de decidir si deja rastro y si el cliente se
+    entera.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** los cuatro recovecos del §7.9 del estudio del
-    banco —qué hace el integrador cuando un cliente deja de pagarle, si el
-    superadmin gobierna a un socio entero desde algún sitio, qué necesita ver de
-    un plan antes de tocarle el precio, y qué pasa cuando el superadmin entra
-    dentro de una instancia (si deja rastro y si el cliente se entera)—. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** uno solo (§7.10 del estudio del banco) — qué
+    necesita ver el superadmin de un plan antes de tocarle el precio: a cuántos
+    afectaría uno nuevo y a cuántos no. Y, aparcado por 13.9c, si entrar dentro
+    de una instancia deja rastro y si el cliente se entera. ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
