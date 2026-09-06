@@ -728,10 +728,10 @@ obtiene en el registro de Pimia o en el panel de integrador).
     (clientes, licencia, añadidos, precio, margen) y nunca de fontanería. El
     estudio previo —qué hace hoy cada figura en el SPA Vue, funciones y no
     estética— vive en `docs/research/ESTUDIO-PANEL-CENTRAL-TRES-FIGURAS.md`
-    del banco, con las decisiones en su §7. Las tres figuras están maquetadas
+    del banco, con las decisiones en su §7. Quedan maquetadas DOS figuras
     (integrador: visión general, cartera, catálogo y precios, facturación;
-    asesoría: panel operativo, clientes, bandeja de revisión, VeriFactu;
     superadmin: visión general, instancias, cuentas, planes e integraciones).
+    La asesoría se maquetó y se retiró el mismo día: 13.4.
 
     **13.1. Un integrador NO da de alta a sus clientes.** 👤: «en integrador
     vamos a suprimir dar de alta a un cliente. Sus clientes ya tienen la vía
@@ -769,6 +769,23 @@ obtiene en el registro de Pimia o en el panel de integrador).
     es suyo, sin forma de pararlo desde su panel. El menú de un cliente en su
     cartera queda en dos acciones, y ninguna toca datos: cambiar sus añadidos y
     suspender el servicio.
+
+    **13.4. El panel de la ASESORÍA sale del banco (2026-09-06).** 👤: «omite
+    por completo el panel del asesor, no tiene nada que ver con lo que debe
+    ser». Las cuatro pantallas maquetadas —panel operativo, cartera, bandeja de
+    revisión y VeriFactu— se retiran. Se habían dibujado a partir de lo que el
+    SPA Vue hace hoy, y eso no es lo que la figura tiene que ser: **la maqueta
+    heredaba el planteamiento en vez de discutirlo**, que es justo el error que
+    este trabajo existe para no cometer. ⚠️ Cuando la asesoría se retome, se
+    retoma por la pregunta de qué TIENE QUE SER, no por esas pantallas ni por
+    las del Vue. Lo que sobrevive y sirve: el inventario medido de sus 22 vistas
+    en el §4 del estudio del banco (seis áreas de trabajo, `GestoriaMapeo` muerta
+    y fuera del router, el triage sin entrada de menú, un enlace roto del panel a
+    la ficha de contribuyente, y qué es un cliente «offline» — el que no tiene
+    instancia y entrega papeles). El censo del ecosistema **conserva** las dos
+    asesorías: traen nueve instancias que el superadmin ve y que pagan su parte
+    del ingreso; quitarlas habría falseado la plataforma para no dibujar unas
+    pantallas.
 
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
