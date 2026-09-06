@@ -426,7 +426,7 @@
         "/desarrollador/salud": {
             "get": {
                 "operationId": "desarrollador.salud",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLo que un desarrollador necesita y un asesor no: si sus clients siguen\nus\u00e1ndose, si sus webhooks llegan y si tiene propuestas esperando decisi\u00f3n\ndel cliente. Todo son METADATOS de la integraci\u00f3n \u2014 \u00faltimo uso, c\u00f3digos\nde estado, contadores. Nunca el contenido de lo que viaja.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLo que un desarrollador necesita y un asesor no: si sus clients siguen\nus\u00e1ndose, si sus webhooks llegan y si tiene propuestas esperando decisi\u00f3n\ndel cliente. Todo son METADATOS de la integraci\u00f3n \u2014 \u00faltimo uso, c\u00f3digos\nde estado, contadores. Nunca el contenido de lo que viaja.\n\nDeclarado entero por lo mismo que `overview`: el generador publicaba\n`revoked_at` como `string` a secas (es `null` casi siempre) y\n`approvals.por_tenant` como una uni\u00f3n con `string[]`.",
                 "summary": "GET /api/desarrollador/salud \u2014 estado t\u00e9cnico de sus integraciones",
                 "tags": [
                     "Desarrollador"
@@ -454,7 +454,10 @@
                                                                 "type": "string"
                                                             },
                                                             "revoked_at": {
-                                                                "type": "string"
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
                                                             },
                                                             "tokens_vivos": {
                                                                 "type": "integer"
@@ -490,19 +493,19 @@
                                                                 ]
                                                             },
                                                             "url": {
-                                                                "type": "string",
-                                                                "description": "La URL es del desarrollador, no del cliente: puede verla."
+                                                                "type": "string"
                                                             },
                                                             "events": {
                                                                 "type": "array",
-                                                                "items": {}
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
                                                             },
                                                             "disabled_at": {
                                                                 "type": [
                                                                     "string",
                                                                     "null"
-                                                                ],
-                                                                "format": "date-time"
+                                                                ]
                                                             },
                                                             "consecutive_failures": {
                                                                 "type": "integer"
@@ -539,58 +542,33 @@
                                                     }
                                                 },
                                                 "approvals": {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "abiertas": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "por_tenant": {
-                                                                    "type": "array",
-                                                                    "items": {
-                                                                        "type": "object",
-                                                                        "properties": {
-                                                                            "tenant_id": {
-                                                                                "type": "string"
-                                                                            },
-                                                                            "abiertas": {
-                                                                                "type": "integer"
-                                                                            }
-                                                                        },
-                                                                        "required": [
-                                                                            "tenant_id",
-                                                                            "abiertas"
-                                                                        ]
-                                                                    }
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "abiertas",
-                                                                "por_tenant"
-                                                            ]
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "abiertas": {
+                                                            "type": "integer"
                                                         },
-                                                        {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "abiertas": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "por_tenant": {
-                                                                    "type": "array",
-                                                                    "items": {
+                                                        "por_tenant": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "tenant_id": {
                                                                         "type": "string"
                                                                     },
-                                                                    "minItems": 0,
-                                                                    "maxItems": 0,
-                                                                    "additionalItems": false
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "abiertas",
-                                                                "por_tenant"
-                                                            ]
+                                                                    "abiertas": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "tenant_id",
+                                                                    "abiertas"
+                                                                ]
+                                                            }
                                                         }
+                                                    },
+                                                    "required": [
+                                                        "abiertas",
+                                                        "por_tenant"
                                                     ]
                                                 }
                                             },

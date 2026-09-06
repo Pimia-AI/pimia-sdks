@@ -106,6 +106,10 @@ export interface paths {
          *     usándose, si sus webhooks llegan y si tiene propuestas esperando decisión
          *     del cliente. Todo son METADATOS de la integración — último uso, códigos
          *     de estado, contadores. Nunca el contenido de lo que viaja.
+         *
+         *     Declarado entero por lo mismo que `overview`: el generador publicaba
+         *     `revoked_at` como `string` a secas (es `null` casi siempre) y
+         *     `approvals.por_tenant` como una unión con `string[]`.
          */
         get: operations["desarrollador.salud"];
         put?: never;
@@ -847,17 +851,15 @@ export interface operations {
                             clients: {
                                 client_id: string;
                                 name: string;
-                                revoked_at: string;
+                                revoked_at: string | null;
                                 tokens_vivos: number;
                                 ultimo_uso: string | null;
                             }[];
                             webhooks: {
                                 id: number;
                                 tenant_id: string | null;
-                                /** @description La URL es del desarrollador, no del cliente: puede verla. */
                                 url: string;
-                                events: unknown[];
-                                /** Format: date-time */
+                                events: string[];
                                 disabled_at: string | null;
                                 consecutive_failures: number;
                                 entregas_7d: {
@@ -872,9 +874,6 @@ export interface operations {
                                     tenant_id: string;
                                     abiertas: number;
                                 }[];
-                            } | {
-                                abiertas: number;
-                                por_tenant: string[];
                             };
                         };
                     };
