@@ -615,6 +615,30 @@ obtiene en el registro de Pimia o en el panel de integrador).
     verificación en la respuesta del alta firmada, tokens por API) → web y
     fork (`PIMIA_AUTH_BASE_URL`, el correo desde el integrador, el bloque de
     Caddy de Zoomo para `login.erpstudio.es`) → medir con Talleres Ana.
+    **HECHO y desplegado en dev el mismo 2026-09-07:** núcleo
+    galeote/factSaas#741 (`integrador_dominios` con `proxy_secret`,
+    `IntegradorLoginHost`, rutas `login-<slug>.<central>` antes de las de
+    tenant, selector por cartera, pista `tenant` con pantalla de espera,
+    `tenant_id` en el canje, alta y reenvío con `data.verification`,
+    `/api/desarrollador/dominios` y `/tokens`; contrato central **1.3.0, 26
+    operaciones**; suite entera 2340 OK; revisión adversarial con once
+    hallazgos, seis arreglados en el PR —secreto del proxy, solo el client
+    del integrador en su host, `login-*` reservado, plano central forzado
+    para esquema y cookie, la espera solo para su cartera, acuñar tokens
+    pide sesión— y tres anotados como consecuencia de las decisiones), SDK
+    0.25.0 (Pimia-AI/pimia-sdks#91: `dominios.*`, `tokens.*`,
+    `TokenSet.tenantId`; tag y npm de 👤), web #420 (`PIMIA_AUTH_BASE_URL`,
+    `PIMIA_MAIL_URL`/`PIMIA_MAIL_FROM`) y el fork de Zoomo (7º rebase, Caddy
+    de `login.erpstudio.es` con el secreto, Mailpit de midday como SMTP).
+    Medido: `app.erpstudio.es/conectar?tenant=talleres-ana` → 307 a
+    `login.erpstudio.es/oauth/authorize…&tenant=talleres-ana`, servido por
+    el Caddy de Zoomo con su certificado y reenviado a Pimia; la pantalla
+    dice «Entra en Zoomo Estudio», «powered by Pimia» y «Solo para empresas
+    de Zoomo Estudio»; sin el secreto o sin `X-Forwarded-Host`, 404; `/entrar`
+    en ese nombre, 404. Residuo en dev, puesto por SQL: `integrador_dominios`
+    id 1 (`zoomo`, `login.erpstudio.es`, user 68847). Falta 👤: entrar como
+    Talleres Ana tecleando la contraseña, un alta nueva por el fork con el
+    correo en Mailpit, y medir el `X-Forwarded-For` en los limitadores.
 
 ## Referencias (repos privados)
 
