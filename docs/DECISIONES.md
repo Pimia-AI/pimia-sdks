@@ -640,6 +640,51 @@ obtiene en el registro de Pimia o en el panel de integrador).
     Talleres Ana tecleando la contraseña, un alta nueva por el fork con el
     correo en Mailpit, y medir el `X-Forwarded-For` en los limitadores.
 
+    **El panel central en React, decidido el 2026-09-07 (regla 6 ENSANCHADA
+    y decisión 2 ADELANTADA).** Al abrir el paso 5 con el estudio
+    (`docs/ESTUDIO-DASHBOARD-DEL-INTEGRADOR.md` del web: el contrato 1.3.0
+    medido pantalla a pantalla, nueve huecos, cómo entra hoy un integrador),
+    👤 movió el marco en la primera pregunta: **«ya que nos metemos con el
+    dashboard del integrador, nos metamos directamente con la arquitectura
+    para todos: superadmin, asesoría e integrador. Aunque no hagamos ahora
+    superadmin ni asesoría, las tres son las que van a sustituir a Vue»**.
+    El repo nuevo no es la consola del integrador: es **el panel central de
+    operativa de Pimia en Next.js + shadcn**, donde 👤 como superadmin lleva
+    la operativa entera y las otras dos figuras la suya; el integrador es la
+    primera figura que se construye. Es **privado y cerrado como el núcleo**:
+    no es un repo compartido ni se abre con el barrido. Medido en el Vue
+    central: 22 vistas de gestoría sobre 196 rutas, 5 de superadmin sobre 18,
+    1 de desarrollador sobre 26 operaciones y un grupo compartido de 46; solo
+    el integrador tiene contrato publicado, así que las otras dos figuras se
+    pagan primero en el núcleo (contrato por figura), como se pagó esta. Las
+    cuatro decisiones de 👤, una pregunta cada vez: (1) **cómo entra: login
+    propio del panel** (opción A del estudio): pantalla de entrada del panel;
+    su SERVIDOR llama a `POST /api/auth/login`, guarda el token personal en
+    su store y da al navegador una cookie opaca —el patrón del web—; vale
+    para las tres figuras porque el endpoint acuña `[central, <figura>]`;
+    descartadas la sesión Sanctum por cookie desde el navegador (el SDK en el
+    navegador y el panel atado a `*.pimia.es`), OAuth contra el AS del ápice
+    (acuña tokens de instancia; sería un segundo AS) y el Bearer pegado a
+    mano. (2) **Repo `Pimia-AI/pimia-central-web`** (creado ese día, privado).
+    (3) **Dominio `central.taskai.work` / `central.pimia.es`** mientras
+    conviva con el Vue (que vive en la raíz del ápice); el día que lo
+    sustituya puede ocupar la raíz. (4) **Un PR del núcleo con los huecos
+    pequeños ANTES de la primera pantalla**: contrato central **1.4.0** —los
+    tres `201` sin cuerpo en el spec (⛔ `@response 201 array{…}` Scramble lo
+    lee como el TIPO `201`: el token en claro, el `proxy_secret` y el
+    `checkout_url` llegaban sin tipo al SDK), `anadidos` tipado como `string`,
+    la atribución del alta en `overview` (`origen`), `GET /tenants/{slug}/users`
+    y `POST /billing/portal` al contrato, `return_url` hacia el panel
+    (aceptado solo si su origen es `CENTRAL_WEB_URL` o el ápice) y
+    `device_name` en el login (rota solo los tokens de ese nombre: el Vue y
+    el panel nuevo conviven; medido que el login mataba TODAS las sesiones
+    anteriores)—. El alta, edición, rotación y revocación de clients (H6) va
+    aparte cuando toque esa pantalla. Lo que el panel no lleva: grants OAuth,
+    `/api/v1`, datos de ninguna instancia (a los libros se llega por OAuth
+    consentido desde la app del integrador). Anotado con fecha: el plano
+    central no tiene recuperación de contraseña para ninguna figura.
+
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
