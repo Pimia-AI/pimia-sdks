@@ -17,8 +17,8 @@ integrador— y el integrador la primera; galeote/factSaas, rama
 `claude/contrato-central-1.4.0`). Todo aditivo salvo tres tipos que
 **mentían** y ahora dicen la verdad.
 
-Specs sincronizados con la rama del núcleo (2026-09-07): plano central
-**1.4.0, 28 operaciones**; `/api/v1` sin cambios.
+Specs sincronizados con **factSaas@522cf264** (2026-09-07, galeote/factSaas#743
+mergeado): plano central **1.4.0, 28 operaciones**; `/api/v1` sin cambios.
 
 ### Añadido
 
