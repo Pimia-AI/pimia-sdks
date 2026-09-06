@@ -684,6 +684,29 @@ obtiene en el registro de Pimia o en el panel de integrador).
     consentido desde la app del integrador). Anotado con fecha: el plano
     central no tiene recuperación de contraseña para ninguna figura.
 
+    **HECHO y desplegado en dev el mismo 2026-09-07:** núcleo
+    galeote/factSaas#743 (`522cf264`; contrato central **1.4.0, 28
+    operaciones**: los tres `201` con cuerpo, `cartera`, `anadidos` y `salud`
+    tipados, `origen` con `atribuido` y solo clients propios, `GET
+    /tenants/{slug}/users` e `POST /billing/portal` en el contrato,
+    `return_url` sobre `SsoDestination::originOf` acotado a `CENTRAL_WEB_URL`
+    o el ápice, `device_name` en lista cerrada `auth-token|central-web`;
+    suite entera 2351 OK; revisión adversarial con quince hallazgos, siete
+    arreglados —el alto: `\@` en `return_url`—; `conf.d.dev/central.conf`),
+    SDK 0.26.0 (Pimia-AI/pimia-sdks#93: `tenants.users`, `billing.portal`;
+    tag y npm de 👤), y **`Pimia-AI/pimia-central-web` nacido y servido en
+    `https://central.taskai.work`** (#1: login propio con `device_name`,
+    token en SQLite por `sha256(id)`, cookie `__Host-` opaca y deslizante
+    con techo, puente con lista blanca de las 28 operaciones y comprobación
+    de `Origin` en toda escritura, limitador propio del login, pantallas de
+    Cartera, Salud y Facturación; revisión adversarial con dieciséis
+    hallazgos, dieciséis cerrados y medidos en vivo —el alto: CSRF same-site
+    desde `{slug}.taskai.work`—). Medido: `/` → 307 a `/entrar`; un POST con
+    `Origin` de un tenant → 403; credenciales falsas → 401 del núcleo;
+    `device_name` fuera de la lista → 422. Falta 👤: entrar con la cuenta de
+    Zoomo (68847) para medir las tres pantallas con datos, y publicar el SDK
+    0.26.0 en npm. Siguiente: las pantallas de escritura y H6 (clients).
+
 
 ## Referencias (repos privados)
 
