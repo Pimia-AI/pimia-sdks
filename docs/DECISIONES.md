@@ -493,6 +493,41 @@ obtiene en el registro de Pimia o en el panel de integrador).
     `registerApi()` y `scramble:export --api=<nombre>` con `export_path`
     propio.
 
+    **El plano central, cerrado el mismo 2026-09-06 en tres PRs del núcleo y
+    uno del SDK.** (1) El riesgo del estudio era real y estaba en la
+    ACUÑACIÓN, no en la puerta: registro, login y aceptación de invitación no
+    pasaban habilidades (Sanctum → `['*']`), ninguna puerta del grupo
+    `auth:sanctum` las miraba, y el SPA central corre sobre ese mismo Bearer
+    (`stores/auth.js`, `localStorage`); en dev había 124 `auth-token` con `*`.
+    Desde galeote/factSaas#732 (issue #731) el plano central es **fail-closed
+    por habilidades del token**: cuatro, una por plano —`central` (el grupo
+    compartido), `gestoria` (la que ya llevaba el copiloto Hermes),
+    `desarrollador`, `superadmin`—; el `auth-token` nace con las de la figura;
+    la sesión por cookie no cambia; un token con `*` contesta 401 para que el
+    SPA vuelva al login; y la figura sigue siendo la segunda puerta. Un token
+    de máquina se acuña solo con `desarrollador` y no alcanza la cuenta, los
+    tenants ni la facturación (lo fija `HabilidadesDelPlanoCentralTest`).
+    (2) Las dos preguntas del estudio las decidió 👤: el documento declara
+    **Bearer con habilidades** (OAuth `client_credentials` del ápice queda como
+    destino, con la regla 5); las rutas se publican **tal cual** —`desarrollador`
+    en la URL, «integrador» en los textos— con **1.0.0**; y **se publica en el
+    SDK**, que es lo que el dashboard consumirá: lo que protege es el token
+    acotado, no que las rutas no se vean, y el perímetro son solo las de la
+    figura desarrollador. galeote/factSaas#735 lo publica:
+    `docs/openapi/pimia-central-v1.json`, **15 operaciones por método y ruta**
+    (`config/central_surface.php`: las nueve de `desarrollador`, invitar,
+    patrocinar y soltar, traspasar), `x-pimia-required-ability` por operación,
+    `spec:export --api=central`, `scripts/spec-export.sh --api central` y el
+    test reproducible recorriendo los dos documentos. (3) El agujero de
+    `/api/v1/desarrollador-link/*` se cierra en galeote/factSaas#736: entra
+    como primera parte, como `gestoria-link` (428 → 431 operaciones). En el
+    SDK, la **0.22.0** (Pimia-AI/pimia-sdks#87): `PimiaCentralClient` —token
+    personal, sin refresh—, `spec/pimia-central-v1.json`, tipos
+    `@pimia/sdk/central-api` y `MissingAbilityError`. De paso, #730 (el suelo
+    de ocho también para el superadmin, galeote/factSaas#734). **Siguiente de
+    la lista:** el catálogo del integrador y la activación mayorista (estudio
+    primero) → el login del integrador → el dashboard.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:

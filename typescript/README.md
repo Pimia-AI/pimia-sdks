@@ -199,6 +199,39 @@ Detalles que ahorran un rato:
 - `signWebhook()` firma un cuerpo como lo haría Pimia: úsalo en **tus tests**,
   no en producción.
 
+## El plano central: la cartera del integrador
+
+Si eres integrador (una cuenta de **desarrollador** en Pimia), tu cartera, tus
+clients OAuth, las invitaciones, el patrocinio y el traspaso viven en el
+**plano central** (`https://pimia.es/api`), no en la API de un tenant. Es otro
+cliente y otra credencial: el **token personal** de tu cuenta, no un token
+OAuth de instancia.
+
+```ts
+import { PimiaCentralClient, MissingAbilityError } from '@pimia/sdk'
+
+const central = new PimiaCentralClient({
+  baseUrl: 'https://pimia.es',
+  token: () => process.env.PIMIA_CENTRAL_TOKEN!,
+})
+
+const { data } = await central.overview()          // tu cartera, con la atribución
+await central.invitations.create({                  // el cliente nace dueño; pagas tú
+  email: 'ana@talleres-ana.es',
+  company_name: 'Talleres Ana',
+  billing: 'sponsor',
+})
+await central.sponsorship.sponsor({ tenant_slug: 'talleres-ana', plan_id: 6 })
+```
+
+El token está acotado por plano: `desarrollador` abre `/desarrollador/*` y
+`central` abre invitaciones, patrocinio y traspaso. Si al tuyo le falta una,
+la llamada lanza `MissingAbilityError` con `ability` diciendo cuál. Lo que el
+plano central NO da es contenido fiscal de ningún cliente: a los datos de una
+instancia se llega por OAuth consentido, con `PimiaClient`.
+
+Los tipos salen de `spec/pimia-central-v1.json` (`@pimia/sdk/central-api`).
+
 ## Más
 
 Documentación completa, modelo mental (un tenant = una base URL = un token),

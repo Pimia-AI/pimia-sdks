@@ -31,6 +31,17 @@ export type {
   WriteOptions,
 } from './client.js'
 
+export { PimiaCentralClient } from './central.js'
+export type {
+  CentralRequestOptions,
+  CentralResponseMeta,
+  CentralResponseWithMeta,
+  PimiaCentralClientOptions,
+  SponsorshipRequest,
+  TenantInvitationRequest,
+  TransferOwnershipRequest,
+} from './central.js'
+
 export { OAuth, createPkceChallenge, createState } from './oauth.js'
 export type {
   AuthorizationServerMetadata,
@@ -45,6 +56,7 @@ export type { TokenSet, TokenStore } from './tokens.js'
 export {
   DuplicateExternalRefError,
   ForbiddenError,
+  MissingAbilityError,
   MissingScopeError,
   NotAuthenticatedError,
   NotFoundError,
@@ -136,6 +148,14 @@ export const SCOPES = {
   notificationsRead: 'notifications:read',
   /** Marcar avisos como leídos y borrarlos. */
   notificationsWrite: 'notifications:write',
+  /**
+   * Leer el catálogo de apps integradas y qué tiene instalada la empresa
+   * (`/apps`, `/apps/{slug}`, `/apps/{slug}/config`). Entra en la 0.22.0 con
+   * la fase 1 de apps integradas del núcleo (galeote/factSaas#697-#702).
+   */
+  appsRead: 'apps:read',
+  /** Instalar y desinstalar una app en la empresa, ajustar su configuración y acuñar su credencial de entrada. */
+  appsWrite: 'apps:write',
   agendaRead: 'agenda:read',
   agendaWrite: 'agenda:write',
   reportsRead: 'reports:read',

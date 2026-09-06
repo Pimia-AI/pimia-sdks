@@ -1664,6 +1664,1268 @@
                 ]
             }
         },
+        "/apps": {
+            "get": {
+                "operationId": "apps.index",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`status` distingue tres cosas y no dos: `not_installed` (no hay fila),\n`installed` y `disabled` (la hubo y se apag\u00f3, con su config a salvo).\n\n`authorization` dice si el grant que sostiene la instalaci\u00f3n sigue vivo.\nHasta #699 nadie lo enlaza, as\u00ed que hoy es `null` en todas; la forma est\u00e1\npara que la pantalla no cambie cuando deje de serlo.\n\n\u26a0\ufe0f `price_cents` va en subunidades y SIN formatear: formatearlo aqu\u00ed\nclavar\u00eda el euro en un quinto sitio (#517), y el precio de una app es\nsuyo. Quien lo pinte ya sabe en qu\u00e9 moneda cobra.",
+                "summary": "El cat\u00e1logo de integraciones con el estado de cada una EN ESTA EMPRESA",
+                "tags": [
+                    "Apps"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "apps": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "publisher": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "kind": {
+                                                        "type": "string"
+                                                    },
+                                                    "install": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "scopes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "webhook_events": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "config_url": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "price_cents": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "listed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "installed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "installed_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "disabled_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "installed_by": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name"
+                                                        ]
+                                                    },
+                                                    "authorization": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "revoked": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "last_used_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "revoked",
+                                                            "last_used_at"
+                                                        ]
+                                                    },
+                                                    "missing_required": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "entry_credential": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "set": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "last_four": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "created_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "last_used_at": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "set",
+                                                            "last_four",
+                                                            "created_at",
+                                                            "last_used_at"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slug",
+                                                    "name",
+                                                    "description",
+                                                    "publisher",
+                                                    "kind",
+                                                    "install",
+                                                    "scopes",
+                                                    "webhook_events",
+                                                    "config_url",
+                                                    "price_cents",
+                                                    "listed",
+                                                    "status",
+                                                    "installed",
+                                                    "installed_at",
+                                                    "disabled_at",
+                                                    "installed_by",
+                                                    "authorization",
+                                                    "missing_required",
+                                                    "entry_credential"
+                                                ]
+                                            }
+                                        },
+                                        "installed_slugs": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "apps",
+                                        "installed_slugs"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:read"
+                ]
+            }
+        },
+        "/apps/{slug}": {
+            "get": {
+                "operationId": "apps.show",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "La ficha de una integraci\u00f3n: manifiesto, estado y su configuraci\u00f3n\nENMASCARADA (un secreto sale como si existe y sus \u00faltimos cuatro, nunca\nentero \u2014 ver {@see AppRegistry})",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "app": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "publisher": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
+                                                "install": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "scopes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "webhook_events": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "config_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "price_cents": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "listed": {
+                                                    "type": "boolean"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "installed": {
+                                                    "type": "boolean"
+                                                },
+                                                "installed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "disabled_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "installed_by": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name"
+                                                    ]
+                                                },
+                                                "authorization": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "revoked": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "revoked",
+                                                        "last_used_at"
+                                                    ]
+                                                },
+                                                "missing_required": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "entry_credential": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "set": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_four": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "set",
+                                                        "last_four",
+                                                        "created_at",
+                                                        "last_used_at"
+                                                    ]
+                                                },
+                                                "config_schema": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "required": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "secret": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "type",
+                                                            "required",
+                                                            "secret"
+                                                        ]
+                                                    }
+                                                },
+                                                "config": {
+                                                    "type": "object",
+                                                    "additionalProperties": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "name",
+                                                "description",
+                                                "publisher",
+                                                "kind",
+                                                "install",
+                                                "scopes",
+                                                "webhook_events",
+                                                "config_url",
+                                                "price_cents",
+                                                "listed",
+                                                "status",
+                                                "installed",
+                                                "installed_at",
+                                                "disabled_at",
+                                                "installed_by",
+                                                "authorization",
+                                                "missing_required",
+                                                "entry_credential",
+                                                "config_schema",
+                                                "config"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "app"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:read"
+                ]
+            }
+        },
+        "/apps/{slug}/install": {
+            "post": {
+                "operationId": "apps.install",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nEnlaza el grant OAuth de quien instala \u2014el patr\u00f3n Slack: la app se\ninstala con el token de quien la instal\u00f3, y si esa persona se va, la\nempresa reinstala\u2014 y registra los endpoints de webhook que declara el\nmanifiesto, con el `client_id` de la app y esta company. La app puede\ndevolver en su callback la URL de entrega (`webhook_url`), que manda\nsobre la del manifiesto.\n\n`webhook_secret` viene SOLO cuando se acaba de crear el endpoint: es lo\nque la app necesita para verificar la firma HMAC, y no se vuelve a\nense\u00f1ar (ni se rota en un reintento, que dejar\u00eda a la app verificando con\nuno viejo).\n\nIdempotente: si ya estaba instalada responde 200 sin reescribir\n`installed_at` \u2014el d\u00eda que #702 cobre, volver a pulsar no puede volver a\ncobrar\u2014 pero s\u00ed reintenta los enganches que falten. Si estaba apagada, la\nreenciende conservando su config.\n\n\u26a0\ufe0f Desde el #710 puede responder **409 `app_retired`**: el superadmin\nretir\u00f3 la app del cat\u00e1logo. No es un 404 \u2014la integraci\u00f3n existe y quien la\ntenga puesta la sigue viendo y la puede desinstalar\u2014; lo que ya no se\npuede es darla de alta. Quien lo pinte tiene que clasificar por el `error`\ndel cuerpo, no por el status.",
+                "summary": "Instalar la integraci\u00f3n en esta empresa: la ceremonia completa",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "webhook_url": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "maxLength": 2048
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "app": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "publisher": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
+                                                "install": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "scopes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "webhook_events": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "config_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "price_cents": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "listed": {
+                                                    "type": "boolean"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "installed": {
+                                                    "type": "boolean"
+                                                },
+                                                "installed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "disabled_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "installed_by": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name"
+                                                    ]
+                                                },
+                                                "authorization": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "revoked": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "revoked",
+                                                        "last_used_at"
+                                                    ]
+                                                },
+                                                "missing_required": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "entry_credential": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "set": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_four": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "set",
+                                                        "last_four",
+                                                        "created_at",
+                                                        "last_used_at"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "name",
+                                                "description",
+                                                "publisher",
+                                                "kind",
+                                                "install",
+                                                "scopes",
+                                                "webhook_events",
+                                                "config_url",
+                                                "price_cents",
+                                                "listed",
+                                                "status",
+                                                "installed",
+                                                "installed_at",
+                                                "disabled_at",
+                                                "installed_by",
+                                                "authorization",
+                                                "missing_required",
+                                                "entry_credential"
+                                            ]
+                                        },
+                                        "webhook_secret": {
+                                            "type": "string"
+                                        },
+                                        "entry_credential": {
+                                            "type": "string"
+                                        },
+                                        "billing": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ok": {
+                                                    "type": "boolean"
+                                                },
+                                                "charged": {
+                                                    "type": "boolean"
+                                                },
+                                                "already_paid": {
+                                                    "type": "boolean"
+                                                },
+                                                "free": {
+                                                    "type": "boolean"
+                                                },
+                                                "invoice": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "ok"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "app",
+                                        "billing"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:write"
+                ]
+            },
+            "delete": {
+                "operationId": "apps.uninstall",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nRevoca el grant que la sosten\u00eda (cascada de `TokenLifecycle`: sella el\ngrant y sus refresh, borra los PAT de ese client en el esquema del\ntenant y emite `app.revoked` una sola vez), borra los endpoints de\nwebhook de esta app en esta company, y apaga la fila.\n\n\u26a0\ufe0f `billing.released` solo es `true` cuando de verdad hab\u00eda una partida\nque retirar, y **solo entonces `paid_until` significa algo** (#715). Si la\napp se cobra hoy pero esta suscripci\u00f3n nunca tuvo su partida \u2014la\ninstalaci\u00f3n es anterior al precio, o la suscripci\u00f3n ya estaba cancelada\u2014\nviene `nothing_to_release`. Quien pinte la frase no puede afirmar un mes\npagado sin mirar cu\u00e1l de las dos es.\n\n\u26d4 Y hay un tercer \u00abno se dio de baja\u00bb que **no se puede callar**:\n`release_failed`. Ah\u00ed la partida exist\u00eda y Stripe no dej\u00f3 quitarla, as\u00ed\nque la integraci\u00f3n queda desinstalada y **la suscripci\u00f3n la sigue\ncobrando** hasta que el reconciliador la cace. Callarlo es peor que\nequivocarse de frase: la empresa creer\u00eda que dej\u00f3 de pagar algo que se le\nsigue cobrando.\n\nLa fila no se borra: \u00abdesinstalada\u00bb es un estado consultable, no la\nausencia de informaci\u00f3n, y volver a instalar sale barato. La config se\nCONSERVA salvo que el manifiesto declare lo contrario, y la respuesta lo\ndice en `config_kept` \u2014 desinstalar por error no debe perder lo\nconfigurado.",
+                "summary": "Desinstalar: un bot\u00f3n, tres efectos",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "app": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "publisher": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
+                                                "install": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "scopes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "webhook_events": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "config_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "price_cents": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "listed": {
+                                                    "type": "boolean"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "installed": {
+                                                    "type": "boolean"
+                                                },
+                                                "installed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "disabled_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "installed_by": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name"
+                                                    ]
+                                                },
+                                                "authorization": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "revoked": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "revoked",
+                                                        "last_used_at"
+                                                    ]
+                                                },
+                                                "missing_required": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "entry_credential": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "set": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "last_four": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "last_used_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "set",
+                                                        "last_four",
+                                                        "created_at",
+                                                        "last_used_at"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "name",
+                                                "description",
+                                                "publisher",
+                                                "kind",
+                                                "install",
+                                                "scopes",
+                                                "webhook_events",
+                                                "config_url",
+                                                "price_cents",
+                                                "listed",
+                                                "status",
+                                                "installed",
+                                                "installed_at",
+                                                "disabled_at",
+                                                "installed_by",
+                                                "authorization",
+                                                "missing_required",
+                                                "entry_credential"
+                                            ]
+                                        },
+                                        "revoked_tokens": {
+                                            "type": "integer"
+                                        },
+                                        "webhooks_removed": {
+                                            "type": "integer"
+                                        },
+                                        "config_kept": {
+                                            "type": "boolean"
+                                        },
+                                        "billing": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ok": {
+                                                    "type": "boolean"
+                                                },
+                                                "released": {
+                                                    "type": "boolean"
+                                                },
+                                                "kept_for_others": {
+                                                    "type": "boolean"
+                                                },
+                                                "free": {
+                                                    "type": "boolean"
+                                                },
+                                                "nothing_to_release": {
+                                                    "type": "boolean"
+                                                },
+                                                "release_failed": {
+                                                    "type": "boolean"
+                                                },
+                                                "paid_until": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "ok"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "app",
+                                        "revoked_tokens",
+                                        "webhooks_removed",
+                                        "config_kept",
+                                        "billing"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:write"
+                ]
+            }
+        },
+        "/apps/{slug}/config": {
+            "get": {
+                "operationId": "apps.config",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "La configuraci\u00f3n de la integraci\u00f3n, enmascarada",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "config": {
+                                            "type": "object",
+                                            "additionalProperties": {}
+                                        },
+                                        "config_schema": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "required": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "secret": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "type",
+                                                    "required",
+                                                    "secret"
+                                                ]
+                                            }
+                                        },
+                                        "missing_required": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "config",
+                                        "config_schema",
+                                        "missing_required"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:read"
+                ]
+            },
+            "put": {
+                "operationId": "apps.updateConfig",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nEs un MERGE: lo que no viene, no se toca. Tiene que serlo porque quien\nedita desde una pantalla no tiene los secretos \u2014solo ha visto sus \u00faltimos\ncuatro\u2014, y un reemplazo los borrar\u00eda cada vez que se cambia una URL. Para\nquitar un campo se manda `null`.\n\nY se comprueba el resultado, no la entrada: si TRAS el merge faltara\nalg\u00fan campo obligatorio, se rechaza con 422. As\u00ed la config no queda a\nmedias sin que nadie lo note, y guardar solo un campo sigue valiendo.",
+                "summary": "Guardar configuraci\u00f3n, validada contra el `config_schema` del manifiesto",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "config": {
+                                            "type": "object",
+                                            "additionalProperties": {}
+                                        },
+                                        "config_schema": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "required": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "secret": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "type",
+                                                    "required",
+                                                    "secret"
+                                                ]
+                                            }
+                                        },
+                                        "missing_required": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "config",
+                                        "config_schema",
+                                        "missing_required"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:write"
+                ]
+            }
+        },
+        "/apps/{slug}/credential": {
+            "post": {
+                "operationId": "apps.rotateCredential",
+                "description": "**Reservada al panel de Pimia.** Exige `apps:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve el secreto EN CLARO, y es la \u00fanica vez que sale: en la base solo\nqueda su hash. Rotar es sobrescribir \u2014la anterior deja de valer en el\nacto, sin ventana de gracia\u2014, que es lo que se espera de una rotaci\u00f3n y lo\nque la hace \u00fatil como respuesta a una fuga.\n\n\u26d4 Esto es acu\u00f1ar una credencial, o sea justo lo que la decisi\u00f3n 4 de\n`docs/DECISIONES.md` deja fuera del mapa para los integradores. Sigue\nfuera: `apps:write` es `first_party_only` y adem\u00e1s hace falta\n`manage company`. Lo que cambia es que la primera parte, con el due\u00f1o\ndentro, hace lo que hasta hoy hac\u00eda infra editando el `.env` del host.",
+                "summary": "Acu\u00f1ar o ROTAR la credencial de entrada de la app en esta empresa",
+                "tags": [
+                    "Apps"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "entry_credential": {
+                                            "type": "string"
+                                        },
+                                        "app": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "entry_credential",
+                                        "app"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "apps:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "apps:write"
+                ]
+            }
+        },
         "/crm/assignable-users": {
             "get": {
                 "operationId": "crm.assignableUsers",
@@ -8386,6 +9648,316 @@
                             "invoices:write"
                         ]
                     }
+                ]
+            }
+        },
+        "/desarrollador-link/status": {
+            "get": {
+                "operationId": "desarrolladorLink.status",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "GET \u2014 estado del v\u00ednculo de esta instancia",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "link_code": {
+                                                            "type": "string"
+                                                        },
+                                                        "requested_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "accepted_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "desarrollador": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "name": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "email": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "name",
+                                                                "email"
+                                                            ]
+                                                        },
+                                                        "alcance": {
+                                                            "type": "string",
+                                                            "description": "Lo que el due\u00f1o de la instancia debe tener claro al vincular.",
+                                                            "const": "Este v\u00ednculo es administrativo y de facturaci\u00f3n. No da acceso a tus datos: eso lo autorizas t\u00fa desde \u00abApps conectadas\u00bb, permiso a permiso."
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "status",
+                                                        "link_code",
+                                                        "requested_at",
+                                                        "accepted_at",
+                                                        "desarrollador",
+                                                        "alcance"
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string",
+                                                            "const": "none"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "status"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:read"
+                ]
+            }
+        },
+        "/desarrollador-link/request": {
+            "post": {
+                "operationId": "desarrolladorLink.request",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "POST \u2014 la instancia solicita vincularse con un c\u00f3digo DEV-XXXX-XXXX",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "link_code": {
+                                        "type": "string",
+                                        "maxLength": 20
+                                    }
+                                },
+                                "required": [
+                                    "link_code"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Solicitud enviada al desarrollador."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "link_code": {
+                                                    "type": "string"
+                                                },
+                                                "requested_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "accepted_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "date-time"
+                                                },
+                                                "desarrollador": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "email": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "email"
+                                                    ]
+                                                },
+                                                "alcance": {
+                                                    "type": "string",
+                                                    "description": "Lo que el due\u00f1o de la instancia debe tener claro al vincular.",
+                                                    "const": "Este v\u00ednculo es administrativo y de facturaci\u00f3n. No da acceso a tus datos: eso lo autorizas t\u00fa desde \u00abApps conectadas\u00bb, permiso a permiso."
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "status",
+                                                "link_code",
+                                                "requested_at",
+                                                "accepted_at",
+                                                "desarrollador",
+                                                "alcance"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:write"
+                ]
+            }
+        },
+        "/desarrollador-link/revoke": {
+            "delete": {
+                "operationId": "desarrolladorLink.revoke",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "DELETE \u2014 la instancia rompe el v\u00ednculo. Siempre puede",
+                "tags": [
+                    "DesarrolladorLink"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Vinculaci\u00f3n revocada."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "admin:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "admin:write"
                 ]
             }
         },
@@ -27306,7 +28878,7 @@
         "/billing/plans": {
             "get": {
                 "operationId": "tenantBilling.plans",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSin los planes de canal (`Asesor\u00eda`, `Desarrollador`): esos los contrata\nuna gestor\u00eda o un desarrollador para su cartera, no una pyme. Con la\ninstancia en marca blanca \u2014su licencia la paga un desarrollador\u2014 la lista\nllega VAC\u00cdA y `white_label` a `true`: el cliente vive dentro del producto\ndel partner y no ve precios de Pimia. El corte va en el servidor.",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSin los planes de canal (`Asesor\u00eda`, `Desarrollador`): esos los contrata\nuna gestor\u00eda o un desarrollador para su cartera, no una pyme. Con la\ninstancia en marca blanca \u2014su licencia la paga un desarrollador\u2014 la lista\nllega VAC\u00cdA y `white_label` a `true`: el cliente vive dentro del producto\ndel partner y no ve precios de Pimia. El corte va en el servidor.\n\n**Cada plan dice adem\u00e1s qu\u00e9 m\u00f3dulos opcionales trae y cu\u00e1les costar\u00edan\naparte** (`optional_modules`), que es lo que la pantalla de contrataci\u00f3n\nnecesita para ofrecer a\u00f1adirlos al contratar: pregunt\u00e1rselo a\n`GET /tenant-modules` ser\u00eda preguntar por el plan de HOY, y quien est\u00e1\neligiendo plan quiere saber lo del plan de MA\u00d1ANA. En un plan gratuito\nno hay ni `included` ni `addon`: no incluye ninguno y no hay\nsuscripci\u00f3n a la que sumarlos (2026-09-04).",
                 "summary": "Los planes que esta instancia puede contratar",
                 "tags": [
                     "TenantBilling"
@@ -27353,6 +28925,53 @@
                                                     },
                                                     "is_free": {
                                                         "type": "boolean"
+                                                    },
+                                                    "optional_modules": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "slug": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "description": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "included": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "addon": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "price_cents": {
+                                                                    "type": [
+                                                                        "integer",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "price": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "slug",
+                                                                "name",
+                                                                "description",
+                                                                "included",
+                                                                "addon",
+                                                                "price_cents",
+                                                                "price"
+                                                            ]
+                                                        }
                                                     }
                                                 },
                                                 "required": [
@@ -27364,7 +28983,8 @@
                                                     "max_users",
                                                     "max_storage_mb",
                                                     "features",
-                                                    "is_free"
+                                                    "is_free",
+                                                    "optional_modules"
                                                 ]
                                             }
                                         },
@@ -27407,7 +29027,7 @@
         "/billing/subscription": {
             "get": {
                 "operationId": "tenantBilling.subscription",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLo puede leer cualquier usuario de la instancia: el plan y el consumo son\nde la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,\ncambiar de plan o abrir el portal \u2014 el due\u00f1o de la instancia, y no en\nmarca blanca \u2014; es lo que la pantalla usa para ense\u00f1ar o esconder los\nbotones, pero el corte real lo hacen las rutas de escritura.\n\n`usage.storage` es `null` cuando no se puede medir (esquema a medias) y\n`subscription.current_period_end` es `null` cuando Stripe no contesta:\nun dato que no consta se dice como tal, no se inventa un cero.",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLo puede leer cualquier usuario de la instancia: el plan y el consumo son\nde la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,\ncambiar de plan o abrir el portal \u2014 el due\u00f1o de la instancia, y no en\nmarca blanca \u2014; es lo que la pantalla usa para ense\u00f1ar o esconder los\nbotones, pero el corte real lo hacen las rutas de escritura.\n\n`usage.storage` es `null` cuando no se puede medir (esquema a medias) y\n`subscription.current_period_end` es `null` cuando Stripe no contesta:\nun dato que no consta se dice como tal, no se inventa un cero.\n\n**`addons` es lo que la suscripci\u00f3n paga en m\u00f3dulos a\u00f1adidos** (desde\nel 2026-09-04): cu\u00e1ntos, a cu\u00e1nto, y la cuota mensual DE LISTA \u2014plan\nm\u00e1s a\u00f1adidos **m\u00e1s integraciones**, sin prorrateos, cupones, impuestos\nni prueba: no es el pr\u00f3ximo cargo\u2014 ya formateada. Existe porque el panel\nense\u00f1aba \u00abTu plan: Pimia, 12,00 \u20ac al mes\u00bb a una empresa que pagaba 14:\nel precio del plan no es la cuota. La cantidad es la de la partida de\nStripe (copia local), no un recuento de filas \u2014que contar\u00eda tambi\u00e9n los\nheredados, que no se cobran\u2014. `null` sin suscripci\u00f3n, y `null` en un\nasiento PATROCINADO: su suscripci\u00f3n es la del canal, y la partida de \u00e9sa\nla comparten todas sus instancias; la instancia no paga nada.\n\n**`apps` son las integraciones de pago, una a una** (desde el\n2026-09-05, #716), con su total propio. Salen de las partidas de la\nsuscripci\u00f3n, igual que la cantidad de m\u00f3dulos: \u26d4 contar `company_apps`\ndir\u00eda de m\u00e1s en cuanto dos empresas de la instancia tuvieran la misma\n\u2014la segunda no vuelve a pagar\u2014.\n\n\u26d4 **Y el mismo defecto ha pasado DOS VECES en este campo.** `addons`\nnaci\u00f3 porque el total dec\u00eda 12 y se pagaban 14 (el plan no es la cuota);\nel 2026-09-05 dec\u00eda 16 y se pagaban 25,90 (los m\u00f3dulos tampoco lo son).\nLas dos veces el c\u00e1lculo de los sumandos conocidos era correcto y lo que\nfaltaba era un sumando nuevo. La decisi\u00f3n que esto sirve \u2014\u00abuna sola\ncesta en el producto: el sitio donde la pyme ve lo que paga es uno\u00bb\u2014\nsignifica que **quien a\u00f1ada una partida de cobro tiene que sumarla en\n`addonsPayload()`**, y que un total que no la incluya no es un total\nincompleto: es una cifra falsa en la pantalla que la pyme lee.",
                 "summary": "El plan de ESTA instancia: l\u00edmites, consumo, prueba, qui\u00e9n la paga y el\nestado de la suscripci\u00f3n en Stripe",
                 "tags": [
                     "TenantBilling"
@@ -27638,6 +29258,85 @@
                                                         "ends_at"
                                                     ]
                                                 },
+                                                "apps": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "items": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "slug": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "price_cents": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "price": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "quantity": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "slug",
+                                                                    "name",
+                                                                    "price_cents",
+                                                                    "price",
+                                                                    "quantity"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "total_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "items",
+                                                        "total_cents",
+                                                        "total"
+                                                    ]
+                                                },
+                                                "addons": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "quantity": {
+                                                            "type": "integer"
+                                                        },
+                                                        "price_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "price": {
+                                                            "type": "string"
+                                                        },
+                                                        "total_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "quantity",
+                                                        "price_cents",
+                                                        "price",
+                                                        "total_cents",
+                                                        "total"
+                                                    ]
+                                                },
                                                 "status": {
                                                     "type": "string"
                                                 }
@@ -27649,6 +29348,8 @@
                                                 "trial",
                                                 "billing",
                                                 "subscription",
+                                                "apps",
+                                                "addons",
                                                 "status"
                                             ]
                                         }
@@ -27680,11 +29381,37 @@
         "/billing/checkout": {
             "post": {
                 "operationId": "tenantBilling.checkoutFromPanel",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea all\u00ed\ny nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web\n(`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el\nwebhook `checkout.session.completed`. Solo el due\u00f1o de la instancia.\n\nSi el pagador ten\u00eda una suscripci\u00f3n cancelada a fin de periodo (baj\u00f3 a\nFree y se arrepinti\u00f3), NO hay checkout: se reanuda esa suscripci\u00f3n, se\nrecrea el asiento y el plan cambia al instante. Entonces `resumed` es\n`true`, `checkout_url` es `null` y `plan` dice a cu\u00e1l: el panel no tiene\na d\u00f3nde ir, solo refrescar.\n\nErrores, con su c\u00f3digo en `error`: `white_label` (403), `no_payer` (409),\n`free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),\n`stripe_resume_failed` (502), `stripe_price_missing` (503).",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDevuelve la URL del Checkout alojado de Stripe: la tarjeta se teclea all\u00ed\ny nunca pasa por Pimia. Al terminar, Stripe devuelve al panel web\n(`/pimia/plan?checkout=success|cancelled`) y el asiento lo anota el\nwebhook `checkout.session.completed`. Solo el due\u00f1o de la instancia.\n\nSi el pagador ten\u00eda una suscripci\u00f3n cancelada a fin de periodo (baj\u00f3 a\nFree y se arrepinti\u00f3), NO hay checkout: se reanuda esa suscripci\u00f3n, se\nrecrea el asiento y el plan cambia al instante. Entonces `resumed` es\n`true`, `checkout_url` es `null` y `plan` dice a cu\u00e1l: el panel no tiene\na d\u00f3nde ir, solo refrescar.\n\n**Los m\u00f3dulos opcionales se pueden comprar aqu\u00ed mismo** (`modules`, lista\nde slugs): la sesi\u00f3n de Stripe nace con dos partidas \u2014el plan y \u00abM\u00f3dulo\nadicional\u00bb con tantas unidades como m\u00f3dulos\u2014, y al confirmarse el pago\nquedan encendidos y marcados como a\u00f1adidos. Se validan contra el plan que\nse contrata, no contra el actual: lo que la instancia tiene hoy no dice\nnada de lo que tendr\u00eda ma\u00f1ana. Lo que ofrece cada plan lo publica\n`GET /billing/plans` en `optional_modules`.\n\nErrores, con su c\u00f3digo en `error`: `white_label` (403), `no_payer` (409),\n`free_plan` y `channel_plan` (422), `tenant_already_subscribed` (422),\n`invalid_addon_module` y `addon_included_in_plan` (422),\n`stripe_resume_failed` (502), `stripe_price_missing` (503),\n`stripe_addon_price_missing` (503).",
                 "summary": "Contratar un plan de pago desde el panel web",
                 "tags": [
                     "TenantBilling"
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "plan_id": {
+                                        "type": "integer"
+                                    },
+                                    "modules": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "maxLength": 64
+                                        },
+                                        "maxItems": 20
+                                    }
+                                },
+                                "required": [
+                                    "plan_id"
+                                ]
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -27710,12 +29437,30 @@
                                                         "string",
                                                         "null"
                                                     ]
+                                                },
+                                                "addons": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "addons_failed": {
+                                                    "type": "boolean"
+                                                },
+                                                "addons_message": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
                                                 "checkout_url",
                                                 "resumed",
-                                                "plan"
+                                                "plan",
+                                                "addons",
+                                                "addons_failed",
+                                                "addons_message"
                                             ]
                                         }
                                     },
@@ -27725,6 +29470,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -29009,7 +30757,7 @@
         "/tenant-modules": {
             "get": {
                 "operationId": "tenantModules.index",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.",
                 "summary": "Los m\u00f3dulos del registro y en qu\u00e9 estado est\u00e1 cada uno EN ESTA INSTANCIA",
                 "tags": [
                     "TenantModules"
@@ -29063,6 +30811,33 @@
                                                     "available_in_plan": {
                                                         "type": "boolean"
                                                     },
+                                                    "billing": {
+                                                        "type": "string"
+                                                    },
+                                                    "price_cents": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "price": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "purchasable": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "addon_active": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "addon_ends_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
                                                     "installed_at": {
                                                         "type": [
                                                             "string",
@@ -29105,6 +30880,12 @@
                                                     "abilities_namespace",
                                                     "status",
                                                     "available_in_plan",
+                                                    "billing",
+                                                    "price_cents",
+                                                    "price",
+                                                    "purchasable",
+                                                    "addon_active",
+                                                    "addon_ends_at",
                                                     "installed_at",
                                                     "disabled_at",
                                                     "version",
@@ -29118,11 +30899,35 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "addons": {
+                                            "type": "object",
+                                            "properties": {
+                                                "price_cents": {
+                                                    "type": "integer"
+                                                },
+                                                "price": {
+                                                    "type": "string"
+                                                },
+                                                "quantity": {
+                                                    "type": "integer"
+                                                },
+                                                "purchasable": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "price_cents",
+                                                "price",
+                                                "quantity",
+                                                "purchasable"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "modules",
-                                        "installed_slugs"
+                                        "installed_slugs",
+                                        "addons"
                                     ]
                                 }
                             }
@@ -29145,7 +30950,7 @@
         "/tenant-modules/{slug}/install": {
             "post": {
                 "operationId": "tenantModules.install",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn m\u00f3dulo que no existe, uno que el plan de la instancia no incluye, o una\ndependencia que no se puede satisfacer, salen como `422` con el motivo en\n`message`.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn m\u00f3dulo que no existe, uno que el plan de la instancia no incluye y no\nse puede comprar, o una dependencia que no se puede satisfacer, salen\ncomo `422` con el motivo en `message`.\n\n**Si el plan no lo incluye pero se vende** (`billing: addon`), instalarlo\nes COMPRARLO: se cobra HOY el mes entero (una factura aparte al pagador)\ny se suma a la suscripci\u00f3n de Stripe de la instancia para la\nrenovaci\u00f3n, antes de activarlo; la fila queda marcada como a\u00f1adido. Sin\nplan de pago la respuesta es `402 subscription_required` con\n`plan_url`; los dem\u00e1s cortes, con su c\u00f3digo en `error`: `white_label`\n(403), `not_the_payer` (403), `channel_seat` (422),\n`stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_payment_failed` (402: la tarjeta no pas\u00f3; no se activa nada). Un\na\u00f1adido que ya se est\u00e1 pagando no se cobra dos veces, y uno **pendiente\nde baja** (`addon_ends_at`) se MANTIENE sin cobrar: vuelve a renovar\n(`kept: true`, `charged: false`).\n\nSi el cobro entra pero el encendido revienta, la respuesta es `202` con\n`status: pending` y `message`: el m\u00f3dulo se activa solo en unos minutos\n(cola) y volver a pulsar no cobra otra vez. Otros cortes del cobro, con\nsu c\u00f3digo: `addon_payment_requires_action` (402, el banco pide\nconfirmar y el panel a\u00fan no puede), `addon_payment_method_unsupported`\n(402, sin tarjeta), `subscription_ending` (402, cancelada o en mora),\n`addon_busy` (409), `addon_expired` (409).",
                 "summary": "Instala un m\u00f3dulo en la instancia, y con \u00e9l sus dependencias",
                 "tags": [
                     "TenantModules"
@@ -29194,13 +30999,25 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "addon": {
+                                            "type": "boolean"
+                                        },
+                                        "charged": {
+                                            "type": "boolean"
+                                        },
+                                        "kept": {
+                                            "type": "boolean"
                                         }
                                     },
                                     "required": [
                                         "slug",
                                         "status",
                                         "installed_at",
-                                        "installed_slugs"
+                                        "installed_slugs",
+                                        "addon",
+                                        "charged",
+                                        "kept"
                                     ]
                                 }
                             }
@@ -29229,8 +31046,8 @@
         "/tenant-modules/{slug}/disable": {
             "post": {
                 "operationId": "tenantModules.disable",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn m\u00f3dulo `core` no se puede desactivar, y tampoco uno del que dependa\notro que siga instalado: los dos casos son `422` con el motivo en\n`message`.",
-                "summary": "Desactiva un m\u00f3dulo de la instancia",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn b\u00e1sico, o un m\u00f3dulo del que dependa otro instalado, sale como `422`\ncon el motivo en `message`.\n\n**Si se estaba pagando como a\u00f1adido** (fila `installed` con `meta.addon`\ny una suscripci\u00f3n con partida), desactivarlo es **dejar de RENOVARLO**:\nse resta de la partida de Stripe sin abono \u2014el mes est\u00e1 pagado\u2014 y el\nm\u00f3dulo SIGUE encendido hasta el fin del periodo (`addon_ends_at`); ah\u00ed\nlo apaga `billing:apagar-anadidos-vencidos` (o la factura de\nrenovaci\u00f3n). La respuesta lo dice: `status: installed`, `addon_released:\ntrue`, `addon_ends_at`. Uno ya pendiente no cambia. Si Stripe no\ncontesta, el m\u00f3dulo sigue encendido y renovando: `502\nstripe_addon_release_failed` o `stripe_period_unknown`.\n\nUn heredado (encendido sin marca) o un a\u00f1adido sin partida se apaga en\nel acto, como siempre: no hay nada pagado que respetar.",
+                "summary": "Desactiva un m\u00f3dulo opcional de la instancia",
                 "tags": [
                     "TenantModules"
                 ],
@@ -29269,13 +31086,24 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "addon_released": {
+                                            "type": "boolean"
+                                        },
+                                        "addon_ends_at": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "slug",
                                         "status",
                                         "disabled_at",
-                                        "installed_slugs"
+                                        "installed_slugs",
+                                        "addon_released",
+                                        "addon_ends_at"
                                     ]
                                 }
                             }
@@ -41323,7 +43151,9 @@
                             "delegation:read": "(solo el panel de Pimia) ver lo que delegas a tu agente",
                             "delegation:write": "(solo el panel de Pimia) delegar tareas a tu agente",
                             "billing:read": "(solo el panel de Pimia) ver el plan de tu empresa",
-                            "billing:write": "(solo el panel de Pimia) contratar y cambiar el plan de tu empresa"
+                            "billing:write": "(solo el panel de Pimia) contratar y cambiar el plan de tu empresa",
+                            "apps:read": "(solo el panel de Pimia) ver las integraciones de tu empresa",
+                            "apps:write": "(solo el panel de Pimia) conectar y desconectar integraciones de tu empresa"
                         }
                     }
                 }
