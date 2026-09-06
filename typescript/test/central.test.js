@@ -257,3 +257,26 @@ test('declara y retira sus nombres de login, y acuña y revoca tokens de máquin
   )
   assert.equal(JSON.parse(calls[0].init.body).host, 'login.erpstudio.es')
 })
+
+test('1.4.0: quién pertenece a la instancia y el portal del canal', async () => {
+  const { client, calls } = clientWith((url) =>
+    url.endsWith('/users')
+      ? json({ data: [{ id: 7, name: 'Ana', email: 'ana@example.test', role: 'admin', is_owner: false }] })
+      : json({ data: { portal_url: 'https://billing.stripe.test/p' } }),
+  )
+
+  const usuarios = await client.tenants.users('talleres ana')
+  assert.equal(usuarios.data[0].name, 'Ana')
+  assert.equal(calls[0].url, `${BASE}/api/tenants/talleres%20ana/users`)
+  assert.equal(calls[0].init.method, 'GET')
+
+  const portal = await client.billing.portal({ return_url: 'https://central.pimia.es/facturacion' })
+  assert.equal(portal.data.portal_url, 'https://billing.stripe.test/p')
+  assert.equal(calls[1].url, `${BASE}/api/billing/portal`)
+  assert.equal(calls[1].init.method, 'POST')
+  assert.deepEqual(JSON.parse(calls[1].init.body), { return_url: 'https://central.pimia.es/facturacion' })
+
+  // Sin cuerpo también vale: el núcleo vuelve al panel Vue.
+  await client.billing.portal()
+  assert.deepEqual(JSON.parse(calls[2].init.body), {})
+})

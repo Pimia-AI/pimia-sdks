@@ -8,6 +8,49 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.26.0] — 2026-09-07
+
+**El contrato del plano central 1.4.0, para el panel central en React**
+(`pimia-central-web`; punto 12 de DECISIONES revisado por 👤 el 2026-09-07:
+el repo nuevo es el panel de las TRES figuras —superadmin, asesoría,
+integrador— y el integrador la primera; galeote/factSaas, rama
+`claude/contrato-central-1.4.0`). Todo aditivo salvo tres tipos que
+**mentían** y ahora dicen la verdad.
+
+Specs sincronizados con la rama del núcleo (2026-09-07): plano central
+**1.4.0, 28 operaciones**; `/api/v1` sin cambios.
+
+### Añadido
+
+- **`PimiaCentralClient.tenants.users(slug)`**: quién pertenece a una
+  instancia (nombre, correo, rol, `is_owner`), que es a quién se puede
+  traspasar (`transferOwnership` pide el `user_id` de alguien que ya está
+  dentro). Habilidad `central`.
+- **`PimiaCentralClient.billing.portal({ return_url })`** y el tipo
+  **`BillingPortalRequest`**: la URL del portal de Stripe de la cuenta —las
+  facturas del canal y el método de pago viven allí—.
+- **`return_url`** en `SponsorshipRequest`, `ActivacionMayoristaRequest` y el
+  portal: a dónde vuelve el integrador desde Stripe. El núcleo solo acepta el
+  origen del panel central (`CENTRAL_WEB_URL`) o el del ápice; lo demás
+  vuelve al panel Vue.
+- `POST /api/auth/login` (fuera del contrato, lo usa el panel) acepta
+  `device_name`: rota solo los tokens de sesión de ese nombre, así el panel
+  Vue y el panel central conviven.
+
+### Corregido
+
+- **Los tres `201` traen su cuerpo.** `tokens.create`, `dominios.declare` y
+  `activaciones.activate` tipaban la respuesta como el número `201`
+  (Scramble leía `@response 201 array{…}` como el TIPO `201`): el token en
+  claro, el `proxy_secret` y el `checkout_url` llegaban sin tipo. Ahora
+  `Ok<'integradorToken.store'>` es `{message, data: {token, id, name, …}}`
+  y la activación publica `200` y `201` con el mismo cuerpo.
+- **`facturacion().data.anadidos`** era `string`; es
+  `{activaciones, total_cents, total, por_tenant[]}`.
+- **`overview().data.cartera[].origen`**: la atribución del alta (el client
+  que trajo al tenant, `{client_id, name}`, o `null`), que la regla 6 pedía
+  y no existía.
+
 ## [0.25.0] — 2026-09-07
 
 **El login del integrador entra en el plano central** (regla 5 del punto 12,
