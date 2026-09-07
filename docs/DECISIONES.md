@@ -355,7 +355,8 @@ obtiene en el registro de Pimia o en el panel de integrador).
     desconectar—. La 2 no empieza sin decidir qué scopes de escritura pide
     Hermes, que vuelve a ser el punto 4.
 
-12. **El programa de integradores es MAYORISTA: el tenant es del cliente, la
+12. **El programa de integradores es MAYORISTA: ~~el tenant es del cliente~~
+    —el tenant es del INTEGRADOR desde el 2026-09-07, ver 13.25—, la
     relación comercial es del integrador y Pimia cobra al integrador
     (2026-09-05).** Decisión de 👤 tras vivir la superficie de partner con
     el primer integrador real —Zoomo Estudio, fork privado
@@ -390,6 +391,13 @@ obtiene en el registro de Pimia o en el panel de integrador).
        pasar del integrador a Pimia, el integrador que quiere cortar el
        servicio a un cliente moroso (hoy solo corta Pimia, por impago del
        canal) y el contrato a tres partes.
+       **REVISADA el 2026-09-07 y dada la vuelta por 👤 (13.25): el tenant es
+       del INTEGRADOR, no del cliente** —«eso dificulta mucho toda la
+       operativa»—, y el cliente que se va se lleva una copia de seguridad
+       para que otro integrador la restaure. Con ello caen de esta regla el
+       traspaso obligatorio antes de entregar y el rescate como salida del
+       cliente; lo que sobrevive es que los DATOS son suyos y puede
+       llevárselos. Léase la regla 3 entera desde 13.25.
     4. **El catálogo del integrador, pieza nueva.** Pimia guarda por
        integrador qué revende (Pimia base, cada módulo, cada app integrada), a
        qué precio, en qué moneda y con qué enlace de contratación. Hace dos
@@ -755,7 +763,11 @@ obtiene en el registro de Pimia o en el panel de integrador).
     complica». La portabilidad entre integradores se resuelve con lo que ya
     existe y es simple —copia de seguridad del cliente, restaurada por el
     integrador nuevo—, no con una operación de traspaso. ⛔ No volver a
-    proponerla.
+    proponerla. **Confirmada en su parte buena y corregida en su premisa por
+    13.25 (2026-09-07):** sigue sin haber traspaso, pero la copia deja de ser
+    la salida cómoda y pasa a ser la ÚNICA — y medida ese día, no funciona
+    todavía entre instancias (no hay por dónde subirla, el volcado nombra el
+    esquema de origen y no lleva los ficheros).
 
     **13.3. El integrador no entra en el Pimia de su cliente, y suspender se
     queda (2026-09-06).** 👤: «quita también entrar en su Pimia. Suspender es
@@ -1112,7 +1124,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
     sustituido ni de tocar la composición de módulos; eso es del integrador.
     No toca 12.3 en lo que es propiedad —el tenant, sus datos, su copia de
     seguridad y revocar la app siguen siendo del cliente—: lo que pasa al
-    integrador es la composición. Consecuencias que se ven desde aquí y no se
+    integrador es la composición. **Corregido en parte por 13.25
+    (2026-09-07): de esas cuatro cosas, el TENANT pasa al integrador**; sus
+    datos, su copia de seguridad y revocar la app siguen siendo del cliente. Consecuencias que se ven desde aquí y no se
     construyen todavía: la pantalla de módulos y la tienda de un tenant con
     vertical no ofrecen lo sustituido; las vistas portables de la web
     necesitan una costura que diga qué módulos tiene sustituidos esta
@@ -1266,6 +1280,96 @@ obtiene en el registro de Pimia o en el panel de integrador).
     fichero y línea. Descartadas: verificar con HubSpot (ya medido, y no es
     software del integrador) y con las dos (dobla la verificación antes de
     tener las piezas).
+
+    **13.25. El tenant es del INTEGRADOR, y el cliente que se va se lleva una
+    COPIA (2026-09-07).** 👤, revisando la regla 3 del punto 12: «el tenant no
+    es del cliente (eso dificulta mucho toda la operativa), el tenant es del
+    integrador. Si el cliente quiere cambiar de integrador, deberá realizar una
+    copia de seguridad de sus datos y llevar esa copia para que el integrador
+    la restaure en su vertical o tenant». **Decidido:** (a) la instancia de un
+    cliente de integrador es del integrador —él la abre, la compone, la
+    mantiene y la da de baja—; (b) romper con el integrador NO es quedarse la
+    instancia: el cliente descarga su copia de seguridad y otro integrador la
+    restaura en su vertical, y la instancia vieja se queda donde estaba; (c) al
+    cliente de un integrador dejan de ofrecérsele **«asumir la licencia»**
+    (el rescate) y **«volver a Pimia estándar»**, que existen y presuponen lo
+    contrario. Preguntado y contestado el mismo día: lo que le queda al cliente
+    al romper es **solo su copia**.
+
+    **Qué revisa y qué no.** Revisa la regla 3 del punto 12 («el tenant es
+    siempre del cliente», con el traspaso de propiedad obligatorio antes de
+    entregar) y la frase de 13.19 que decía que «el tenant, sus datos, su copia
+    de seguridad y revocar la app siguen siendo del cliente»: de esas cuatro
+    cosas, la primera pasa al integrador. **No toca 13.1 ni 13.3, y conviene
+    decirlo porque es lo que más se va a malinterpretar:** el integrador sigue
+    SIN ser el dueño técnico de la instancia y SIN entrar en ella —ni por SSO,
+    ni al equipo, ni a los libros—, que es justo lo que aquellas dos
+    decisiones compraron para que el panel pudiera prometer que no ve los datos
+    de nadie. La titularidad que cambia es la COMERCIAL: de quién es el
+    contrato y a quién responde la instancia, no quién figura como `owner_id`
+    en la fila. Y no toca la propiedad de los DATOS: los libros fiscales, los
+    clientes y los ficheros siguen siendo del cliente, que por eso puede
+    llevárselos. 13.2 se confirma en su parte buena (no hay traspaso de
+    propiedad) y se corrige en su premisa: la copia deja de ser la salida
+    cómoda y pasa a ser la ÚNICA.
+
+    **⛔ Lo medido el mismo día, y es lo que esta decisión pone en el camino
+    crítico: la copia de seguridad de hoy NO es portable entre instancias.**
+    13.2 la daba por resuelta («algo tan sencillo como un backup que otro
+    integrador de Pimia puede restaurar»); medido en dev sobre
+    `app/Http/Controllers/Api/BackupController.php` y el contenedor
+    `platform-app`, tres cosas lo impiden:
+
+    1. **No hay por dónde subirla.** Las cinco rutas
+       (`routes/api.php:354-358`) son listar, crear, descargar, borrar y
+       restaurar, y `restore` (`BackupController.php:147`) solo admite un
+       fichero que YA vive en `backups/{tenant_id}/` de esa misma instancia.
+       El integrador nuevo puede recibir el `.sql.gz` por correo y no tiene
+       ninguna forma de metérselo a Pimia.
+    2. **El volcado lleva dentro el nombre de la instancia de origen.**
+       Medido con un `pg_dump --schema-only` de `tenant_reformas-vera` en dev:
+       el fichero trae `CREATE SCHEMA "tenant_reformas-vera"` y cada tabla
+       cualificada con ese mismo nombre. Restaurarlo en otra instancia
+       recrearía el esquema del origen, no el del destino: hay que reescribir
+       el volcado, no solo cargarlo.
+    3. **Los ficheros no van dentro.** El `.sql.gz` es un `pg_dump` del
+       esquema; los adjuntos, logos y PDF viven aparte, en
+       `storage/app/<slug>/`. Una copia sin ellos deja al cliente sin sus
+       documentos.
+
+    Añádase que la maquinaria está sin estrenar: en dev hay **un** directorio
+    de copias y **cero** ficheros dentro, así que el camino no se ha recorrido
+    nunca de punta a punta. Consecuencia: **la portabilidad hay que
+    construirla** —exportación completa (esquema + ficheros), importación a
+    una instancia nueva con reescritura del esquema, y una comprobación de que
+    lo restaurado es lo que había—, y hasta que exista, esta decisión deja al
+    cliente sin salida real. Es la pieza que 13.2 creyó gratis y no lo es.
+
+    **Consecuencias para el núcleo**, sin construir nada todavía: se retiran
+    de la superficie del cliente de integrador `POST /api/billing/rescue` y
+    `POST /api/tenants/{slug}/return-to-standard`
+    (`routes/api.php:343,374`); `POST /api/tenants/{slug}/transfer-ownership`
+    queda sin uso en el programa de integradores —sigue publicado en el
+    contrato del plano central (`docs/openapi/pimia-central-v1.json` 1.4.0) y
+    hay que decidir si sale—; y el catálogo, el cobro y la baja siguen donde
+    están, porque el mayorista (12.2) ya cobraba al integrador. Lo que esta
+    decisión NO alcanza, y se anota en vez de suponerlo: las **asesorías** y
+    las **instancias directas** siguen siendo del cliente (no llevan vertical,
+    13.16c).
+
+    **Lo que deja abierto, y hay que mirarlo antes de escribirlo en un
+    contrato:** de quién responde ante la AEAT una instancia cuyos libros son
+    del cliente y cuya titularidad es del integrador, y qué figura del RGPD le
+    toca a cada uno cuando el que manda sobre la instancia no es el titular de
+    los datos. No es una objeción a la decisión de producto: es el sitio donde
+    esta decisión toca lo legal, y conviene resolverlo con quien corresponda.
+
+    **Descartadas:** conservar el rescate como red de seguridad para cuando el
+    integrador cierra o deja de pagar (deja la titularidad con una excepción
+    que hay que explicar en el contrato y en el panel, y 👤 la descartó
+    expresamente al elegir «solo su copia»); y hacer al integrador dueño
+    técnico de la instancia (le devolvería la entrada por SSO, el equipo y el
+    backup del cliente, que es lo que 13.1 y 13.3 quitaron).
 
 ## Referencias (repos privados)
 
