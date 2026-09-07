@@ -1032,6 +1032,46 @@ obtiene en el registro de Pimia o en el panel de integrador).
     de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
+    **13.17. El CORE de Pimia es lo fiscal y la identidad, más Clientes y
+    Artículos (2026-09-07).** Al cerrar la primera capa de un integrador
+    hecha de verdad —HubSpot en el sitio del CRM base, en el fork de Zoomo
+    (`docs/ESTUDIO-CAPA-HUBSPOT.md` del fork)—, 👤 fijó el marco del debate
+    que viene: «el integrador, lo primero de todo, debe tener claro cuál es
+    el CORE de Pimia, lo que no puede tocar. Digamos que es el punto de
+    partida por el cual nace su vertical. […] Debemos dejar que el integrador
+    decida si activa nuestros módulos, los integra con software de terceros
+    o creados por él, o directamente carga módulos al CORE de Pimia». Antes
+    de preguntar se midió (`docs/ESTUDIO-BASE-DE-LAS-VERTICALES.md` del
+    fork): el core estaba en TRES listas que no se hablan —nueve módulos
+    `core: true` en el registro, diez permisos `first_party_only` en cinco
+    dominios (`admin`, `delegation`, `verifactu`, `billing`, `apps`) y las
+    reglas del servidor— y cuatro opcionales que nacen encendidos para todos
+    (CRM, trabajo, personal, cumplimiento) se comportaban como core sin
+    serlo; la prueba de HubSpot lo midió con el CRM, que ni el integrador ni
+    su app pueden apagar. **Decidido**, con sus palabras: «solo lo fiscal y
+    la identidad, pero añadiendo Clientes y Artículos; con ello tenemos lo
+    necesario para el cumplimiento de la facturación». O sea: **(a) el core
+    es lo mínimo para emitir una factura válida** —la facturación y su
+    cumplimiento (facturas, cobros, VeriFactu y Factur-X), la identidad (la
+    cuenta, la empresa, sus usuarios, el plan y el cobro a Pimia), los
+    Clientes y los Artículos—; **(b) todo lo demás es COMPONIBLE por el
+    integrador**: salen del core compras, finanzas, informes, notas y el
+    panel, y siguen fuera CRM, trabajo, personal, contratos, agenda, almacén
+    y TPV. Lo que esto NO decide todavía, y hay que preguntar antes de tocar
+    el registro: presupuestos, recurrentes y albaranes viven en el mismo
+    módulo que las facturas (`billing`) sin ser fiscales; «ajustes» mezcla
+    la identidad con los ajustes del oficio; y el panel es la portada. Las
+    tres preguntas siguientes del debate, en orden: si el integrador decide
+    qué nace encendido en su vertical (el paquete de nacimiento, §3 del
+    estudio de verticales del banco); si un tercero integrado en el sitio de
+    un módulo de Pimia lo SUSTITUYE o CONVIVE con él (lo que dejó abierto
+    HubSpot); y qué es «cargar un módulo al core», un manifiesto o código
+    dentro — lo segundo reabre la decisión 7 y hay que decirlo con esas
+    palabras. Lo ya medido para las tres vías: activar EXISTE desde el 06-09
+    (la activación mayorista) pero no apaga lo heredado ni decide qué nace;
+    integrar existe en piezas y el catálogo de apps ya prevé `third_party`;
+    cargar no existe.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
