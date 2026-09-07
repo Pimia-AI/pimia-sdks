@@ -1256,6 +1256,9 @@ obtiene en el registro de Pimia o en el panel de integrador).
     note la diferencia. Descartadas: la etiqueta opaca como único enlace (un
     presupuesto de HubSpot parece hecho a mano) y pintar el origen (el core
     distinguiría proveedores, que es justo lo que no se quiere).
+    **Generalizada por 13.26 (2026-09-08)**: lo que aquí se dice de los
+    documentos vale para CUALQUIER módulo sustituible, y allí está el criterio
+    de hasta dónde guarda el core.
     **13.24. La etapa 1 se verifica con un MÓDULO NUEVO del sector de ERP
     Studio, no con la capa HubSpot (2026-09-07).** Tercera pregunta de marco
     de la etapa 1: ¿con qué se verifica que un módulo de un integrador corre
@@ -1370,6 +1373,63 @@ obtiene en el registro de Pimia o en el panel de integrador).
     expresamente al elegir «solo su copia»); y hacer al integrador dueño
     técnico de la instancia (le devolvería la entrada por SSO, el equipo y el
     backup del cliente, que es lo que 13.1 y 13.3 quitaron).
+
+    **13.26. El CORE define la forma, el MÓDULO la rellena — y el criterio para
+    saber dónde para el core (2026-09-08).** Preguntado por dónde vive «la
+    oportunidad» a la que se dirige un presupuesto cuando el CRM lo pone el
+    integrador, 👤 no eligió entre las opciones y planteó la regla de arriba,
+    con sus palabras: «imagino que esta casuística nos sucederá en casi todos
+    nuestros módulos de Pimia, los cuales un integrador puede sustituir por unos
+    suyos. El caso es que la mayoría de los módulos están enlazados con los
+    módulos CORE. […] la base o el fundamento de la definición de lead es lo
+    mismo en el módulo de Pimia, que en HubSpot, que en un CRM personalizado de
+    un cliente. Por lo tanto creo que debemos diferenciar que un integrador
+    utilice un módulo u otro, a cómo Pimia CORE recoge y almacena la
+    información». Y preguntó si eso era una aberración o lo habitual: **es lo
+    habitual**, y tiene nombre — el núcleo define un modelo propio y estable y
+    los proveedores lo rellenan.
+
+    **Decidido:** (a) **quién pone el módulo es una cosa y qué guarda Pimia es
+    otra.** Un concepto que el core necesita existe en el core con UNA sola
+    forma, y da igual si lo escribe el módulo de Pimia, el de un tercero o el
+    propio del cliente; (b) por tanto el core **guarda los elementos que
+    necesita**, no una etiqueta opaca del proveedor ni una copia del módulo; (c)
+    y para saber dónde para, el criterio que 👤 aprobó el mismo día:
+
+    > **El core guarda lo que el core necesita para hacer SU trabajo: emitir el
+    > documento, poder enviarlo, imprimirlo y contarlo. Todo lo demás es del
+    > módulo.**
+
+    Ese criterio existe porque «tantos elementos como sean necesarios» sin freno
+    acaba con el core copiando el módulo entero, y entonces el integrador ya no
+    aporta nada — que es justo lo contrario de por qué existe el programa.
+
+    **Aplicado al primer caso, la oportunidad de un presupuesto:** el core
+    guarda a quién va dirigido y lo justo para poder mandárselo (nombre,
+    contacto, correo, teléfono). La etapa del embudo, la probabilidad de cierre,
+    el importe esperado y la actividad comercial se quedan en el módulo, sea el
+    de Pimia o el del integrador. El cliente ve «la oportunidad» y nunca de
+    dónde viene, que es 13.23.
+
+    **Qué es de este punto y qué era ya de 13.23:** 13.23 dijo que el core no
+    distingue proveedores en los documentos; 13.26 lo generaliza a CUALQUIER
+    módulo sustituible y le pone el freno. Es la regla que gobierna la pieza 9
+    de la fase 1 y todas las que vengan cuando un integrador sustituya compras,
+    agenda, almacén o lo que sea.
+
+    **Descartadas, y por qué:** reutilizar la ficha de Clientes para el
+    interesado que aún no ha comprado (llena el fichero de clientes de gente que
+    nunca compró, y esos aparecen en listados, informes y recuentos mezclados
+    con los reales); y guardar solo el nombre escrito (no resuelve el caso: sin
+    correo ni dirección ese presupuesto no se puede enviar ni imprimir, así que
+    en la práctica habría que dar de alta al cliente igualmente).
+
+    **Lo que deja abierto, a propósito:** qué se hace cuando un integrador pida
+    que el core sepa algo MÁS de lo que necesita para su trabajo. Se decide
+    entonces, con el caso real delante, y se añade; no se adivina ahora. ⚠️ Y un
+    guardarraíl para quien aplique esto: que el core guarde un dato no lo
+    convierte en dueño de la funcionalidad — la ficha mínima de la oportunidad
+    no puede crecer hasta ser un CRM sin pasar otra vez por este punto.
 
 ## Referencias (repos privados)
 
