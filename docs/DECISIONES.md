@@ -975,18 +975,102 @@ obtiene en el registro de Pimia o en el panel de integrador).
     —depende del plan de cada cliente—, y lo que le define ante Pimia es su
     tarifa, no un plan de canal.
 
+    **13.16. Un VERTICAL es un SECTOR, lo abre un integrador, y un integrador
+    tiene de una a n (2026-09-07).** 👤: «una vertical de negocio es una
+    agrupación de empresas del sector, por ejemplo peluquerías. Nosotros
+    partimos de una aplicación genérica, no específica para ningún sector en
+    concreto. Por eso es tan importante la entrada de los integradores, ellos
+    descubrirán nuevas oportunidades». Antes de preguntar se midió
+    (`docs/research/ESTUDIO-VERTICALES-DE-NEGOCIO.md` del banco): la palabra
+    significaba tres cosas distintas —un fork (decisión 7), el producto del
+    integrador (`User::isDesarrollador`) y un oficio para filtrar agentes en
+    la tienda— y ninguna era un dato; y de las siete capas que distinguen al
+    fork de Zoomo de la web estándar, dos están decididas (dominio, catálogo),
+    dos son del integrador (permisos, web comercial) y tres son la vertical de
+    verdad —marca, recorte del menú y **lo que nace encendido**—, y esa última
+    no existe: **Talleres Ana, el cliente real de ERP Studio, nació sin
+    Mantenimientos ni Agenda**, porque `contracts` y `agenda` son opt-in
+    para todos por igual y encenderlos es de primera parte, así que ni Zoomo
+    ni su app pueden hacerlo. **Decidido:** (a) un vertical es un sector, no
+    un producto que defina Pimia ni un sinónimo de socio — Pimia es la
+    aplicación genérica y los integradores descubren los sectores; (b) **un
+    integrador tiene de una a n verticales, y su panel diferencia los
+    clientes de cada una**; (c) las asesorías y las instancias directas no
+    llevan vertical. Aplicado a la maqueta el mismo día: verticales con dueño
+    en el censo (sector, cómo la llama el socio, de quién es, desde cuándo);
+    cada cliente de integrador entró por una de las de su socio y nunca antes
+    de que existiera; filtro y columna en la cartera, reparto en la visión
+    general, y el superadmin las ve en socios, ficha de socio, instancias y
+    ficha de instancia. Consecuencia para el núcleo cuando toque construirlo:
+    **la vertical es una entidad del plano central con dueño —una cuenta de
+    desarrollador— y cada tenant atribuido a un integrador guarda por cuál
+    entró**; el alta desde la web del integrador tiene que decirlo (hoy solo
+    dice por qué client). **Lo que 13.16 deja abierto, y es la pregunta
+    siguiente: cuánto puede parametrizar un integrador dentro de su
+    vertical.** Medido el mismo día (§9 del estudio): su software, todo y sin
+    ayuda de Pimia; dentro de cada cliente, mucho —catálogo de servicios,
+    impuestos, series, plantillas, campos, logo— pero cliente a cliente y
+    después del consentimiento; y una franja que no puede tocar de ninguna
+    manera: qué módulos tiene encendidos, sus usuarios, su plan, su correo.
+    Lo que falta no es más permisos: es que la vertical exista en Pimia con
+    contenido, para que un cliente nuevo nazca ya montado. ⛔ Dos cosas que no
+    miden lo que un tercero puede: zoomo-pimia es una vertical DEMO montada
+    por Pimia como si fuera un integrador, y el puente con compai se probó
+    desde nuestro extremo, no desde las posibilidades de un integrador.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** solo lo aparcado por 13.9c — si entrar dentro
+    **Lo que sigue sin decidir:** lo abierto en 13.16 —qué puede definir un
+    integrador en Pimia para su vertical— y lo aparcado por 13.9c — si entrar dentro
     de una instancia deja rastro y si el cliente se entera; el botón está a la
     vista y apagado. **Siguiente paso acordado (13.13): compilar y probar en real
     superadmin e integrador**, y solo después el panel de la asesoría, que sale
     de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
+
+    **13.17. El CORE de Pimia es lo fiscal y la identidad, más Clientes y
+    Artículos (2026-09-07).** Al cerrar la primera capa de un integrador
+    hecha de verdad —HubSpot en el sitio del CRM base, en el fork de Zoomo
+    (`docs/ESTUDIO-CAPA-HUBSPOT.md` del fork)—, 👤 fijó el marco del debate
+    que viene: «el integrador, lo primero de todo, debe tener claro cuál es
+    el CORE de Pimia, lo que no puede tocar. Digamos que es el punto de
+    partida por el cual nace su vertical. […] Debemos dejar que el integrador
+    decida si activa nuestros módulos, los integra con software de terceros
+    o creados por él, o directamente carga módulos al CORE de Pimia». Antes
+    de preguntar se midió (`docs/ESTUDIO-BASE-DE-LAS-VERTICALES.md` del
+    fork): el core estaba en TRES listas que no se hablan —nueve módulos
+    `core: true` en el registro, diez permisos `first_party_only` en cinco
+    dominios (`admin`, `delegation`, `verifactu`, `billing`, `apps`) y las
+    reglas del servidor— y cuatro opcionales que nacen encendidos para todos
+    (CRM, trabajo, personal, cumplimiento) se comportaban como core sin
+    serlo; la prueba de HubSpot lo midió con el CRM, que ni el integrador ni
+    su app pueden apagar. **Decidido**, con sus palabras: «solo lo fiscal y
+    la identidad, pero añadiendo Clientes y Artículos; con ello tenemos lo
+    necesario para el cumplimiento de la facturación». O sea: **(a) el core
+    es lo mínimo para emitir una factura válida** —la facturación y su
+    cumplimiento (facturas, cobros, VeriFactu y Factur-X), la identidad (la
+    cuenta, la empresa, sus usuarios, el plan y el cobro a Pimia), los
+    Clientes y los Artículos—; **(b) todo lo demás es COMPONIBLE por el
+    integrador**: salen del core compras, finanzas, informes, notas y el
+    panel, y siguen fuera CRM, trabajo, personal, contratos, agenda, almacén
+    y TPV. Lo que esto NO decide todavía, y hay que preguntar antes de tocar
+    el registro: presupuestos, recurrentes y albaranes viven en el mismo
+    módulo que las facturas (`billing`) sin ser fiscales; «ajustes» mezcla
+    la identidad con los ajustes del oficio; y el panel es la portada. Las
+    tres preguntas siguientes del debate, en orden: si el integrador decide
+    qué nace encendido en su vertical (el paquete de nacimiento, §3 del
+    estudio de verticales del banco); si un tercero integrado en el sitio de
+    un módulo de Pimia lo SUSTITUYE o CONVIVE con él (lo que dejó abierto
+    HubSpot); y qué es «cargar un módulo al core», un manifiesto o código
+    dentro — lo segundo reabre la decisión 7 y hay que decirlo con esas
+    palabras. Lo ya medido para las tres vías: activar EXISTE desde el 06-09
+    (la activación mayorista) pero no apaga lo heredado ni decide qué nace;
+    integrar existe en piezas y el catálogo de apps ya prevé `third_party`;
+    cargar no existe.
 
 ## Referencias (repos privados)
 
