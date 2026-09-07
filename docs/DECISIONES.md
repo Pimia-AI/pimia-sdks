@@ -938,17 +938,30 @@ obtiene en el registro de Pimia o en el panel de integrador).
     arriba y con nombres en vez de esconderlo, pero si debe seguir siendo así es
     una decisión que no se toma dibujando.
 
+    **13.14. El precio de un añadido NO se congela, y es a propósito
+    (2026-09-07).** Un plan y el asiento de un socio congelan su precio en quien
+    lo contrató (13.7, 13.10); **un módulo o una app, no**: hay un precio y se
+    aplica a todos a la vez. 👤 lo eligió por lo que gana —es lo simple de
+    explicar y de cobrar, y nadie arrastra precios viejos—. ⚠️ **Esto NO es un
+    descuido pendiente de armonizar con la regla de los planes**: quien venga a
+    «arreglarlo» estará deshaciendo una decisión, y por eso está escrito en el
+    propio dato y en la pantalla, no solo aquí. Lo que la decisión exige a
+    cambio: **la pantalla que cambia ese precio tiene que decir antes a quién le
+    sube, cuánto a cada uno y cuánto en total** (la diferencia por cada instancia
+    encendida), porque el mes siguiente esa subida llega a socios que ya habían
+    puesto su precio de venta.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
     `config/tenant_provisioning.php` para la cuenta de desarrollador. El SDK no
     pierde operaciones: dejan de usarse.
 
-    **Lo que sigue sin decidir:** (1) si el precio de un módulo **se congela**
-    como el de un plan y el de un asiento — hoy no, y es la única regla de precio
-    que se comporta distinta (13.13); (2) aparcado por 13.9c, si entrar dentro de
-    una instancia deja rastro y si el cliente se entera. Y después de compilar y
-    probar en real, el panel de la asesoría, que sale de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
+    **Lo que sigue sin decidir:** solo lo aparcado por 13.9c — si entrar dentro
+    de una instancia deja rastro y si el cliente se entera; el botón está a la
+    vista y apagado. **Siguiente paso acordado (13.13): compilar y probar en real
+    superadmin e integrador**, y solo después el panel de la asesoría, que sale
+    de cero (13.4). ⛔ Ninguna pregunta técnica: eso fue lo que hizo parar la
     cadena.
 
 ## Referencias (repos privados)
