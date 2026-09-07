@@ -1195,6 +1195,78 @@ obtiene en el registro de Pimia o en el panel de integrador).
     el Pim de un cliente de la vertical—; se decide cuando el CRM esté
     aislado y las dos mediciones estén sobre la mesa.
 
+    **13.22. La conexión de la app de un integrador es de la EMPRESA, no de la
+    persona que la conectó (2026-09-07).** Primera pregunta de marco de la
+    etapa 1 del plan «cómo un integrador crea integraciones y módulos»
+    (`docs/plan-integraciones-y-modulos-del-integrador.md`, §7). Lo medido: el
+    grant OAuth es de una persona (`oauth_authorizations`: client, tenant,
+    user); la capa HubSpot escribe en Pimia con el grant de quien conectó y,
+    si esa sesión se desconecta, el webhook «se queda sin manos» (estudio de
+    HubSpot, 3.5); wab-ai guarda el `access_token` del administrador que
+    conectó, sin refresh (estudio de wab-ai, choque 7). **Decidido:** la
+    conexión nace con la instalación por empresa y sobrevive a que quien la
+    hizo cierre sesión o deje la empresa; el dueño la revoca desde «Apps
+    conectadas» o desinstalando la integración. Consecuencia para el núcleo:
+    una identidad de la app por empresa —un grant de servicio ligado a
+    `company_apps.authorization_id`, con refresh y rotación—, que es la pieza
+    5 de §3.3 del plan (M–L) y la que permite que la app registre sus propios
+    webhooks (pieza 6). Descartado: el patrón Slack de hoy, en el que la app
+    se instala con el token de quien la instaló y la empresa reinstala si esa
+    persona se va.
+
+    **13.23. La integración es TRANSPARENTE para el core: facturas,
+    presupuestos y clientes no distinguen si un lead viene de HubSpot o del
+    CRM nativo (2026-09-07).** Segunda pregunta: cuando un documento de Pimia
+    nace desde el software del integrador (un deal de HubSpot, una orden de su
+    app), ¿Pimia guarda solo la etiqueta que este le pone, o sabe y enseña de
+    dónde viene? 👤 no eligió ninguna de las dos: «la integración tiene que
+    ser transparente, es decir las facturas, presupuestos, clientes del CORE
+    de Pimia no hacen distinción de si un lead viene de HubSpot o de su CRM
+    nativo». Lo medido: el CRM de Pimia está cosido a los documentos del core
+    a mano —`estimates.lead_id` con `required_without:customer_id`, la
+    relación `Estimate::lead()`, `lead_id` en el resource, en el resumen, en
+    el PDF y en el webhook `estimate.accepted` (estudio del CRM, choque 3)—,
+    mientras que HubSpot solo pudo dejar una etiqueta opaca
+    (`hubspot:deal:9004`) que Pimia guarda y devuelve sin entender (estudio
+    de HubSpot, 2.b). **Decidido:** el core no sabe ni enseña qué proveedor
+    hay detrás de una capacidad componible. El enlace de un presupuesto a una
+    oportunidad es del core, con una sola forma, y lo rellena igual el CRM de
+    Pimia que el del integrador; lo que el cliente ve en la ficha, en el PDF
+    y en el webhook es «la oportunidad», nunca «de HubSpot» ni «del CRM
+    nativo». `external_ref` sigue siendo el mapeo del integrador hacia SU
+    sistema, no lo que el core enseña. Consecuencias: la pieza «referencia a
+    documento externo» del estudio del CRM (§5.1, `links`, tamaño L) deja de
+    ser opcional y entra en la etapa 1 como pieza 9 de §3.3 del plan, con la
+    forma que hoy tiene `lead_id` generalizada a cualquier proveedor; y es la
+    regla de 13.19 vista desde los documentos: sustituir es que el core no
+    note la diferencia. Descartadas: la etiqueta opaca como único enlace (un
+    presupuesto de HubSpot parece hecho a mano) y pintar el origen (el core
+    distinguiría proveedores, que es justo lo que no se quiere).
+    **13.24. La etapa 1 se verifica con un MÓDULO NUEVO del sector de ERP
+    Studio, no con la capa HubSpot (2026-09-07).** Tercera pregunta de marco
+    de la etapa 1: ¿con qué se verifica que un módulo de un integrador corre
+    en su servidor para su vertical? Opciones: la capa HubSpot de Zoomo, ya
+    construida y medida en dev (crea cliente y presupuesto por el SDK, sin
+    cuenta real todavía); un módulo nuevo del sector; o las dos. 👤 eligió el
+    módulo nuevo: el fork de Zoomo —la vertical de demostración que Pimia
+    opera como si fuera un integrador (13.16)— escribe desde una hoja en
+    blanco un módulo propio de su sector (talleres) siguiendo la receta de
+    §3.2 del plan (`docs/plan-integraciones-y-modulos-del-integrador.md`), y
+    con él se miden las siete filas de §3.4. Por qué importa: la capa HubSpot
+    mide integrar software AJENO en el sitio de un módulo de Pimia; un módulo
+    propio mide el camino que el plan describe —crear, no solo conectar— con
+    software del integrador, que es lo que 13.20 preguntaba. Consecuencias:
+    HubSpot queda como la medición previa que ya destapó los choques (no se
+    tira ni se amplía); qué hace el módulo nuevo —lo que un taller necesita y
+    el core no hace— lo define el fork antes de escribirlo; se construye
+    contra las piezas de §3.3 conforme entren, primero en dev
+    (`reformas-vera`, con el grant del integrador de Zoomo que ya existe) y
+    después en `app.erpstudio.es` con Talleres Ana; y la receta de §3.2 se
+    corrige con lo que ese módulo tropiece, cada tropiezo un choque con
+    fichero y línea. Descartadas: verificar con HubSpot (ya medido, y no es
+    software del integrador) y con las dos (dobla la verificación antes de
+    tener las piezas).
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
