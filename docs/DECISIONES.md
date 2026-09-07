@@ -1147,6 +1147,54 @@ obtiene en el registro de Pimia o en el panel de integrador).
     (C2), y la decisión 7 cerró la segunda; las dos sesiones dicen cuánto
     cuesta cada una con un módulo y una app reales.
 
+    **13.21. La vertical declara sus ANFITRIONES, y cada módulo o integración
+    declara sus CARAS (2026-09-07).** Al cerrar el aislamiento de la app de
+    wab-ai (`docs/ESTUDIO-APP-WABAI-AISLADA.md` del núcleo;
+    `Pimia-AI/pimia-app-wabai`), 👤 planteó el marco: «Pimia tiene versión
+    web, versión Buzz y versión Hermes; el integrador, cuando hace la
+    vertical, primero decide sobre qué plataformas corre, de tal forma que un
+    módulo o una integración tendrá tres formatos». Antes de decidir se
+    midió, y la medida corrige la unidad: los tres anfitriones de la UI —la
+    web (`features/pimia/`, 524 ficheros), Buzz (`desktop/src/features/pimia`,
+    54 ficheros, copia verbatim del 2026-08-10, **congelado hasta su fase**) y
+    Hermes Desktop (plugin `pimia-hermes-plugin`, vistas verbatim, spike de
+    solo lectura; decisión 11)— comparten UNA sola UI, el dialecto portable
+    de la decisión 7; lo que cambia por anfitrión es la costura (su client
+    OAuth, el transporte, la navegación), y cada anfitrión es un fork. Y
+    «Hermes» nombra dos cosas distintas: Hermes Desktop, que es un anfitrión
+    de UI, y el AGENTE de la instancia (Pim), que no lo es: sus integraciones
+    son servidores MCP montados en su `config.yaml` (Pimia, OCR, el radar
+    público, wab-ai) y skills del marketplace. Una integración como wab-ai no
+    tiene UI propia en ningún anfitrión —se ve por la pantalla genérica de
+    Integraciones, que es portable— y trae dos caras: la del CONTRATO (SDK y
+    webhooks, lo que salió a `pimia-app-wabai`) y la del AGENTE, que wab-ai ya
+    entrega (su MCP de siete herramientas y la skill `comunicacion-citas`,
+    ocho pasos con cinco herramientas del MCP de Pimia y dos suyas). Un
+    módulo tiene las tres: código en el núcleo, UI portable, y herramientas
+    MCP más skills. **Decidido:** (a) la unidad no es «un formato por
+    plataforma» sino tres CARAS —contrato, UI portable, agente— y tres
+    ANFITRIONES —web, Buzz, Hermes Desktop—, con la UI escrita una vez; (b)
+    **la vertical declara en Pimia en qué anfitriones corre, y cada módulo o
+    integración declara qué caras trae**, igual que la vertical declara su
+    paquete de nacimiento (13.18): así el catálogo del integrador y el panel
+    pueden decir dónde corre cada vertical y qué incluye cada pieza, y Buzz y
+    Hermes Desktop se pueden vender como parte de una vertical; (c) declarar
+    un anfitrión no lo construye: hoy solo la web está en condiciones de
+    recibir una vertical. Consecuencias para el núcleo cuando toque
+    construirlo: la vertical (13.16) guarda sus anfitriones; el manifiesto de
+    una app y la entrada de un módulo en el registro declaran sus caras; y la
+    sesión del CRM (13.20) mide el módulo cara a cara —qué hay en el núcleo,
+    qué en `features/pimia/`, qué en el MCP y las skills—, que es la
+    comparación que el debate necesita. Descartadas: que el anfitrión sea solo
+    el fork que despliega el integrador sin que Pimia lo sepa (Pimia no podría
+    decir dónde corre una vertical ni enseñar en el catálogo qué caras trae
+    una pieza), y declarar solo la cara de agente (dejaría fuera del dato a
+    Buzz y Hermes Desktop justo cuando 13.16 pide que la vertical exista con
+    contenido). Aparcado, con fecha: si el paquete de nacimiento (13.18)
+    incluye también la cara de agente —qué skills y MCPs nacen encendidos en
+    el Pim de un cliente de la vertical—; se decide cuando el CRM esté
+    aislado y las dos mediciones estén sobre la mesa.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
