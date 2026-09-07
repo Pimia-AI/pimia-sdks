@@ -951,6 +951,30 @@ obtiene en el registro de Pimia o en el panel de integrador).
     encendida), porque el mes siguiente esa subida llega a socios que ya habían
     puesto su precio de venta.
 
+    **13.15. DOS PRECIOS por producto (directo y distribución) y TARIFAS de
+    socio; los planes de canal desaparecen (2026-09-07).** 👤: «vendemos planes,
+    módulos e integraciones, los cuales tienen un precio para los clientes
+    directos de Pimia y otro diferente que debo poder parametrizar para los
+    socios (precio distribución). Por otro lado tendremos tarifas, en función
+    del tipo de socio: no es lo mismo un socio que vende 30.000 € que uno que
+    vende 100.000 €». Tres cosas estaban mal representadas: un plan solo tenía
+    precio directo, un módulo solo tenía precio de distribución, y **el canal se
+    representaba como dos planes propios** («Asesoría» y «Desarrollador») a un
+    precio fijo por cliente. Esa tercera escondía el fondo: **un asiento fijo
+    hacía que todos los clientes de un socio le costaran lo mismo**, tuviera uno
+    un Starter y otro un Business. **Modelo nuevo:** cada producto —plan, módulo
+    o integración— lleva `precio_directo` y `precio_distribucion`; un cliente de
+    socio está sobre un **plan normal** y su socio paga la distribución **de ese
+    plan**; los planes de canal se retiran como producto. **Las tarifas** son un
+    **descuento sobre el precio de distribución** (Bronce 0 %, Plata 10 %, Oro
+    20 %) y NO una lista de precios por tarifa: así se parametriza un precio por
+    producto y un número por tarifa, y añadir un producto no obliga a tocar
+    ninguna tarifa ni deja a un socio sin precio por un olvido; el volumen
+    orienta, la tarifa la asigna Pimia. Consecuencia para las pantallas: el
+    catálogo de un integrador **no puede poner un coste fijo a su licencia**
+    —depende del plan de cada cliente—, y lo que le define ante Pimia es su
+    tarifa, no un plan de canal.
+
     **Lo que esto deja sin pantalla en el núcleo** (no se retira nada todavía,
     se anota): `POST /api/tenant-invitations` invocado por un desarrollador,
     `POST /api/tenants/{slug}/transfer-ownership`, y la cuota de altas de
