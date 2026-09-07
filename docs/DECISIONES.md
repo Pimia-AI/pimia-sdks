@@ -1072,6 +1072,81 @@ obtiene en el registro de Pimia o en el panel de integrador).
     integrar existe en piezas y el catálogo de apps ya prevé `third_party`;
     cargar no existe.
 
+    **13.18. La VERTICAL declara su paquete de nacimiento (2026-09-07).**
+    Segunda pregunta del debate de la base de las verticales
+    (`docs/ESTUDIO-BASE-DE-LAS-VERTICALES.md` del fork de Zoomo): en una
+    vertical, ¿quién decide qué módulos componibles nacen encendidos y cuáles
+    apagados en un cliente nuevo? Lo medido: la regla de nacimiento
+    (`ModuleManager::defaultStatus`) es una para todos —CRM, trabajo, personal
+    y cumplimiento nacen encendidos; TPV, agenda, contratos y almacén,
+    apagados— y no sabe de verticales; la activación mayorista (06-09) deja al
+    integrador encender lo que vende, pero no apagar lo heredado ni decidir el
+    nacimiento; así nació Talleres Ana sin Mantenimientos y así queda el CRM
+    base encendido debajo de HubSpot. **Decidido:** el integrador declara POR
+    VERTICAL qué nace encendido y qué nace apagado de lo componible (13.17);
+    un cliente nuevo de esa vertical nace así, entre por la web del integrador
+    o por el panel de Pimia; lo que no declare sigue la regla general. Cabe en
+    el catálogo del integrador, que ya guarda qué revende (12.4); exige en el
+    núcleo la vertical como dato (13.16) y que la regla de nacimiento la mire.
+    Descartadas: la regla general con activación después (deja la ventana en
+    la que el cliente ve Pimia genérico y no puede quitar lo que nace
+    encendido) y que el cliente elija en el alta (compra un producto hecho,
+    no una lista de módulos). Cambiar un cliente de vertical después es una
+    migración: no se diseña hasta que se pida.
+
+    **13.19. Un tercero SUSTITUYE al módulo de Pimia en su vertical, y el
+    cliente no recompone: la vertical es un producto SEMICERRADO del
+    integrador (2026-09-07).** Tercera pregunta: cuando una vertical pone
+    software de un tercero o suyo en el sitio de un módulo componible —HubSpot
+    donde estaba el CRM base—, ¿el módulo de Pimia desaparece o convive? 👤:
+    «Lo sustituye […], pero el cliente del tenant de una vertical, en este
+    caso de Zoomo, no hace modificaciones. De hecho en su tenant no verá esa
+    opción. Se entiende como vertical un producto semicerrado que ha creado
+    el integrador». Dos cosas, y la segunda corrige la premisa con la que se
+    preguntó (que el dueño podría volver a encenderlo desde el panel de
+    Pimia): **(a)** el módulo sustituido nace apagado en los clientes de esa
+    vertical (13.18), sale del menú y su vocabulario sale de las demás
+    pantallas (el embudo del panel, «oportunidad» como destinatario de un
+    presupuesto, las tareas de un lead); **(b)** el cliente de un tenant de
+    vertical NO compone: en su tenant no ve la opción de encender lo
+    sustituido ni de tocar la composición de módulos; eso es del integrador.
+    No toca 12.3 en lo que es propiedad —el tenant, sus datos, su copia de
+    seguridad y revocar la app siguen siendo del cliente—: lo que pasa al
+    integrador es la composición. Consecuencias que se ven desde aquí y no se
+    construyen todavía: la pantalla de módulos y la tienda de un tenant con
+    vertical no ofrecen lo sustituido; las vistas portables de la web
+    necesitan una costura que diga qué módulos tiene sustituidos esta
+    vertical, para apagar sus ramas; y la app del integrador deja de pedir
+    los permisos del módulo sustituido, lo que obliga a registrar el client
+    de nuevo (los permisos se fijan al registrar). Descartadas: convivir
+    escondiendo el menú (lo que hace hoy el prototipo de HubSpot: dos CRMs a
+    un clic) y que cada cliente elija (la vertical dejaría de ser un
+    producto).
+
+    **13.20. Módulos e integraciones se AÍSLAN antes de debatirlos: el CRM y
+    wab-ai, cada uno en su repo (2026-09-07).** A la cuarta pregunta —qué es
+    para Pimia un módulo creado por un integrador: un manifiesto sin código
+    dentro, código en el núcleo, o por niveles— 👤 no contestó con una
+    opción sino con el método: «ahora que ya tenemos definido el CORE y
+    verticales, llegamos a un punto clave, módulos e integraciones. 1º Lanza
+    una nueva sesión para aislar uno de nuestros módulos en un repo de
+    GitHub, ejemplo CRM: de este modo tenemos un ejemplo de las necesidades y
+    de cómo un integrador tiene que crear módulos para Pimia. 2º Lanza una
+    nueva sesión para aislar nuestra integración con wab-ai, que es una
+    aplicación externa. A partir de estos datos debatimos después cómo
+    manejamos los desarrollos de los integradores». O sea: la pregunta 4
+    queda ABIERTA a propósito, y se contesta con dos mediciones hechas de
+    verdad —qué es un módulo de Pimia sacado de Pimia (el CRM: rutas,
+    modelos, migraciones, abilities, su entrada del registro, sus vistas en
+    la web y su trozo del contrato) y qué es una app externa sacada de Pimia
+    (wab-ai: su manifiesto, su client, su token de puente, sus scopes, sus
+    webhooks)— cada una en su repo (`Pimia-AI/pimia-modulo-crm`,
+    `Pimia-AI/pimia-app-wabai`), con la lista de lo que hubo que cortar y de
+    lo que se quedó pegado. Lo medido de antemano (§2 del estudio de la
+    base): «cargar un módulo» puede ser un manifiesto (C1) o código dentro
+    (C2), y la decisión 7 cerró la segunda; las dos sesiones dicen cuánto
+    cuesta cada una con un módulo y una app reales.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
