@@ -1431,6 +1431,57 @@ obtiene en el registro de Pimia o en el panel de integrador).
     convierte en dueño de la funcionalidad — la ficha mínima de la oportunidad
     no puede crecer hasta ser un CRM sin pasar otra vez por este punto.
 
+    **13.27. La pantalla de consentimiento enseña lo que la VERTICAL permite, y
+    para eso se acota lo que se CONCEDE (2026-09-08).** Medido en vivo el mismo
+    día, con la primera vertical real de dev ya creada (`erp-studio`, del
+    integrador Zoomo, con `crm` sustituido y `talleres-ana` dentro): al abrir la
+    instancia, esta redirige al dominio del integrador y **la pantalla de
+    consentimiento sigue pidiendo los permisos del módulo sustituido** — «Ver
+    leads, su embudo y su actividad comercial» y «Crear y modificar leads». El
+    client pide 25 scopes y dos son del CRM. O sea: **el CRM sale, y en el primer
+    sitio que el cliente ve.** Es 13.19 cumpliéndose por escrito, y nadie lo
+    había mirado en vivo.
+
+    Preguntado si esa pantalla debe enseñar **lo que el token puede** o **lo que
+    la vertical permite**, 👤 eligió lo segundo.
+
+    **⚠️ Y eso obliga a leerlo de una sola manera, porque la otra convierte la
+    pantalla en una mentira.** Si la pantalla se limitara a ESCONDER los permisos
+    del módulo sustituido, el token seguiría llevándolos: la app podría leer y
+    escribir leads mientras al cliente se le dijo que no. El propio fichero ya se
+    peleó una vez con eso y dejó escrito lo contrario —«el usuario tiene que ver
+    lo que el token va a poder hacer DE VERDAD, compat incluida»
+    (`app/Services/OAuth/ScopeRegistry.php:317-318`)—. **Decidido, por tanto:**
+    no se esconde, **se acota lo que se concede**. Lo que la vertical sustituye
+    no entra en el grant, y entonces la pantalla dice la verdad sin tener que
+    hacer nada especial, porque se alimenta de lo concedido.
+
+    **Dónde se aplica, medido:** `ScopeRegistry::resolveRequested()` es el punto
+    ÚNICO por el que pasan los cuatro caminos del consentimiento y del canje
+    (`app/Http/Controllers/OAuth/OAuthController.php:148`, `:225`, `:253` y
+    `:343`), y de ahí salen tanto `permissionsFor()` como el grant. Acotar ahí
+    arregla la pantalla, el token y —de paso— «Apps conectadas», que enseña la
+    misma lista.
+
+    **Lo que esto ahorra, y no es poco:** 13.19 anticipaba que sustituir un
+    módulo obligaría al integrador a **registrar su client de nuevo** y a rehacer
+    el consentimiento con cada cliente. Con la poda por vertical no hace falta:
+    el grant es por (client, tenant, usuario), así que el mismo client conserva
+    sus permisos en los tenants que no sustituyen nada y los pierde solo donde la
+    vertical lo dice. Un client, varias verticales, sin re-registrar.
+
+    **Lo que queda abierto y hay que decidir al construirlo:** qué pasa con los
+    grants **ya concedidos** que hoy llevan los permisos del módulo sustituido.
+    Podarlos al vuelo cambia lo que un token podía hacer sin avisar a nadie;
+    dejarlos vivos hasta el siguiente consentimiento deja una ventana en la que
+    la pantalla y el token no dicen lo mismo. Se decide con el caso delante, y
+    se anota la ventana.
+
+    **Descartada:** que el client no pida los scopes del módulo sustituido
+    (13.19). Es más honesto de leer, pero lo paga el integrador con un
+    re-registro y un consentimiento nuevo por cada cliente, y no distingue entre
+    sus verticales — el mismo client sirve a las que sustituyen y a las que no.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
