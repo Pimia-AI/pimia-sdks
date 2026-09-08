@@ -100,9 +100,10 @@ hace la CI sobre la PR del release (lo dice su propia nota: «desde esta versió
 la CI de PR cubre lo que antes se hacía a mano»). El registro de que una versión
 salió verde es **el run de la CI sobre su PR**, no un párrafo aquí.
 
-Lo que sí faltaba, y es lo que va abajo, es poder responder «¿qué se publicó y
-cuándo?» sin cruzar tags con el CHANGELOG. Reconstruido el 2026-09-08 de los
-tags y del `git log`; el contenido de cada una, en el
+Lo que sí faltaba, y es lo que va abajo, es poder responder «¿qué hay y qué se
+ha publicado de verdad?» sin cruzar tags con el CHANGELOG — que no son lo
+mismo, como se ve en las cinco últimas filas. Reconstruido el 2026-09-08 de los
+tags remotos y del `git log`; el contenido de cada una, en el
 [CHANGELOG](CHANGELOG.md).
 
 ⛔ **Ninguna fila de abajo afirma una verificación.** Las de arriba sí, porque
@@ -126,6 +127,20 @@ que es lo único que se puede comprobar hoy.
 | 0.19.0 | 2026-09-03 | Contratar tras bajar a Free reanuda la suscripción en vez de abrir otra. | ✅ |
 | 0.20.0 | 2026-09-03 | ⚠️ **Incompatible**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*`. | ✅ |
 | 0.21.0 | 2026-09-03 | ⚠️ **Incompatible**: la campana pasa a `notifications:*`. Spec en `factSaas@5985313a`, **428 operaciones**. | ✅ |
+| 0.22.0 | *sin publicar* | El **plano central** entra en el SDK: `PimiaCentralClient` y el segundo contrato, `spec/pimia-central-v1.json`. `/api/v1` sube a **438 operaciones**. | — |
+| 0.23.0 | *sin publicar* | El catálogo del integrador entra en el plano central (central 1.1.0). | — |
+| 0.24.0 | *sin publicar* | La activación mayorista entra en el plano central (central 1.2.0). | — |
+| 0.25.0 | *sin publicar* | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
+| 0.26.0 | *sin publicar* | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
+
+⛔ **Cinco versiones mergeadas y sin tag.** De la 0.22.0 a la 0.26.0 —todo el
+plano central— hay entrada en el CHANGELOG y versión en los manifiestos, pero
+**no hay tag en el remoto por encima de `v0.21.0`**, así que el workflow de
+release no ha corrido y ni npm ni Packagist las tienen. El paso 4 lo confirma
+por el otro lado: el starter sigue declarando `^0.21.0`. No es un fallo del
+runbook —el paso 2 sencillamente no se ha dado todavía— pero conviene saberlo
+antes de decirle a nadie que el plano central «ya está en el SDK»: está en
+`main`, que no es lo mismo.
 
 **La lección de las dos filas con ⛔:** el paso 4 se saltó en la 0.16.0 y en la
 0.17.0 y **nadie lo notó hasta dos versiones después** —lo dice el propio

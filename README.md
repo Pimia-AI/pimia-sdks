@@ -427,15 +427,30 @@ cd php && composer install && vendor/bin/phpunit
 el workflow de release, que publica los tres artefactos, y **los tres versionan
 en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes.
 
-El contrato va sincronizado con el núcleo en **factSaas@5985313a** (2026-09-03):
-**428 operaciones**. El núcleo OAuth, el cliente, la idempotencia, los webhooks
-y los tipos están completos y con tests, y los helpers de dominio cubren —los
-mismos diez en los dos SDKs— facturas, clientes, presupuestos, contratos,
-almacenes, recuentos y movimientos de stock, más el arranque de sesión, el censo
-de responsables y las oportunidades. Para lo demás, `client.get('/loquesea')`
-con los tipos del spec.
+> ⚠️ **`main` va por delante de lo publicado.** Las **0.22.0 a 0.26.0** —el
+> plano central y su contrato— están mergeadas y **sin tag**, así que lo que
+> hay en npm y en Packagist **no es lo que hay en este repo**. Las dos señales
+> coinciden: no hay tag en el remoto por encima de `v0.21.0`, y el paso 4 del
+> runbook (las dependencias del starter) sigue en `^0.21.0`.
 
-**v0.22.0, preparada**: las tres costuras que le faltaban a un integrador que
+**El SDK habla dos contratos**, sincronizados con `factSaas@522cf264`
+(2026-09-07):
+
+- el del **tenant** (`spec/pimia-api-v1.json`, **438 operaciones**) — facturar,
+  cobrar, el almacén, el CRM: lo que usa una app de partner;
+- el del **plano central** (`spec/pimia-central-v1.json`, **1.4.0, 28
+  operaciones**) — la cuenta del integrador: cartera, vínculos, catálogo,
+  activación mayorista y el login de sus clientes. Vive en `PimiaCentralClient`
+  y es **sólo TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué,
+  en la entrada 0.22.0 del CHANGELOG).
+
+El núcleo OAuth, el cliente, la idempotencia, los webhooks y los tipos están
+completos y con tests. Los helpers de dominio cubren —los mismos diez en los
+dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
+movimientos de stock, más el arranque de sesión, el censo de responsables y las
+oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
+
+**v0.27.0, preparada**: las tres costuras que le faltaban a un integrador que
 SUSTITUYE el CRM —`/bootstrap`, `/crm/assignable-users` y `POST /opportunities`—
 y el **modo de token prestado**, en los dos SDKs. Sin cambios de spec.
 
@@ -443,6 +458,7 @@ Lo anterior, por tramos, con el detalle en el [CHANGELOG](CHANGELOG.md):
 
 | | |
 |---|---|
+| **0.22.0 – 0.26.0** | El **plano central** entra en el SDK y crece contrato a contrato: `PimiaCentralClient` y `spec/pimia-central-v1.json` (0.22.0), el catálogo del integrador (0.23.0), la activación mayorista (0.24.0), el login del integrador (0.25.0) y el contrato central 1.4.0 para `pimia-central-web` (0.26.0). |
 | **0.18.0 – 0.21.0** | El plan y la contratación de la instancia, y el contrato al día con la facturación francesa. ⚠️ Y **dos cambios incompatibles de scope el mismo día**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*` (0.20.0), y la campana pasa a `notifications:*` (0.21.0). Un grant vivo que sólo pidió `crm:*` tiene que **reconectar**. |
 | **0.13.0 – 0.17.0** | El almacén se vuelve una DIMENSIÓN, los documentos declaran a cuál, el recuento de inventario y el stock comprometido (fase N2 del estudio de stock); más el sello de exportación contable. |
 | **0.12.0** | Contratos de servicio: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue delante. |
@@ -450,8 +466,9 @@ Lo anterior, por tramos, con el detalle en el [CHANGELOG](CHANGELOG.md):
 | **0.7.0 – 0.9.0** | Los ficheros —subir y descargar, que hasta entonces fallaban en silencio—, el spec al día con 356 operaciones y el `201` de las altas. |
 | **0.3.0 – 0.6.0** | El verificador de webhooks y los tipos de los ocho eventos, `external_ref` con su 422 duplicado tipado, y el primer salto grande de contrato (230 → 314 operaciones). |
 
-Pendiente de código: ampliar helpers al resto del dominio y DTOs de PHP
-generados del spec.
+Pendiente de código: ampliar helpers al resto del dominio, DTOs de PHP
+generados del spec, y el cliente del plano central en PHP cuando un integrador
+PHP lo pida.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,
