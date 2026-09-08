@@ -404,24 +404,33 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**Última publicada: v0.5.0 (2026-08-10)** en npm (`@pimia/sdk`,
-`@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). El núcleo OAuth, el
-cliente, la idempotencia y los tipos están completos y con tests; los helpers
-de dominio cubren facturas, clientes y presupuestos — para el resto,
-`client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
-workflow de release, que publica los tres artefactos.
+**Última publicada: v0.21.0 (2026-09-03)** en npm (`@pimia/sdk`,
+`@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). Cada tag `v*` dispara
+el workflow de release, que publica los tres artefactos, y **los tres versionan
+en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes.
 
-**v0.6.0, preparada**: el contrato al día con el núcleo — el spec pasa de 230
-a **314 operaciones**, entran las series de presupuesto, `/invoices/templates`
-y `/estimates/templates` tipan su elemento, salen tres rutas de monedas que el
-núcleo ya retiró, y `SCOPES` gana los cinco que faltaban (`settings:read`,
-`store:read`, `hr:read`, `hr:write`, `webhooks:write`) en los dos SDKs. El
-detalle, en el [CHANGELOG](CHANGELOG.md).
+El contrato va sincronizado con el núcleo en **factSaas@5985313a** (2026-09-03):
+**428 operaciones**. El núcleo OAuth, el cliente, la idempotencia, los webhooks
+y los tipos están completos y con tests, y los helpers de dominio cubren —los
+mismos diez en los dos SDKs— facturas, clientes, presupuestos, contratos,
+almacenes, recuentos y movimientos de stock, más el arranque de sesión, el censo
+de responsables y las oportunidades. Para lo demás, `client.get('/loquesea')`
+con los tipos del spec.
 
-Lo anterior, en resumen: **0.5.0** `externalRef` en `convertToInvoice` y
-`ReadOptions` en las lecturas TS; **0.4.0** `external_ref`, la referencia
-externa consultable, en el contrato, en los webhooks y con el 422 duplicado
-tipado; **0.3.0** el verificador de webhooks y los tipos de los ocho eventos.
+**v0.22.0, preparada**: las tres costuras que le faltaban a un integrador que
+SUSTITUYE el CRM —`/bootstrap`, `/crm/assignable-users` y `POST /opportunities`—
+y el **modo de token prestado**, en los dos SDKs. Sin cambios de spec.
+
+Lo anterior, por tramos, con el detalle en el [CHANGELOG](CHANGELOG.md):
+
+| | |
+|---|---|
+| **0.18.0 – 0.21.0** | El plan y la contratación de la instancia, y el contrato al día con la facturación francesa. ⚠️ Y **dos cambios incompatibles de scope el mismo día**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*` (0.20.0), y la campana pasa a `notifications:*` (0.21.0). Un grant vivo que sólo pidió `crm:*` tiene que **reconectar**. |
+| **0.13.0 – 0.17.0** | El almacén se vuelve una DIMENSIÓN, los documentos declaran a cuál, el recuento de inventario y el stock comprometido (fase N2 del estudio de stock); más el sello de exportación contable. |
+| **0.12.0** | Contratos de servicio: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue delante. |
+| **0.10.0 – 0.11.0** | Las tres aperturas del panel (delegación, asesoría, VeriFactu) y «Apps conectadas» en el contrato. |
+| **0.7.0 – 0.9.0** | Los ficheros —subir y descargar, que hasta entonces fallaban en silencio—, el spec al día con 356 operaciones y el `201` de las altas. |
+| **0.3.0 – 0.6.0** | El verificador de webhooks y los tipos de los ocho eventos, `external_ref` con su 422 duplicado tipado, y el primer salto grande de contrato (230 → 314 operaciones). |
 
 Pendiente de código: ampliar helpers al resto del dominio y DTOs de PHP
 generados del spec.
