@@ -8,6 +8,89 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.27.0] — 2026-09-08
+
+**Los dos SDKs dejan de quedarse cortos para un integrador que SUSTITUYE el
+CRM.** Entran las tres costuras que faltaban —`GET /bootstrap`,
+`GET /crm/assignable-users` y `POST /opportunities`— y un **modo «token
+prestado»**: construir el cliente desde un bearer ya obtenido, sin `clientId`,
+sin `TokenStore` y sin ceremonia OAuth. Todo aditivo salvo un detalle de tipo,
+abajo.
+
+**Sin cambios de spec**: no hay sincronización con el núcleo en esta versión.
+`POST /opportunities` es más nueva que la última foto del contrato
+(galeote/factSaas#805) y todavía **no aparece en `spec/pimia-api-v1.json`**; los
+dos SDKs lo dicen en el docblock del recurso, y contra una instancia anterior a
+esa ruta la llamada contesta 404. Por lo mismo, su tipo en TypeScript se declara
+a mano (`OpportunityResource`, con `id` garantizado y nada más) en vez de salir
+del generador: cuando la ruta entre en el spec, pasará a salir de él como los
+demás.
+
+De dónde sale todo esto: del **módulo CRM de la vertical**
+(`Pimia-AI/pimia-modulo-crm`), que se había escrito su propio cliente HTTP
+porque el SDK no le llegaba. La decisión 8 de `docs/DECISIONES.md` dice que el
+SDK es la única superficie de los anfitriones abiertos, y ese módulo es el
+ejemplo de cómo un integrador construye el suyo (punto 13.28): decir «usad el
+SDK» mientras nuestro propio ejemplo se lo saltaba era incoherente, y lo que se
+aprendió construyéndolo no llegaba aquí, que es donde tenía que quedarse.
+
+### Añadido
+
+- **El arranque de la sesión** — `client.bootstrap` (TS) / `$pimia->bootstrap`
+  (PHP): `get()`, `currentCompanyId()` y `currency()`.
+  ⛔ `GET /bootstrap` es **la única respuesta del API que no viene envuelta en
+  `data`**: sus claves cuelgan de la raíz. Un desenvolvedor de `data` escrito
+  «para todas las llamadas» devuelve vacío **sin error**, así que el fallo se ve
+  como una empresa sin resolver o como una moneda que cae al respaldo. Y la
+  moneda importa doble: la escala decide qué filas salen de un filtro por
+  importe y qué se guarda en una ficha, así que suponer 2 decimales no da un
+  error — da otro resultado.
+- **El censo de responsables** — `client.crm.assignableUsers()` /
+  `$pimia->crm->assignableUsers()`. Reenvía lo que conteste el núcleo, campos de
+  más incluidos: el recorte y el filtro son suyos, y copiarlos es tener la misma
+  política en dos sitios que pueden divergir.
+- **La oportunidad** — `client.opportunities.create()` /
+  `$pimia->opportunities->create()`. Es lo que permite que un CRM de fuera
+  enlace un lead sin fabricar un presupuesto borrador y quemar un número de la
+  serie del cliente. Cuelga de `estimates:write`; no estrena scope.
+- **El modo «token prestado»** — `PimiaClient.withBorrowedToken()` (TS) y
+  `PimiaClient::withBorrowedToken()` (PHP), con `BorrowedTokenStore` en los dos
+  y `Config::forBorrowedToken()` / `Config::ownsGrant()` en PHP. Para un
+  servicio que reenvía el `Authorization` de su usuario en vez de tener
+  identidad propia. **No refresca nunca**: el refresh es del dueño del grant, y
+  con la rotación de Pimia tocarlo revoca ese grant entero en cascada. Un 401
+  sube tal cual.
+
+### Cambiado
+
+- **`oauth` pasa a admitir nulo** en los dos SDKs (`OAuth | null` en TS,
+  `?OAuthClient` en PHP). Es `null` **sólo** en el modo de token prestado; un
+  cliente construido como siempre lo sigue teniendo. En PHP no cambia nada en
+  ejecución y sólo puede saltar el análisis estático; **en TypeScript sí es un
+  error de compilación** para quien lea `client.oauth.…` sin comprobar el nulo.
+  Es null y no un objeto a medias a propósito: un cliente OAuth sin `clientId`
+  compone una URL de autorización con `client_id=` vacío y el fallo aparece en
+  el navegador del usuario, lejos de aquí.
+
+### Cómo migrar
+
+Nada que hacer si construyes el cliente como hasta ahora. Si tu compilador o tu
+análisis estático se queja de `oauth`, es porque ahora admite nulo: comprueba el
+nulo, o usa el cliente que ya sabías que tenía grant propio.
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` sube a 0.27.0 **sin cambios de código**.
+- El primer consumidor es el módulo CRM de la vertical
+  (`Pimia-AI/pimia-modulo-crm`), que ya sustituyó su cliente HTTP escrito a mano
+  por el SDK de PHP: su PR #7 **está mergeado**.
+- ⛔ **Y entró pidiendo `^0.22.0`, que es otra cosa** —el plano central—, porque
+  esta release se numeró primero con ese número por error. Lo corrige su PR #12,
+  que hay que **mergear justo después de publicar esta versión**. Hasta
+  entonces, el `main` de ese repo pide un SDK que no trae lo que usa: no rompe
+  nada hoy (su `composer.lock` no la tiene) pero un `composer update` a ciegas
+  sí.
+
 ## [0.26.0] — 2026-09-07
 
 **El contrato del plano central 1.4.0, para el panel central en React**

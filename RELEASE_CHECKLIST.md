@@ -90,6 +90,79 @@ de `origin/main`. Ese checkout llevaba 148 commits de retraso en otra rama. El
 script ya no acepta esa entrada: hace `git fetch`, lee de
 `git show origin/main:docs/openapi/…` y **aborta si el spec encoge**.
 
+## De la v0.7.0 en adelante: dónde está el registro
+
+⚠️ **Las notas por versión de arriba se paran en la v0.6.0, y eso NO es un
+olvido: es que dejaron de tener qué contar.** Lo que registraban era la
+verificación hecha A MANO antes de tagear —«TS 55/55 en el contenedor de
+Hetzner», «la matriz entera desde un clon de la rama»—, y desde la 0.5.0 eso lo
+hace la CI sobre la PR del release (lo dice su propia nota: «desde esta versión
+la CI de PR cubre lo que antes se hacía a mano»). El registro de que una versión
+salió verde es **el run de la CI sobre su PR**, no un párrafo aquí.
+
+Lo que sí faltaba, y es lo que va abajo, es poder responder «¿qué hay y qué se
+ha publicado de verdad?» sin cruzar tags con el CHANGELOG — que no son lo
+mismo, como se ve en las cinco últimas filas. Reconstruido el 2026-09-08 de los
+tags remotos y del `git log`; el contenido de cada una, en el
+[CHANGELOG](CHANGELOG.md).
+
+⛔ **Ninguna fila de abajo afirma una verificación.** Las de arriba sí, porque
+alguien la corrió y la escribió; éstas dicen qué salió y si se cerró el paso 4,
+que es lo único que se puede comprobar hoy.
+
+| Versión | Publicada | Qué llevó | Paso 4 (starter) |
+|---|---|---|---|
+| 0.7.0 | 2026-08-24 | Los ficheros: diez operaciones para subir y dos para descargar, que hasta entonces fallaban en silencio. El spec no se mueve. | ✅ |
+| 0.8.0 | 2026-08-25 | Contrato al día: `factSaas@c825948a`, **356 operaciones** (venía de 314), y la deuda de tipos saldada. | ✅ |
+| 0.9.0 | 2026-08-25 | Las altas devuelven `201`, y la deuda de banca queda cerrada. | ✅ |
+| 0.10.0 | 2026-08-26 | «Apps conectadas» en el contrato; `PUT /me` deja de ser operación de dueño. | ✅ |
+| 0.11.0 | 2026-08-27 | Las tres aperturas del panel: delegación, asesoría y VeriFactu. | ✅ |
+| 0.12.0 | 2026-08-30 | Contratos de servicio: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue delante. | ✅ |
+| 0.13.0 | 2026-08-31 | El almacén se vuelve una DIMENSIÓN. | ✅ |
+| 0.14.0 | 2026-08-31 | Los documentos declaran a qué almacén. | ✅ |
+| 0.15.0 | 2026-08-31 | El recuento de inventario. | ✅ |
+| 0.16.0 | 2026-08-31 | El stock comprometido (pieza 3 y última de la fase N2). | ⛔ |
+| 0.17.0 | 2026-09-01 | El sello de exportación contable y los cuatro campos del impuesto sin camino de escritura. | ⛔ |
+| 0.18.0 | 2026-09-03 | El plan y la contratación de la instancia, y el contrato al día con Francia. Trece operaciones nuevas. | ✅ (y recupera lo pendiente desde la 0.15.0) |
+| 0.19.0 | 2026-09-03 | Contratar tras bajar a Free reanuda la suscripción en vez de abrir otra. | ✅ |
+| 0.20.0 | 2026-09-03 | ⚠️ **Incompatible**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*`. | ✅ |
+| 0.21.0 | 2026-09-03 | ⚠️ **Incompatible**: la campana pasa a `notifications:*`. Spec en `factSaas@5985313a`, **428 operaciones**. | ✅ |
+| 0.22.0 | *sin publicar* | El **plano central** entra en el SDK: `PimiaCentralClient` y el segundo contrato, `spec/pimia-central-v1.json`. `/api/v1` sube a **438 operaciones**. | — |
+| 0.23.0 | *sin publicar* | El catálogo del integrador entra en el plano central (central 1.1.0). | — |
+| 0.24.0 | *sin publicar* | La activación mayorista entra en el plano central (central 1.2.0). | — |
+| 0.25.0 | *sin publicar* | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
+| 0.26.0 | *sin publicar* | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
+| 0.27.0 | *sin publicar* | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. | — |
+
+⛔ **De la 0.22.0 en adelante hay versiones mergeadas y sin tag** —el plano
+central entero, y con esta rama también la 0.27.0—: entrada en el CHANGELOG y
+versión en los manifiestos, pero **ningún tag en el remoto por encima de
+`v0.21.0`**, así que el workflow de release no ha corrido y ni npm ni Packagist
+las tienen. El paso 4 lo confirma por el otro lado: el starter sigue declarando
+`^0.21.0`. No es un fallo del runbook —el paso 2 sencillamente no se ha dado
+todavía— pero conviene saberlo antes de decirle a nadie que el plano central
+«ya está en el SDK»: está en `main`, que no es lo mismo.
+
+⚠️ La cuenta se deja SIN escribir a propósito («de la 0.22.0 en adelante», no
+«cinco»): un número aquí caduca en cuanto entre la siguiente, y este fichero ya
+ha tenido esa clase de deriva. Para saber cuántas van, la comprobación de un
+vistazo:
+
+```bash
+git ls-remote --tags origin | sed 's#.*refs/tags/##' | grep '^v' | sort -V | tail -1
+```
+
+**La lección de las dos filas con ⛔:** el paso 4 se saltó en la 0.16.0 y en la
+0.17.0 y **nadie lo notó hasta dos versiones después** —lo dice el propio
+commit que lo arregló: «paso 4 del runbook, **pendiente desde la 0.15.0**»—. No
+rompe nada visible: el starter se queda declarando una versión vieja y compila
+igual, así que el job `starter` de la CI sigue en verde. Por eso se cuela. La
+comprobación es de un vistazo, y ahora está en el propio paso 4:
+
+```bash
+grep '@pimia/' examples/starter-vertical/package.json   # ¿la última publicada?
+```
+
 Este fichero queda como **runbook del próximo release** y como registro de lo
 que salió mal la primera vez.
 
@@ -155,8 +228,16 @@ que salió mal la primera vez.
    `examples/starter-vertical/package.json` a la versión recién publicada, en
    un commit aparte. Van una detrás a propósito: el job `starter` de la CI
    instala **desde npm** antes de compilar, así que declarar una versión que
-   todavía no existe pondría la CI en rojo justo en la PR del release. Tras
-   publicar la 0.6.0, subirlas a `^0.6.0`.
+   todavía no existe pondría la CI en rojo justo en la PR del release.
+
+   ⛔ **Este paso se ha saltado dos veces** (0.16.0 y 0.17.0) y no lo notó
+   nadie hasta la 0.18.0: no rompe nada visible —el starter compila igual
+   contra una versión vieja, así que la CI sigue verde— y por eso se cuela.
+   Compruébalo de un vistazo antes de dar el release por cerrado:
+
+   ```bash
+   grep '@pimia/' examples/starter-vertical/package.json
+   ```
 
 **⚠️ Un tag solo se puede mover mientras no se haya publicado NADA.** En
 cuanto npm acepte el primer paquete, un fallo posterior se arregla subiendo

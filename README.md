@@ -91,7 +91,9 @@ pensado:
 
 1. **Persiste el conjunto de tokens tras cada refresco**, no solo el access
    token. Por eso el cliente exige un `TokenStore` en lugar de aceptar un
-   string: implementa el store sobre tu BD.
+   string: implementa el store sobre tu BD. *(La excepción es el modo de
+   [token prestado](#un-servicio-que-reenvía-el-token-de-su-usuario): si el
+   grant no es tuyo no hay rotación que persistir, y ahí no se pide store.)*
 2. **No refresques dos veces en paralelo con el mismo token.** El cliente
    serializa el refresco dentro del proceso; si corres varios procesos, usa un
    store compartido y un lock por usuario.
@@ -178,6 +180,82 @@ $tokens->save($oauth->exchangeCode($code, PkceChallenge::fromVerifier($verifierD
 $pimia = new PimiaClient($config, $transport, $tokens);
 $invoices = $pimia->invoices->list(['page' => 1]);
 ```
+
+## Un servicio que reenvía el token de su usuario
+
+Todo lo de arriba supone que **tu app posee un grant**. Hay integraciones que no
+y que no deben: un servicio que se sienta DELANTE de un usuario que ya entró en
+Pimia, recibe su `Authorization` en cada petición y lo reenvía. Para ésas está
+el **modo de token prestado** — sin `clientId`, sin `TokenStore` y sin ceremonia
+OAuth:
+
+```ts
+const pimia = PimiaClient.withBorrowedToken({
+  baseUrl: `https://${tenant}.pimia.es`,
+  accessToken: bearerDeQuienLlama,
+  // La empresa activa viaja en cabecera, como en todo el API. OMÍTELA cuando no
+  // la sepas: `company:` vacía es una cabecera presente que no casa con ninguna
+  // empresa.
+  headers: empresa === null ? {} : { company: String(empresa) },
+  // Atiendes una petición web: los reintentos del SDK ESPERAN, y esperar dentro
+  // de la petición de un usuario es una petición colgada.
+  maxRateLimitRetries: 0,
+})
+```
+
+```php
+$pimia = PimiaClient::withBorrowedToken(
+    baseUrl: "https://{$tenant}.pimia.es",
+    accessToken: $bearerDeQuienLlama,
+    transport: $transport,
+    headers: $empresa === null ? [] : ['company' => (string) $empresa],
+    maxRateLimitRetries: 0,
+);
+```
+
+Lo que ganas es que **Pimia sigue decidiendo los permisos**: tu servicio no
+puede darle a nadie más de lo que su token ya le daba, así que no hay una
+credencial de servicio que auditar aparte. Y tres cosas que conviene tener
+claras:
+
+- **Un cliente por petición.** El token vive lo que viva la petición que lo
+  trajo; una instancia compartida es una credencial compartida.
+- **No se refresca**, y es deliberado: el refresh es del dueño del grant, y con
+  la rotación de Pimia tocar el de otro revoca su grant entero. Cuando el token
+  caduca, el 401 sube tal cual y quien tiene que conseguir otro es quien te lo
+  prestó.
+- **`oauth` es `null`** en este modo (`OAuth | null` en TS, `?OAuthClient` en
+  PHP). No hay ceremonia que hacer, y un cliente OAuth sin `clientId` compondría
+  una URL de autorización rota que sólo fallaría en el navegador del usuario.
+
+### Lo que necesita un CRM que sustituye al de Pimia
+
+Tres recursos que existen para eso: que un integrador se traiga su propio embudo
+sin perder lo que sigue viviendo en el núcleo.
+
+| Qué | TypeScript | PHP |
+|-----|-----------|-----|
+| En qué empresa trabaja este token, y con qué moneda | `client.bootstrap.currentCompanyId()` · `.currency()` · `.get()` | `$pimia->bootstrap->currentCompanyId()` · `->currency()` · `->get()` |
+| A quién se le puede asignar trabajo | `client.crm.assignableUsers()` | `$pimia->crm->assignableUsers()` |
+| Estrenar la oportunidad a la que irán dirigidos los presupuestos | `client.opportunities.create()` | `$pimia->opportunities->create()` |
+
+⛔ **`GET /bootstrap` es la única respuesta del API que no viene envuelta en
+`data`**: sus claves cuelgan de la raíz. Un desenvolvedor de `data` escrito
+«para todas las llamadas» devuelve vacío **sin error**, así que el fallo no se
+ve como un fallo — se ve como una empresa sin resolver o como una moneda que cae
+al respaldo. Los ayudantes de arriba lo leen bien; `get()` te da el cuerpo tal
+cual.
+
+⚠️ Y la moneda importa doble: **no siempre es el euro** y los decimales cambian
+con ella (el yen tiene 0, el dinar kuwaití 3). La escala decide qué filas salen
+de un filtro por importe y qué se guarda en una ficha, así que suponer 2 no da
+un error: da otro resultado. `currency()` contesta `null` cuando el arranque no
+publica moneda — el respaldo es una decisión de tu producto, no del SDK.
+
+⚠️ `POST /opportunities` (galeote/factSaas#805) es más nueva que la última foto
+del contrato y **todavía no aparece en el spec**: contra una instancia anterior
+a esa ruta la llamada es un 404, y eso es lo que hay que mirar antes de dar por
+hecho que el token está mal.
 
 ## Tu identificador dentro de Pimia: `external_ref`
 
@@ -344,27 +422,53 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**Última publicada: v0.5.0 (2026-08-10)** en npm (`@pimia/sdk`,
-`@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). El núcleo OAuth, el
-cliente, la idempotencia y los tipos están completos y con tests; los helpers
-de dominio cubren facturas, clientes y presupuestos — para el resto,
-`client.get('/loquesea')` con los tipos del spec. Cada tag `v*` dispara el
-workflow de release, que publica los tres artefactos.
+**Última publicada: v0.21.0 (2026-09-03)** en npm (`@pimia/sdk`,
+`@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). Cada tag `v*` dispara
+el workflow de release, que publica los tres artefactos, y **los tres versionan
+en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes.
 
-**v0.6.0, preparada**: el contrato al día con el núcleo — el spec pasa de 230
-a **314 operaciones**, entran las series de presupuesto, `/invoices/templates`
-y `/estimates/templates` tipan su elemento, salen tres rutas de monedas que el
-núcleo ya retiró, y `SCOPES` gana los cinco que faltaban (`settings:read`,
-`store:read`, `hr:read`, `hr:write`, `webhooks:write`) en los dos SDKs. El
-detalle, en el [CHANGELOG](CHANGELOG.md).
+> ⚠️ **`main` va por delante de lo publicado.** Las **0.22.0 a 0.26.0** —el
+> plano central y su contrato— están mergeadas y **sin tag**, así que lo que
+> hay en npm y en Packagist **no es lo que hay en este repo**. Las dos señales
+> coinciden: no hay tag en el remoto por encima de `v0.21.0`, y el paso 4 del
+> runbook (las dependencias del starter) sigue en `^0.21.0`.
 
-Lo anterior, en resumen: **0.5.0** `externalRef` en `convertToInvoice` y
-`ReadOptions` en las lecturas TS; **0.4.0** `external_ref`, la referencia
-externa consultable, en el contrato, en los webhooks y con el 422 duplicado
-tipado; **0.3.0** el verificador de webhooks y los tipos de los ocho eventos.
+**El SDK habla dos contratos**, sincronizados con `factSaas@522cf264`
+(2026-09-07):
 
-Pendiente de código: ampliar helpers al resto del dominio y DTOs de PHP
-generados del spec.
+- el del **tenant** (`spec/pimia-api-v1.json`, **438 operaciones**) — facturar,
+  cobrar, el almacén, el CRM: lo que usa una app de partner;
+- el del **plano central** (`spec/pimia-central-v1.json`, **1.4.0, 28
+  operaciones**) — la cuenta del integrador: cartera, vínculos, catálogo,
+  activación mayorista y el login de sus clientes. Vive en `PimiaCentralClient`
+  y es **sólo TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué,
+  en la entrada 0.22.0 del CHANGELOG).
+
+El núcleo OAuth, el cliente, la idempotencia, los webhooks y los tipos están
+completos y con tests. Los helpers de dominio cubren —los mismos diez en los
+dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
+movimientos de stock, más el arranque de sesión, el censo de responsables y las
+oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
+
+**v0.27.0, preparada**: las tres costuras que le faltaban a un integrador que
+SUSTITUYE el CRM —`/bootstrap`, `/crm/assignable-users` y `POST /opportunities`—
+y el **modo de token prestado**, en los dos SDKs. Sin cambios de spec.
+
+Lo anterior, por tramos, con el detalle en el [CHANGELOG](CHANGELOG.md):
+
+| | |
+|---|---|
+| **0.22.0 – 0.26.0** | El **plano central** entra en el SDK y crece contrato a contrato: `PimiaCentralClient` y `spec/pimia-central-v1.json` (0.22.0), el catálogo del integrador (0.23.0), la activación mayorista (0.24.0), el login del integrador (0.25.0) y el contrato central 1.4.0 para `pimia-central-web` (0.26.0). |
+| **0.18.0 – 0.21.0** | El plan y la contratación de la instancia, y el contrato al día con la facturación francesa. ⚠️ Y **dos cambios incompatibles de scope el mismo día**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*` (0.20.0), y la campana pasa a `notifications:*` (0.21.0). Un grant vivo que sólo pidió `crm:*` tiene que **reconectar**. |
+| **0.13.0 – 0.17.0** | El almacén se vuelve una DIMENSIÓN, los documentos declaran a cuál, el recuento de inventario y el stock comprometido (fase N2 del estudio de stock); más el sello de exportación contable. |
+| **0.12.0** | Contratos de servicio: la primera funcionalidad que nace núcleo → spec → SDK, sin Vue delante. |
+| **0.10.0 – 0.11.0** | Las tres aperturas del panel (delegación, asesoría, VeriFactu) y «Apps conectadas» en el contrato. |
+| **0.7.0 – 0.9.0** | Los ficheros —subir y descargar, que hasta entonces fallaban en silencio—, el spec al día con 356 operaciones y el `201` de las altas. |
+| **0.3.0 – 0.6.0** | El verificador de webhooks y los tipos de los ocho eventos, `external_ref` con su 422 duplicado tipado, y el primer salto grande de contrato (230 → 314 operaciones). |
+
+Pendiente de código: ampliar helpers al resto del dominio, DTOs de PHP
+generados del spec, y el cliente del plano central en PHP cuando un integrador
+PHP lo pida.
 
 **Validado contra un tenant real** (dev de Pimia, 2026-07-29) con
 [`examples/e2e-dev`](examples/e2e-dev): autorización de un usuario de verdad,

@@ -23,7 +23,7 @@ import {
   UnauthorizedError,
 } from './errors.js'
 import { OAuth, type OAuthConfig } from './oauth.js'
-import { isExpired, type TokenSet, type TokenStore } from './tokens.js'
+import { BorrowedTokenStore, isExpired, type TokenSet, type TokenStore } from './tokens.js'
 
 type Schemas = components['schemas']
 
@@ -65,6 +65,35 @@ export type WarehouseRequest = Schemas['WarehouseRequest']
  * null no emiten nada al confirmar.
  */
 export type StockCountRequest = Schemas['StockCountRequest']
+
+/**
+ * Cuerpo del alta de una oportunidad: **a quién va dirigida**, y nada más.
+ *
+ * ⛔ La etapa, la probabilidad y el importe esperado son del CRM que llama —
+ * Pimia no los guarda—, así que mandarlos es un 422. Y está bien que lo sea: el
+ * día que los aceptara callando, habría dos sitios donde vive el embudo.
+ */
+export interface OpportunityRequest {
+  name: string
+  contact_name?: string | null
+  email?: string | null
+  phone?: string | null
+}
+
+/**
+ * Una oportunidad recién creada.
+ *
+ * ⚠️ **No sale del spec**: `POST /opportunities` es más nueva que la última
+ * sincronización del contrato (galeote/factSaas#805), así que el generador no
+ * la conoce todavía. Lo único que este tipo promete es `id`, que es lo que hace
+ * falta para colgarle presupuestos después; el resto llega y no se nombra.
+ * Cuando la ruta entre en el spec, esto pasará a salir de `Ok<…>` como los
+ * demás.
+ */
+export interface OpportunityResource {
+  id: number
+  [key: string]: unknown
+}
 
 /**
  * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
@@ -125,6 +154,33 @@ export interface PimiaClientOptions extends OAuthConfig {
   maxRetryDelayMs?: number
   /** Cabeceras añadidas a cada petición (p. ej. un User-Agent propio). */
   headers?: Record<string, string>
+}
+
+/**
+ * Lo que hace falta para un cliente que **reenvía el token de otro**.
+ *
+ * Sin `clientId`, sin `clientSecret`, sin `redirectUri` y sin `tokens`: no hay
+ * ceremonia OAuth que hacer ni nada tuyo que persistir, porque el grant no es
+ * tuyo. Ver {@link PimiaClient.withBorrowedToken}.
+ */
+export interface BorrowedTokenOptions {
+  /** Base del tenant, con o sin barra final: `https://acme.pimia.es`. */
+  baseUrl: string
+  /** El bearer que te llegó, tal cual. */
+  accessToken: string
+  fetch?: typeof globalThis.fetch
+  /** Cabeceras fijas de cada llamada (p. ej. la `company` activa). */
+  headers?: Record<string, string>
+  /**
+   * Reintentos ante 429 (default 2).
+   *
+   * ⚠️ Ponlo a **0** si atiendes una petición HTTP de un usuario que está
+   * esperando: los reintentos ESPERAN, y esperar 30 s dentro de una petición
+   * web es una petición colgada y un proceso ocupado.
+   */
+  maxRateLimitRetries?: number
+  /** Espera máxima por reintento de 429, en ms (default 30 000). */
+  maxRetryDelayMs?: number
 }
 
 export interface RequestOptions {
@@ -237,7 +293,14 @@ export type WriteOptions = Pick<
 export type ReadOptions = Pick<RequestOptions, 'headers' | 'signal'>
 
 export class PimiaClient {
-  readonly oauth: OAuth
+  /**
+   * La ceremonia OAuth, o `null` si este cliente no tiene grant propio
+   * ({@link PimiaClient.withBorrowedToken}). Es `null` y no un objeto a medias
+   * a propósito: un `OAuth` sin `clientId` compondría una URL de autorización
+   * con `client_id=` vacío y el fallo aparecería en el navegador del usuario,
+   * lejos de aquí.
+   */
+  readonly oauth: OAuth | null
   private readonly baseUrl: string
   private readonly doFetch: typeof globalThis.fetch
   private readonly store: TokenStore
@@ -250,7 +313,9 @@ export class PimiaClient {
   private lastRateLimit: RateLimit = {}
 
   constructor(options: PimiaClientOptions) {
-    this.oauth = new OAuth(options)
+    /* Sin `clientId` no hay a quién identificar ante el Authorization Server:
+       este cliente no tiene grant propio y no puede tener ceremonia. */
+    this.oauth = options.clientId ? new OAuth(options) : null
     this.baseUrl = options.baseUrl.replace(/\/+$/, '')
     this.doFetch = options.fetch ?? globalThis.fetch
     this.store = options.tokens
@@ -258,6 +323,67 @@ export class PimiaClient {
     this.maxRateLimitRetries = options.maxRateLimitRetries ?? 2
     this.maxRetryDelayMs = options.maxRetryDelayMs ?? 30_000
     this.extraHeaders = options.headers ?? {}
+  }
+
+  /**
+   * Un cliente que **reenvía el token de otro**, sin identidad propia.
+   *
+   * ── Cuándo es esto lo correcto ─────────────────────────────────────────────
+   *
+   * Cuando tu servicio se sienta DELANTE de un usuario que ya entró en Pimia:
+   * el front te manda su `Authorization` y tú lo reenvías. No necesitas
+   * `clientId`, ni `clientSecret`, ni `redirectUri`, ni un `TokenStore` —no hay
+   * nada tuyo que guardar— y ganas la propiedad que hace esto seguro: **Pimia
+   * sigue decidiendo los permisos**. Tu servicio no puede darle a nadie más de
+   * lo que su token ya le daba, así que no hay una credencial de servicio que
+   * auditar aparte.
+   *
+   * ```ts
+   * const pimia = PimiaClient.withBorrowedToken({
+   *   baseUrl: `https://${tenant}.pimia.es`,
+   *   accessToken: bearerDeQuienLlama,
+   *   // La empresa activa viaja en cabecera, como en todo el API. OMÍTELA
+   *   // cuando no la sepas: `company:` vacía es una cabecera presente que no
+   *   // casa con ninguna empresa.
+   *   headers: empresa === null ? {} : { company: String(empresa) },
+   *   // Atiendes una petición web: no esperes dentro de ella.
+   *   maxRateLimitRetries: 0,
+   * })
+   *
+   * await pimia.bootstrap.currentCompanyId()
+   * ```
+   *
+   * ⚠️ **El token vive lo que viva la petición que lo trajo.** Construye uno por
+   * petición y no compartas la instancia: un cliente compartido es una
+   * credencial compartida, y aquí la credencial es de un usuario concreto.
+   *
+   * ⚠️ Un token prestado **no se refresca**: cuando caduca, el 401 sube como
+   * {@link UnauthorizedError} y quien tiene que conseguir otro es quien te lo
+   * prestó.
+   */
+  static withBorrowedToken(options: BorrowedTokenOptions): PimiaClient {
+    if (options.accessToken.trim() === '') {
+      /* Antes de construir nada: un cliente con el token vacío llamaría igual y
+         el 401 llegaría desde Pimia, que es tarde y confuso — parece un token
+         caducado y es un token que nunca hubo. */
+      throw new NotAuthenticatedError(
+        'El token prestado está vacío: no hay nada que reenviar. Comprueba la cabecera ' +
+          '`Authorization` de la petición que atiendes.',
+      )
+    }
+
+    return new PimiaClient({
+      baseUrl: options.baseUrl,
+      // Vacíos: es lo que dice «este cliente no tiene grant propio», y lo que
+      // deja `oauth` a null.
+      clientId: '',
+      redirectUri: '',
+      fetch: options.fetch,
+      tokens: new BorrowedTokenStore(options.accessToken),
+      headers: options.headers,
+      maxRateLimitRetries: options.maxRateLimitRetries,
+      maxRetryDelayMs: options.maxRetryDelayMs,
+    })
   }
 
   /** Cabeceras `X-RateLimit-*` de la última respuesta. */
@@ -613,6 +739,154 @@ export class PimiaClient {
     }
   }
 
+  /**
+   * Oportunidades: **a quién va dirigido** un presupuesto.
+   *
+   * `estimates.opportunity_id` es el enlace transparente del núcleo —funciona
+   * venga el CRM de donde venga—, y es lo que permite preguntar «los
+   * presupuestos de este trato» sin que el trato viva en Pimia. Pero hasta el
+   * 2026-09-08 una oportunidad **sólo podía nacer dentro de un
+   * `POST /estimates`**, así que un CRM de fuera no tenía forma de estrenar una
+   * al dar de alta un lead: habría tenido que fabricar un presupuesto borrador y
+   * quemar un número de la serie del cliente por cada lead. Un lead no es una
+   * oferta.
+   *
+   * No estrena scope: cuelga de `estimates:write`, porque la oportunidad es a
+   * quién va dirigido un presupuesto y no una entidad del embudo.
+   *
+   * ⚠️ **Todavía no está en el spec publicado** (galeote/factSaas#805 es más
+   * nueva que la última sincronización del contrato). Contra una instancia
+   * anterior a esa ruta la llamada contesta 404, y eso es lo que hay que mirar
+   * antes de dar por hecho que el token está mal.
+   */
+  get opportunities() {
+    return {
+      /**
+       * Estrena una oportunidad. Manda `idempotencyKey` —una clave estable por
+       * lead, del estilo `lead:{id}:opportunity`— y el reintento tras un timeout
+       * no te estrenará una segunda para el mismo trato.
+       */
+      create: (body: OpportunityRequest, options?: WriteOptions) =>
+        this.post<ResourceEnvelope<OpportunityResource>>('/opportunities', body, options),
+    }
+  }
+
+  /**
+   * Lo que el CRM de Pimia publica para que OTRO CRM pueda sustituirlo.
+   *
+   * No son los leads —ésos los sirve `/crm/leads` y un integrador que trae su
+   * propio embudo no los usa—: es lo que un CRM sustituto necesita del núcleo
+   * aunque se haya llevado el embudo a su casa.
+   */
+  get crm() {
+    return {
+      /**
+       * Las personas a las que se les puede asignar una tarea o un lead.
+       *
+       * **Reenvía lo que conteste**, campos de más incluidos. Recortarlo tú es
+       * aplicar dos veces la misma política desde dos sitios que pueden
+       * divergir: Pimia esconde aquí a los superadmin de la plataforma y a la
+       * gestoría dueña del tenant, y recorta cada fila a `id` y `name`. Si
+       * mañana añade un campo para desempatar dos nombres iguales, tu copia lo
+       * borraría sin que nadie entendiera por qué.
+       *
+       * ⚠️ El scope: el contrato publicado la cobra con `crm:read`, pero el
+       * núcleo la abrió el 2026-09-08 a cualquier token válido de la empresa
+       * —precisamente para que un integrador que SUSTITUYE el CRM no tenga que
+       * pedir el scope del CRM que ya no usa—. Contra una instancia anterior a
+       * ese cambio sigue haciendo falta `crm:read`.
+       */
+      assignableUsers: (options?: ReadOptions) =>
+        this.get<Ok<'crm.assignableUsers'>>('/crm/assignable-users', undefined, options),
+    }
+  }
+
+  /**
+   * El arranque de la sesión: en qué empresa trabaja este token y con qué
+   * moneda.
+   *
+   * ⛔ **`/bootstrap` NO envuelve en `data`.** Todo lo demás en el API contesta
+   * `{ data: … }`; ésta no: sus claves cuelgan de la raíz. Un desenvolvedor de
+   * `data` escrito «para todas las llamadas» no encuentra nada aquí y devuelve
+   * vacío **sin error**, así que el fallo no se ve como un fallo: se ve como una
+   * empresa sin resolver o como una moneda que cae al respaldo. Medido
+   * construyendo el CRM de la vertical, que tuvo que anotarlo en su código y en
+   * el arnés de sus tests.
+   *
+   * Lectura libre: la alcanza cualquier token válido, **sin scope** y sin
+   * consentimiento adicional del dueño del tenant.
+   *
+   * ⚠️ Cada método hace SU llamada: no hay caché. Es a propósito —el cliente no
+   * sabe cuánto vive una sesión tuya, y una empresa cacheada de más es una fila
+   * escrita en la empresa equivocada—, así que si necesitas las dos cosas en la
+   * misma petición, llama a `get()` una vez y léelas del objeto.
+   */
+  get bootstrap() {
+    return {
+      /** El arranque entero, sin envolver. */
+      get: (options?: ReadOptions) =>
+        this.get<Ok<'general.bootstrap'>>('/bootstrap', undefined, options),
+
+      /**
+       * En qué empresa trabaja ESTA petición, según el núcleo.
+       *
+       * ⛔ No es «la primera empresa del usuario», aunque hoy coincidan. Pimia
+       * resuelve `current_company` con el mismo camino y el mismo respaldo que
+       * usa su middleware de empresa para servir cualquier otra llamada tuya —la
+       * cabecera `company` si vale, y si no la primera del usuario—, así que
+       * preguntarlo aquí es la única forma de que tu lado y el suyo no puedan
+       * discrepar. Deducirlo de la lista de `/me` reproduce la regla en un
+       * segundo sitio, y dos reglas iguales son dos reglas que pueden separarse:
+       * el día que dejaran de coincidir, escribirías con una empresa que Pimia
+       * nunca usó y sin un solo error que lo denuncie.
+       *
+       * `null` si el arranque no la publica. Trátalo como «no se puede servir
+       * esta sesión» y no como un cero: un cero es una empresa que no es de
+       * nadie y que ve cualquiera que también acabe ahí.
+       *
+       * ⚠️ El spec declara `current_company` obligatorio y el tipo generado dice
+       * que siempre está; la comprobación de aquí es de RUNTIME porque se ha
+       * visto llegar sin ella. Cuando eso pasa, lo que hay que devolver es
+       * `null`, no reventar.
+       */
+      currentCompanyId: async (options?: ReadOptions): Promise<number | null> => {
+        const body = await this.get<Ok<'general.bootstrap'>>('/bootstrap', undefined, options)
+        const id = (body as { current_company?: { id?: unknown } }).current_company?.id
+
+        return typeof id === 'number' ? id : null
+      },
+
+      /**
+       * La moneda de la empresa y su ESCALA.
+       *
+       * ⛔ La moneda no es siempre el euro y los decimales cambian con ella: el
+       * yen tiene 0, el dinar kuwaití 3. Suponer 2 —o peor, multiplicar por 100
+       * a mano— no da un error, da otro resultado: un filtro por importe
+       * devuelve otras filas y un alta guarda una moneda falsa en la ficha. Por
+       * eso la escala se PREGUNTA.
+       *
+       * `null` si el arranque no publica moneda (el campo admite nulo en el
+       * contrato), y ahí el SDK **no se inventa nada**: «EUR con 2 decimales» es
+       * una política de producto, la decide quien llama. Lo que sí se lee a la
+       * defensiva es `precision`, que el contrato declara obligatorio dentro de
+       * la moneda: un cuerpo sin él está roto, no es un caso de negocio.
+       */
+      currency: async (
+        options?: ReadOptions,
+      ): Promise<{ code: string; precision: number } | null> => {
+        const body = await this.get<Ok<'general.bootstrap'>>('/bootstrap', undefined, options)
+        const currency = body.current_company_currency
+
+        if (!currency || typeof currency.code !== 'string') return null
+
+        return {
+          code: currency.code,
+          precision: typeof currency.precision === 'number' ? currency.precision : 2,
+        }
+      },
+    }
+  }
+
   get<T = unknown>(
     path: string,
     query?: RequestOptions['query'],
@@ -824,6 +1098,19 @@ export class PimiaClient {
   private async refreshTokens(current: TokenSet): Promise<TokenSet> {
     if (this.refreshing) return this.refreshing
 
+    if (this.oauth === null) {
+      /* Token prestado: no hay grant propio con el que refrescar. Hoy no se
+         llega aquí —sin `refreshToken` el 401 sube tal cual—, y el guardia está
+         para que el día que ese camino cambie el error diga lo que pasa en vez
+         de reventar contra un `null`. */
+      throw new UnauthorizedError(
+        401,
+        'Este cliente usa un token prestado y no puede refrescarlo: pide uno nuevo a ' +
+          'quien te lo prestó.',
+        null,
+      )
+    }
+
     if (!current.refreshToken) {
       throw new UnauthorizedError(
         401,
@@ -834,7 +1121,7 @@ export class PimiaClient {
 
     this.refreshing = (async () => {
       try {
-        const rotated = await this.oauth.refresh(current.refreshToken!)
+        const rotated = await this.oauth!.refresh(current.refreshToken!)
         await this.store.save(rotated)
 
         return rotated

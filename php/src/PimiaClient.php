@@ -12,13 +12,17 @@ use Pimia\Exception\UnauthorizedException;
 use Pimia\Http\ResponseMeta;
 use Pimia\Http\ResponseWithMeta;
 use Pimia\Http\Transport;
+use Pimia\OAuth\BorrowedTokenStore;
 use Pimia\OAuth\OAuthClient;
 use Pimia\OAuth\TokenSet;
 use Pimia\OAuth\TokenStore;
+use Pimia\Resource\Bootstrap;
 use Pimia\Resource\Contracts;
+use Pimia\Resource\Crm;
 use Pimia\Resource\Customers;
 use Pimia\Resource\Estimates;
 use Pimia\Resource\Invoices;
+use Pimia\Resource\Opportunities;
 use Pimia\Resource\StockCounts;
 use Pimia\Resource\StockMovements;
 use Pimia\Resource\Warehouses;
@@ -31,10 +35,27 @@ use Pimia\Resource\Warehouses;
  * rotado** antes de reintentar (reusar un refresh viejo revoca el grant entero
  * en cascada), respeta `Retry-After` en los 429 y traduce los errores del
  * api-guard a excepciones tipadas (MissingScopeException trae el scope exacto).
+ *
+ * ── Dos formas de construirlo, y no dan lo mismo ────────────────────────────
+ *
+ *  · **Con grant propio** (el constructor): tu app se autorizó una vez contra
+ *    Pimia y guarda los tokens de cada usuario. Es lo que describe el README y
+ *    lo que exige un `TokenStore` de verdad.
+ *  · **Con un token prestado** ({@see self::withBorrowedToken()}): tu servicio
+ *    NO posee ningún grant y reenvía el `Authorization` que le llega. No hay
+ *    OAuth que hacer ni refresh que rotar, así que `oauth` es `null` y un 401
+ *    sube tal cual en vez de intentar un refresco que no te toca.
  */
 final class PimiaClient
 {
-    public readonly OAuthClient $oauth;
+    /**
+     * La ceremonia OAuth, o `null` si este cliente no tiene grant propio
+     * ({@see self::withBorrowedToken()}). Es `null` y no un objeto a medias a
+     * propósito: un `OAuthClient` sin `clientId` compondría una URL de
+     * autorización con `client_id=` vacío y el fallo aparecería en el navegador
+     * del usuario, lejos de aquí.
+     */
+    public readonly ?OAuthClient $oauth;
 
     public readonly Invoices $invoices;
 
@@ -50,6 +71,12 @@ final class PimiaClient
 
     public readonly StockMovements $stockMovements;
 
+    public readonly Opportunities $opportunities;
+
+    public readonly Crm $crm;
+
+    public readonly Bootstrap $bootstrap;
+
     /** @var array{limit: ?int, remaining: ?int} */
     private array $rateLimit = ['limit' => null, 'remaining' => null];
 
@@ -60,7 +87,7 @@ final class PimiaClient
         /** Inyectable para tests: sustituye a sleep(). */
         private readonly ?\Closure $sleeper = null,
     ) {
-        $this->oauth = new OAuthClient($config, $transport);
+        $this->oauth = $config->ownsGrant() ? new OAuthClient($config, $transport) : null;
         $this->invoices = new Invoices($this);
         $this->customers = new Customers($this);
         $this->estimates = new Estimates($this);
@@ -68,6 +95,80 @@ final class PimiaClient
         $this->warehouses = new Warehouses($this);
         $this->stockCounts = new StockCounts($this);
         $this->stockMovements = new StockMovements($this);
+        $this->opportunities = new Opportunities($this);
+        $this->crm = new Crm($this);
+        $this->bootstrap = new Bootstrap($this);
+    }
+
+    /**
+     * Un cliente que **reenvía el token de otro**, sin identidad propia.
+     *
+     * ── Cuándo es esto lo correcto ─────────────────────────────────────────
+     *
+     * Cuando tu servicio se sienta DELANTE de un usuario que ya entró en Pimia:
+     * el front te manda su `Authorization` y tú lo reenvías. No necesitas
+     * `clientId`, ni `clientSecret`, ni `redirectUri`, ni un `TokenStore` —no
+     * hay nada tuyo que guardar— y ganas la propiedad que hace esto seguro:
+     * **Pimia sigue decidiendo los permisos**. Tu servicio no puede darle a
+     * nadie más de lo que su token ya le daba, así que no hay una credencial de
+     * servicio que auditar aparte.
+     *
+     * ```php
+     * $pimia = PimiaClient::withBorrowedToken(
+     *     baseUrl: "https://{$tenant}.pimia.es",
+     *     accessToken: $bearerDeQuienLlama,
+     *     transport: $transport,
+     *     // La empresa activa viaja en cabecera, como en todo el API. Se OMITE
+     *     // cuando no se sabe: `company:` vacía es una cabecera presente que
+     *     // no casa con ninguna empresa.
+     *     headers: $empresa === null ? [] : ['company' => (string) $empresa],
+     *     // Atiendes una petición web: no duermas dentro de ella.
+     *     maxRateLimitRetries: 0,
+     * );
+     *
+     * $pimia->bootstrap->currentCompanyId();
+     * ```
+     *
+     * ⚠️ **El token vive lo que viva la petición que lo trajo.** Construye uno
+     * por petición y no compartas la instancia: un cliente compartido es una
+     * credencial compartida, y aquí la credencial es de un usuario concreto.
+     *
+     * ⚠️ Un token prestado **no se refresca**: cuando caduca, el 401 sube como
+     * {@see \Pimia\Exception\UnauthorizedException} y quien tiene que
+     * conseguir otro es quien te lo prestó.
+     *
+     * @param  array<string, string>  $headers  Cabeceras fijas de cada llamada.
+     */
+    public static function withBorrowedToken(
+        string $baseUrl,
+        string $accessToken,
+        Transport $transport,
+        array $headers = [],
+        int $maxRateLimitRetries = 2,
+        int $maxRetryDelaySeconds = 30,
+        ?\Closure $sleeper = null,
+    ): self {
+        if (trim($accessToken) === '') {
+            // Antes de construir nada: un cliente con el token vacío llamaría
+            // igual y el 401 llegaría desde Pimia, que es tarde y confuso —
+            // parece un token caducado y es un token que nunca hubo.
+            throw new NotAuthenticatedException(
+                'El token prestado está vacío: no hay nada que reenviar. '
+                .'Comprueba la cabecera `Authorization` de la petición que atiendes.',
+            );
+        }
+
+        return new self(
+            Config::forBorrowedToken(
+                baseUrl: $baseUrl,
+                headers: $headers,
+                maxRateLimitRetries: $maxRateLimitRetries,
+                maxRetryDelaySeconds: $maxRetryDelaySeconds,
+            ),
+            $transport,
+            new BorrowedTokenStore($accessToken),
+            $sleeper,
+        );
     }
 
     /** Cabeceras `X-RateLimit-*` de la última respuesta. */
@@ -252,6 +353,18 @@ final class PimiaClient
     /** Refresca y PERSISTE la rotación: sin esto, el siguiente refresh es un reuse. */
     private function refreshTokens(TokenSet $current): TokenSet
     {
+        if ($this->oauth === null) {
+            // Token prestado: no hay grant propio con el que refrescar. Hoy no
+            // se llega aquí —sin `refreshToken` el 401 sube tal cual—, y el
+            // guardia está para que el día que ese camino cambie el error diga
+            // lo que pasa en vez de reventar contra un `null`.
+            throw new UnauthorizedException(
+                401,
+                'Este cliente usa un token prestado y no puede refrescarlo: '
+                .'pide uno nuevo a quien te lo prestó.',
+            );
+        }
+
         if ($current->refreshToken === null) {
             throw new UnauthorizedException(
                 401,
