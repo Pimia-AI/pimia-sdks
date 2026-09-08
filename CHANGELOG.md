@@ -8,7 +8,7 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [0.22.0] — 2026-09-08
+## [0.27.0] — 2026-09-08
 
 **Los dos SDKs dejan de quedarse cortos para un integrador que SUSTITUYE el
 CRM.** Entran las tres costuras que faltaban —`GET /bootstrap`,
@@ -80,11 +80,228 @@ nulo, o usa el cliente que ya sabías que tenía grant propio.
 
 ### Lo que hay que tener delante para integrarlo
 
-- `@pimia/design-tokens` sube a 0.22.0 **sin cambios de código**.
+- `@pimia/design-tokens` sube a 0.27.0 **sin cambios de código**.
 - El primer consumidor es el módulo CRM de la vertical, que sustituye su cliente
   HTTP escrito a mano por el SDK de PHP en cuanto esta versión esté publicada
   (Pimia-AI/pimia-modulo-crm#7, que **no puede mergearse antes que esta
   release**).
+
+## [0.26.0] — 2026-09-07
+
+**El contrato del plano central 1.4.0, para el panel central en React**
+(`pimia-central-web`; punto 12 de DECISIONES revisado por 👤 el 2026-09-07:
+el repo nuevo es el panel de las TRES figuras —superadmin, asesoría,
+integrador— y el integrador la primera; galeote/factSaas, rama
+`claude/contrato-central-1.4.0`). Todo aditivo salvo tres tipos que
+**mentían** y ahora dicen la verdad.
+
+Specs sincronizados con **factSaas@522cf264** (2026-09-07, galeote/factSaas#743
+mergeado): plano central **1.4.0, 28 operaciones**; `/api/v1` sin cambios.
+
+### Añadido
+
+- **`PimiaCentralClient.tenants.users(slug)`**: quién pertenece a una
+  instancia (nombre, correo, rol, `is_owner`), que es a quién se puede
+  traspasar (`transferOwnership` pide el `user_id` de alguien que ya está
+  dentro). Habilidad `central`.
+- **`PimiaCentralClient.billing.portal({ return_url })`** y el tipo
+  **`BillingPortalRequest`**: la URL del portal de Stripe de la cuenta —las
+  facturas del canal y el método de pago viven allí—.
+- **`return_url`** en `SponsorshipRequest`, `ActivacionMayoristaRequest` y el
+  portal: a dónde vuelve el integrador desde Stripe. El núcleo solo acepta el
+  origen del panel central (`CENTRAL_WEB_URL`) o el del ápice; lo demás
+  vuelve al panel Vue.
+- `POST /api/auth/login` (fuera del contrato, lo usa el panel) acepta
+  `device_name`: rota solo los tokens de sesión de ese nombre, así el panel
+  Vue y el panel central conviven.
+
+### Corregido
+
+- **Los tres `201` traen su cuerpo.** `tokens.create`, `dominios.declare` y
+  `activaciones.activate` tipaban la respuesta como el número `201`
+  (Scramble leía `@response 201 array{…}` como el TIPO `201`): el token en
+  claro, el `proxy_secret` y el `checkout_url` llegaban sin tipo. Ahora
+  `Ok<'integradorToken.store'>` es `{message, data: {token, id, name, …}}`
+  y la activación publica `200` y `201` con el mismo cuerpo.
+- **`facturacion().data.anadidos`** era `string`; es
+  `{activaciones, total_cents, total, por_tenant[]}`.
+- **`overview().data.cartera[].origen`**: la atribución del alta —el client
+  del PROPIO integrador por el que se le atribuye el tenant,
+  `{client_id, name, atribuido}` (`atribuido: false` cuando se infiere del
+  vínculo y no del alta), o `null`—, que la regla 6 pedía y no existía. El
+  client de otro integrador nunca se enseña.
+- **`tenants.users()`** venía tipado como `string` en la primera exportación:
+  es la lista de `{id, name, email, role, invited_at, is_owner}`; `is_owner`
+  va por el título de propiedad. ⚠️ Solo contesta para instancias que el
+  integrador administra (dueño o con asiento): una solo VINCULADA responde
+  404, como el traspaso.
+
+## [0.25.0] — 2026-09-07
+
+**El login del integrador entra en el plano central** (regla 5 del punto 12,
+REVISADA por 👤 el 2026-09-07; galeote/factSaas, rama `claude/login-integrador`):
+el nombre donde el cliente de un integrador teclea su contraseña
+(`login.erpstudio.es`) lo sirve el INTEGRADOR en su servidor, con su
+certificado y su DNS, y su proxy reenvía por HTTPS al AS del ápice de Pimia,
+que atiende detrás de un nombre interno `login-<slug>.<central>`. Todo aditivo.
+
+Specs sincronizados con **factSaas@d0bfeaa0** (2026-09-07, galeote/factSaas#741
+mergeado): plano central **1.3.0, 26 operaciones**; `/api/v1` sin cambios.
+
+### Añadido
+
+- **`PimiaCentralClient.dominios.{list,declare,remove}`** y el tipo
+  **`IntegradorDominioRequest`**: el integrador declara el nombre público que
+  sirve (`host`) y su etiqueta interna (`slug`); la respuesta trae `upstream`
+  (a dónde apuntar su proxy) y `proxy` (el bloque de Caddy listo). Pimia no
+  emite certificados ni toca DNS ajenos.
+- **`PimiaCentralClient.tokens.{list,create,revoke}`** y
+  **`IntegradorTokenRequest`**: los tokens de máquina acotados a
+  `desarrollador`, sin entrar en el panel (A3 cerrada: token personal, no
+  `client_credentials`). El token en claro se devuelve UNA vez.
+- **`TokenSet.tenantId`**: el canje del AS del ápice dice a qué instancia
+  pertenece el token (`tenant_id`); ausente cuando el canje es en el AS de un
+  tenant.
+
+### Cambiado
+
+- El alta pública firmada por un integrador (`POST /api/auth/register`, fuera
+  de los dos specs) devuelve `data.verification = { sent_by, url,
+  expires_in_minutes }`: con `sent_by: "integrador"` el correo de verificación
+  lo manda el integrador con `url` y Pimia no envía nada; con `"pimia"`, como
+  siempre. `POST /api/auth/resend-verification` contesta igual.
+
+## [0.24.0] — 2026-09-06
+
+**La activación mayorista entra en el plano central** (regla 4 del punto 12;
+decisiones 1 y 3 de 👤; galeote/factSaas#739): el integrador activa la base,
+un módulo o una app a su cliente y Pimia se lo cobra a él en su suscripción
+de canal —una partida por Price, cantidad = activaciones vivas de toda su
+cartera, sin prorrateo, en la factura del mes— con Prices mayoristas propios
+del canal. Todo aditivo.
+
+Specs sincronizados con **factSaas@a0dc94c4** (2026-09-06, galeote/factSaas#739
+mergeado): plano central **1.2.0, 20 operaciones** (`GET|POST /desarrollador/tenants/{slug}/activaciones`,
+`DELETE …/activaciones/{kind}/{item}`); `/api/v1` sigue en 438 y en
+`GET /tenant-modules` la baja de un módulo del canal por el cliente contesta
+`403 channel_module`.
+
+### Añadido
+
+- **`PimiaCentralClient.activaciones.{list,activate,deactivate}`** y el tipo
+  **`ActivacionMayoristaRequest`**. Es lo que llama el webhook del integrador
+  cuando su cliente le compra algo: `activate(slug, { kind: 'base', slug:
+  'pimia' })` patrocina (la primera vez devuelve `checkout_url`), y después
+  `{ kind: 'module', slug: 'crm' }` o `{ kind: 'app', slug: 'wabai' }`.
+- `GET /desarrollador/catalogo` publica en `disponibles` el
+  `wholesale_price` de cada cosa (lo que le cuesta al integrador), y
+  `GET /desarrollador/facturacion` un bloque `anadidos` con lo que paga por
+  activaciones en toda su cartera.
+
+### Lo que hay que tener delante para integrarlo
+
+- Un módulo o una app exigen la base viva (`409 base_required`); sin Price
+  mayorista, `503 stripe_price_missing`; lo ya activo es `already_active`
+  sin tocar Stripe.
+- `@pimia/design-tokens` sube a 0.24.0 **sin cambios de código**. El PHP SDK
+  sigue sin cliente del plano central.
+
+## [0.23.0] — 2026-09-06
+
+**El catálogo del integrador entra en el plano central** (regla 4 del punto 12
+de `docs/DECISIONES.md`; galeote/factSaas#738): qué revende el integrador a
+sus clientes —Pimia base, cada módulo opcional, cada app integrada—, a qué
+precio minorista, en qué moneda y con qué enlace de contratación. Su cliente
+lo ve en la pantalla de plan de su instancia en vez de los precios de Pimia.
+Todo aditivo.
+
+Specs sincronizados con **factSaas@457d423a** (2026-09-06, galeote/factSaas#738
+mergeado): el plano central pasa a **1.1.0 con 17 operaciones** (las 15 de la 0.22.0 más
+`GET|PUT /desarrollador/catalogo`); `/api/v1` sigue en **438** y publica en
+`GET /billing/plans` el objeto `catalogo`, en `GET /billing/subscription`
+`billing.integrador`, y en `GET /tenant-modules` el modo `billing: channel`
+con `contract_url`.
+
+### Añadido
+
+- **`PimiaCentralClient.catalogo.{get,replace}`**: leer el catálogo propio
+  (con `disponibles`, lo que se puede revender) y reemplazarlo entero.
+  Habilidad `desarrollador`.
+- Tipo exportado **`CatalogoDelIntegradorRequest`** (el cuerpo del `PUT`,
+  del schema `IntegradorCatalogoRequest` del contrato).
+
+### Lo que hay que tener delante para integrarlo
+
+- El precio del catálogo es del integrador y **nunca llega al Stripe de
+  Pimia**: lo que Pimia cobra al integrador es su plan de canal y sus añadidos
+  mayoristas (la activación, que llegará en la siguiente versión).
+- A un tenant con integrador —lo paga un desarrollador, o entró por su app y
+  el vínculo vive— el núcleo le contesta `403 white_label` en checkout,
+  cambio de plan y añadidos, con el nombre del integrador en `message`.
+- `@pimia/design-tokens` sube a 0.23.0 **sin cambios de código**. El PHP SDK
+  sigue sin cliente del plano central.
+
+## [0.22.0] — 2026-09-06
+
+**El plano central entra en el SDK: `PimiaCentralClient` y el segundo
+contrato, `spec/pimia-central-v1.json`.** Es el contrato del integrador
+(cuenta de desarrollador) —cartera, vínculos, clients OAuth, invitaciones,
+patrocinio y traspaso—, la condición que el punto 12 de `docs/DECISIONES.md`
+(regla 6) ponía antes del dashboard del integrador, y que ese dashboard
+consumirá por este SDK. Todo aditivo.
+
+Specs sincronizados con **factSaas@b48dc290** (2026-09-06): `/api/v1` con
+**438 operaciones** (las 428 de la 0.21.0 más las siete de `/apps/*` de la
+fase 1 de apps integradas, que el núcleo publicó el 05-09 y el SDK aún no
+llevaba, y las tres de `/desarrollador-link/*`, que no salían en ningún
+contrato porque el segmento no estaba en el mapa de dominios del guard) y el
+plano central con **15**.
+
+### Añadido
+
+- **`SCOPES.appsRead` / `SCOPES.appsWrite`** (TS) y **`Scopes::APPS_READ` /
+  `Scopes::APPS_WRITE`** (PHP): el dominio de las apps integradas
+  (galeote/factSaas#697-#702, punto 11 de `docs/DECISIONES.md`). Sus siete
+  operaciones —`GET /apps`, `GET /apps/{slug}`, `POST`/`DELETE
+  /apps/{slug}/install`, `GET`/`PUT /apps/{slug}/config`, `POST
+  /apps/{slug}/credential`— entran marcadas `first-party-only`: las consume
+  la pantalla Ajustes → Integraciones del panel de Pimia.
+- **`PimiaCentralClient`** (`baseUrl` = el ápice, `token` = el token personal
+  de la cuenta de desarrollador, acotado por plano): `overview()`, `salud()`,
+  `facturacion()`, `links.{list,generateCode,accept,reject}`,
+  `clients.{list,claim}`, `invitations.{list,create,revoke}`,
+  `sponsorship.{sponsor,release}` y `tenants.transferOwnership`, más
+  `request()` / `requestWithMeta()` para lo que no tenga helper. Sin refresh
+  (el token personal no rota) y sin contenido fiscal de ningún cliente (eso
+  es OAuth por instancia, con `PimiaClient`).
+- **`MissingAbilityError`** (403 `token_sin_habilidad`, con `ability`): al
+  token le falta la habilidad del plano —`central` o `desarrollador`— que la
+  operación declara en `x-pimia-required-ability`. Un token con `*` sin
+  acotar recibe `401 token_sin_habilidades` (`UnauthorizedError`).
+- **`spec/pimia-central-v1.json`** y los tipos `@pimia/sdk/central-api`
+  (`src/central-api.ts`), generados con el mismo `generate:types`.
+  `scripts/sync-spec.sh --api central` los trae del núcleo con el mismo
+  guardarraíl («un contrato no encoge por accidente»).
+- Tipos exportados: `SponsorshipRequest`, `TenantInvitationRequest`,
+  `TransferOwnershipRequest`, `PimiaCentralClientOptions`,
+  `CentralRequestOptions`, `CentralResponseWithMeta`.
+
+### Cambiado
+
+- `/api/v1`: entran `GET /desarrollador-link/status`,
+  `POST /desarrollador-link/request` y `DELETE /desarrollador-link/revoke`,
+  marcadas `first-party-only` (`admin:*`): la mitad TENANT del vínculo con un
+  integrador, que la pyme pide y revoca desde su instancia. Un integrador las
+  ve y no puede pedir el scope, como `gestoria-link`.
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` sube a 0.22.0 **sin cambios de código**.
+- El PHP SDK no lleva cliente del plano central en esta versión: el primer
+  consumidor es el dashboard (Next.js) y la máquina del integrador con
+  webhooks en Node; se añadirá cuando un integrador PHP lo pida.
+- El token personal se acuña hoy entrando en el panel central; el alta y la
+  rotación desde el dashboard llegan con él.
 
 ## [0.21.0] — 2026-09-03
 

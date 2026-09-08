@@ -392,6 +392,24 @@ Fuera del contrato quedan la administración (usuarios, roles, correo, tokens),
 la configuración y los endpoints internos: responden, pero pueden cambiar sin
 aviso.
 
+### El segundo contrato: el plano central del integrador
+
+[`spec/pimia-central-v1.json`](spec/pimia-central-v1.json) es el contrato del
+**plano central** para la cuenta de desarrollador (el integrador): su cartera
+de clientes con la atribución de cada alta, los vínculos con cada instancia,
+sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un
+cliente) y el traspaso de propiedad. Quince operaciones; no lleva contenido
+fiscal de ningún cliente. Se autentica con el **token personal** de la cuenta,
+acotado por plano (`central`, `desarrollador`; cada operación declara la suya
+en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript
+(desde la 0.23.0, también el catálogo del integrador: `catalogo.get()` y
+`catalogo.replace()`; desde la 0.24.0, la activación mayorista:
+`activaciones.list()`, `activate()` y `deactivate()`).
+
+```bash
+./scripts/sync-spec.sh --api central /ruta/al/checkout/de/factSaas
+```
+
 ## Desarrollo
 
 ```bash

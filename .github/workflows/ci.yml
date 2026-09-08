@@ -168,10 +168,10 @@ jobs:
 
       - name: El artefacto commiteado debe coincidir
         run: |
-          if ! git diff --quiet -- typescript/src/api.ts; then
-            echo '::error::typescript/src/api.ts no coincide con spec/pimia-api-v1.json.'
-            echo 'Regenera con: cd typescript && npm run generate:types (o ./scripts/sync-spec.sh <core>)'
-            git --no-pager diff --stat -- typescript/src/api.ts
+          if ! git diff --quiet -- typescript/src/api.ts typescript/src/central-api.ts; then
+            echo '::error::typescript/src/api.ts o central-api.ts no coinciden con su spec en spec/.'
+            echo 'Regenera con: cd typescript && npm run generate:types (o ./scripts/sync-spec.sh [--api central] <core>)'
+            git --no-pager diff --stat -- typescript/src/api.ts typescript/src/central-api.ts
             exit 1
           fi
           echo 'Los tipos están al día con el spec.'

@@ -47,11 +47,27 @@ import { fileURLToPath } from 'node:url'
 import openapiTS, { astToString } from 'openapi-typescript'
 import ts from 'typescript'
 
-const SPEC = fileURLToPath(new URL('../../spec/pimia-api-v1.json', import.meta.url))
-const SALIDA = fileURLToPath(new URL('../src/api.ts', import.meta.url))
+/**
+ * Un fichero de tipos por documento del núcleo. `binarios` dice si el
+ * contrato declara campos `format: binary` —el de partner sí, nueve; el del
+ * plano central no tiene ficheros— para que la guarda de abajo sepa cuándo
+ * un transform que no toca nada es un aviso y cuándo es lo esperado.
+ */
+const DOCUMENTOS = [
+  { spec: '../../spec/pimia-api-v1.json', salida: '../src/api.ts', binarios: true },
+  { spec: '../../spec/pimia-central-v1.json', salida: '../src/central-api.ts', binarios: false },
+]
 
 /** `Blob`, como nodo del AST que el generador escribe tal cual. */
 const BLOB = ts.factory.createTypeReferenceNode('Blob')
+
+for (const doc of DOCUMENTOS) {
+  await generar(doc)
+}
+
+async function generar({ spec, salida, binarios }) {
+const SPEC = fileURLToPath(new URL(spec, import.meta.url))
+const SALIDA = fileURLToPath(new URL(salida, import.meta.url))
 
 const documento = JSON.parse(await readFile(SPEC, 'utf8'))
 
@@ -77,7 +93,7 @@ const ast = await openapiTS(documento, {
   },
 })
 
-if (corregidos === 0) {
+if (corregidos === 0 && binarios) {
   /* Falla en vez de generar en silencio: si el generador cambia de forma —o el
      spec deja de marcar los binarios— lo que sale es un `api.ts` con los nueve
      campos vueltos a `string`, y eso pasaría una revisión sin que nadie lo
@@ -110,4 +126,5 @@ const CABECERA = `/**
 
 await writeFile(SALIDA, CABECERA + astToString(ast), 'utf8')
 
-console.log(`✓ tipos regenerados; ${corregidos} campos binarios escritos como Blob`)
+console.log(`✓ ${salida.replace('../', '')} regenerado; ${corregidos} campos binarios escritos como Blob`)
+}

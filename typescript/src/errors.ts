@@ -29,6 +29,8 @@ export class PimiaApiError extends PimiaError {
     if (status === 403) {
       const scope = scopeFrom(message)
       if (scope) return new MissingScopeError(scope, status, message, body, requestId)
+      const ability = abilityFrom(body)
+      if (ability) return new MissingAbilityError(ability, status, message, body, requestId)
       return new ForbiddenError(status, message, body, requestId)
     }
     if (status === 422) {
@@ -69,6 +71,25 @@ export class ForbiddenError extends PimiaApiError {}
 export class MissingScopeError extends ForbiddenError {
   constructor(
     readonly scope: string,
+    status: number,
+    message: string,
+    body: unknown,
+    requestId?: string,
+  ) {
+    super(status, message, body, requestId)
+  }
+}
+
+/**
+ * 403 del plano central (`token_sin_habilidad`): al token personal le falta
+ * la habilidad del plano al que llama. `ability` viene del propio cuerpo
+ * (`required_ability`): `central` para invitaciones, patrocinio y traspaso;
+ * `desarrollador` para `/desarrollador/*`. No se arregla reintentando: hay
+ * que acuñar el token con esa habilidad.
+ */
+export class MissingAbilityError extends ForbiddenError {
+  constructor(
+    readonly ability: string,
     status: number,
     message: string,
     body: unknown,
@@ -210,4 +231,11 @@ function duplicateExternalRefFrom(
 /** «Token lacks the invoices:write scope» → `invoices:write`. */
 function scopeFrom(message: string): string | undefined {
   return /Token lacks the (\S+) scope/.exec(message)?.[1]
+}
+
+/** `required_ability` del 403 `token_sin_habilidad` del plano central. */
+function abilityFrom(body: unknown): string | undefined {
+  const b = body as { error?: unknown; required_ability?: unknown } | null
+  if (b?.error !== 'token_sin_habilidad') return undefined
+  return typeof b.required_ability === 'string' && b.required_ability !== '' ? b.required_ability : undefined
 }
