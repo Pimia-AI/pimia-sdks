@@ -1482,6 +1482,60 @@ obtiene en el registro de Pimia o en el panel de integrador).
     re-registro y un consentimiento nuevo por cada cliente, y no distingue entre
     sus verticales — el mismo client sirve a las que sustituyen y a las que no.
 
+    **13.28. Un módulo de integrador es un PROGRAMA APARTE, con su propia base
+    de datos (2026-09-08).** El punto 13.20 sacó el CRM a su propio repo «como
+    lo entregaría un tercero» y dejó la pregunta abierta a propósito: ¿qué es
+    técnicamente un módulo de integrador? Se le ofrecieron a 👤 las tres formas
+    medidas —**C1** un manifiesto declarativo, **C2** código que vive dentro del
+    núcleo, **C3** por niveles— y eligió una cuarta que estaba implícita en su
+    propio encargo: **un programa suyo, con su servidor y sus datos, que habla
+    con Pimia por la API pública**, como ya hace `wab-ai`.
+
+    Con sus palabras, al pedir el experimento: «que `pimia-modulo-crm` sea un
+    módulo independiente de ejemplo **como si fuera creado por Zoomo**», y
+    «desplegado en **su servidor**».
+
+    **Lo que esto zanja, y es lo que estaba en juego:** la decisión 7 del
+    2026-08-22 —ningún código de tercero dentro del núcleo— **se mantiene**. El
+    experimento 13.20 la ponía a prueba y midió lo que costaba saltársela:
+    submódulo git, registro Composer privado que no existe, rebuild de nuestra
+    imagen por cada versión suya, y 18 choques anotados. Con un programa aparte,
+    nada de eso hace falta y el integrador actualiza a su ritmo.
+
+    **La contrapartida, dicha:** lo que el módulo necesite del núcleo tiene que
+    existir en la API pública. Medido sobre el CRM el mismo día: de las ocho
+    dependencias que tenía cuando vivía dentro, quedan **cuatro** una vez fuera
+    —a quién asignar, los presupuestos de la oportunidad, el alta del cliente y
+    la moneda de la empresa— y **las cuatro ya tienen endpoint**. Dos son de esa
+    misma semana y no por casualidad: `GET /crm/assignable-users` sin
+    `crm:read` (2026-09-08) y `GET /estimates?opportunity_id=` (13.23). Es la
+    prueba de que la forma se sostiene, y también el aviso: **cada módulo que
+    salga fuera va a destapar lo que a la API le falta**, y eso es trabajo del
+    núcleo, no del integrador.
+
+    **Aislamiento entre los tenants del integrador: por COLUMNA (👤,
+    2026-09-08).** Un módulo suyo se instala en tantas instancias de Pimia como
+    clientes tenga su vertical, y su base es **una sola para todos**. Preguntado
+    si separarlos por columna discriminadora o por esquema —como hace el propio
+    Pimia con stancl—, 👤 eligió **columna**: cada fila lleva el slug de la
+    instancia y el `company_id`, y todo índice empieza por esa pareja. Es más
+    barato de operar y le basta a quien tiene decenas de clientes, no miles.
+    ⚠️ La contrapartida es que **el aislamiento pasa a depender del código y no
+    del motor**: un `where` que se olvide enseña los leads de otro cliente. Por
+    eso la pareja va en el índice y no solo en la consulta.
+
+    **Y una consecuencia buena que no se buscaba:** un módulo así **no necesita
+    identidad de servicio**. Medido en el fork de Zoomo: todas sus llamadas a
+    Pimia pasan por un único proxy que ya lleva el token del usuario, así que el
+    módulo lo reenvía tal cual y **Pimia sigue decidiendo los permisos** — si el
+    usuario no puede ver clientes, el módulo tampoco puede verlos por él. Un
+    módulo con credencial propia habría que auditarlo aparte, y habría esperado
+    a la pieza 5 de la fase 1, que está a medias.
+
+    **Lo que NO decide este punto:** si los módulos sencillos —los que solo
+    declaran nombre, precio, permisos y menú— merecen además la forma
+    declarativa de C1. Se decide cuando haya uno, no antes.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
