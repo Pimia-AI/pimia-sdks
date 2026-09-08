@@ -8,6 +8,7 @@
 
 export { PimiaClient, toFormData } from './client.js'
 export type {
+  BorrowedTokenOptions,
   ContractRequest,
   ContractResource,
   CustomerRequest,
@@ -17,6 +18,8 @@ export type {
   InvoiceResource,
   InvoicesRequest,
   ItemWarehouseStockResource,
+  OpportunityRequest,
+  OpportunityResource,
   PimiaClientOptions,
   RateLimit,
   ReadOptions,
@@ -39,7 +42,7 @@ export type {
   PkceChallenge,
 } from './oauth.js'
 
-export { MemoryTokenStore, isExpired, tokenSetFromResponse } from './tokens.js'
+export { BorrowedTokenStore, MemoryTokenStore, isExpired, tokenSetFromResponse } from './tokens.js'
 export type { TokenSet, TokenStore } from './tokens.js'
 
 export {

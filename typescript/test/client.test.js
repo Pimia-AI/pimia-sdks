@@ -370,6 +370,67 @@ test('los helpers de dominio pegan en las rutas correctas', async () => {
   assert.equal(calls[2].init.headers['content-type'], 'application/json')
 })
 
+/**
+ * Las tres costuras que un CRM de fuera necesita y que el SDK no cubría.
+ *
+ * Salieron de construir el CRM de la vertical: sin ellas, ese módulo tenía que
+ * escribirse su propio cliente HTTP para tres de sus cuatro llamadas — y
+ * entonces el SDK deja de ser «la única superficie» y pasa a ser «la superficie
+ * para lo fácil».
+ */
+test('las tres costuras del CRM de fuera pegan en sus rutas', async () => {
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+
+  await client.bootstrap.get()
+  await client.crm.assignableUsers()
+  await client.opportunities.create(
+    { name: 'Talleres Gómez' },
+    { idempotencyKey: 'lead:42:opportunity' },
+  )
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/bootstrap`)
+  assert.equal(calls[1].url, `${BASE}/api/v1/crm/assignable-users`)
+  assert.equal(calls[2].url, `${BASE}/api/v1/opportunities`)
+  assert.equal(calls[2].init.method, 'POST')
+  assert.equal(calls[2].init.headers['idempotency-key'], 'lead:42:opportunity')
+  assert.deepEqual(JSON.parse(calls[2].init.body), { name: 'Talleres Gómez' })
+})
+
+/**
+ * ⛔ `/bootstrap` NO envuelve en `data`, y los ayudantes leen de la RAÍZ.
+ *
+ * Es la trampa que este recurso existe para tapar: un desenvolvedor de `data`
+ * escrito «para todas las llamadas» no encuentra nada aquí y devuelve vacío sin
+ * error, así que el fallo se ve como una empresa sin resolver o como una moneda
+ * que cae al respaldo — nunca como un fallo.
+ */
+test('el arranque se lee de la raíz porque no viene envuelto', async () => {
+  const { client } = clientWith(
+    () =>
+      json({
+        current_company: { id: 7, name: 'Talleres Gómez' },
+        current_company_currency: { code: 'JPY', precision: 0 },
+      }),
+    { accessToken: 'at-1' },
+  )
+
+  assert.equal(await client.bootstrap.currentCompanyId(), 7)
+  // Cero decimales, no dos: la escala decide qué filas salen de un filtro por
+  // importe y qué se guarda en una ficha. Un 2 supuesto no da un error, da otro
+  // resultado.
+  assert.deepEqual(await client.bootstrap.currency(), { code: 'JPY', precision: 0 })
+})
+
+/** Y lo que el arranque no publica se dice con `null`, no con un cero ni un euro. */
+test('lo que el arranque no publica es null', async () => {
+  const { client } = clientWith(() => json({ current_company_currency: null }), {
+    accessToken: 'at-1',
+  })
+
+  assert.equal(await client.bootstrap.currentCompanyId(), null)
+  assert.equal(await client.bootstrap.currency(), null)
+})
+
 test('los recuentos separan contar de confirmar, y no se confunden', async () => {
   const { client, calls } = clientWith(() => json({ data: {}, meta: {} }), { accessToken: 'at-1' })
 

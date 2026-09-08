@@ -63,6 +63,53 @@ cliente exige un `TokenStore` en lugar de un string: persiste el conjunto de
 tokens tras cada refresco y no refresques dos veces en paralelo con el mismo
 token. Las dos cosas las cubre el SDK si lo usas como está pensado.
 
+## Un servicio que reenvía el token de su usuario
+
+Todo lo de arriba supone que **tu app posee un grant**. Hay integraciones que no
+y que no deben: un servicio al que el front le manda, en cada petición, el
+`Authorization` del usuario que ya entró en Pimia. Para ésas está el modo de
+token prestado — sin `clientId`, sin `TokenStore` y sin ceremonia OAuth:
+
+```ts
+const pimia = PimiaClient.withBorrowedToken({
+  baseUrl: `https://${tenant}.pimia.es`,
+  accessToken: bearerDeQuienLlama,
+  // La empresa activa viaja en cabecera, como en todo el API. OMÍTELA cuando no
+  // la sepas: `company:` vacía es una cabecera presente que no casa con ninguna
+  // empresa.
+  headers: empresa === null ? {} : { company: String(empresa) },
+  // Atiendes una petición web: los reintentos del SDK ESPERAN, y esperar dentro
+  // de la petición de un usuario es una petición colgada.
+  maxRateLimitRetries: 0,
+})
+
+const empresaActiva = await pimia.bootstrap.currentCompanyId()
+const censo = await pimia.crm.assignableUsers()
+```
+
+Lo que ganas con esto es que **Pimia sigue decidiendo los permisos**: tu servicio
+no puede darle a nadie más de lo que su token ya le daba, y no hay una
+credencial de servicio que auditar aparte.
+
+Tres cosas que conviene tener claras:
+
+- **Un cliente por petición.** El token vive lo que viva la petición que lo
+  trajo; una instancia compartida es una credencial compartida.
+- **No se refresca.** El refresh es del dueño del grant. Cuando el token caduca,
+  el 401 sube como `UnauthorizedError` y quien tiene que conseguir otro es quien
+  te lo prestó. El cliente no lo intenta —y eso es deliberado: con la rotación
+  de Pimia, tocar el refresh de otro revoca su grant entero.
+- **`pimia.oauth` es `null`** en este modo. No hay ceremonia que hacer, y un
+  `OAuth` sin `clientId` compondría una URL de autorización rota que sólo
+  fallaría en el navegador del usuario.
+
+`GET /bootstrap` merece un aviso propio: **es la única respuesta del API que no
+viene envuelta en `data`**. Sus claves cuelgan de la raíz, así que un
+desenvolvedor de `data` escrito «para todas las llamadas» devuelve vacío sin
+error — y el fallo se ve como una empresa sin resolver o como una moneda que cae
+al respaldo, nunca como un fallo. `pimia.bootstrap.currentCompanyId()` y
+`.currency()` lo leen bien; `.get()` te da el cuerpo tal cual.
+
 ## Reintentar un `POST` sin duplicar
 
 Manda una `Idempotency-Key` única por operación y Pimia ejecuta la escritura
