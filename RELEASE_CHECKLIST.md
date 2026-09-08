@@ -132,15 +132,25 @@ que es lo único que se puede comprobar hoy.
 | 0.24.0 | *sin publicar* | La activación mayorista entra en el plano central (central 1.2.0). | — |
 | 0.25.0 | *sin publicar* | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
 | 0.26.0 | *sin publicar* | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
+| 0.27.0 | *sin publicar* | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. | — |
 
-⛔ **Cinco versiones mergeadas y sin tag.** De la 0.22.0 a la 0.26.0 —todo el
-plano central— hay entrada en el CHANGELOG y versión en los manifiestos, pero
-**no hay tag en el remoto por encima de `v0.21.0`**, así que el workflow de
-release no ha corrido y ni npm ni Packagist las tienen. El paso 4 lo confirma
-por el otro lado: el starter sigue declarando `^0.21.0`. No es un fallo del
-runbook —el paso 2 sencillamente no se ha dado todavía— pero conviene saberlo
-antes de decirle a nadie que el plano central «ya está en el SDK»: está en
-`main`, que no es lo mismo.
+⛔ **De la 0.22.0 en adelante hay versiones mergeadas y sin tag** —el plano
+central entero, y con esta rama también la 0.27.0—: entrada en el CHANGELOG y
+versión en los manifiestos, pero **ningún tag en el remoto por encima de
+`v0.21.0`**, así que el workflow de release no ha corrido y ni npm ni Packagist
+las tienen. El paso 4 lo confirma por el otro lado: el starter sigue declarando
+`^0.21.0`. No es un fallo del runbook —el paso 2 sencillamente no se ha dado
+todavía— pero conviene saberlo antes de decirle a nadie que el plano central
+«ya está en el SDK»: está en `main`, que no es lo mismo.
+
+⚠️ La cuenta se deja SIN escribir a propósito («de la 0.22.0 en adelante», no
+«cinco»): un número aquí caduca en cuanto entre la siguiente, y este fichero ya
+ha tenido esa clase de deriva. Para saber cuántas van, la comprobación de un
+vistazo:
+
+```bash
+git ls-remote --tags origin | sed 's#.*refs/tags/##' | grep '^v' | sort -V | tail -1
+```
 
 **La lección de las dos filas con ⛔:** el paso 4 se saltó en la 0.16.0 y en la
 0.17.0 y **nadie lo notó hasta dos versiones después** —lo dice el propio
