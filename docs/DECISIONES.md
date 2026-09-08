@@ -1482,6 +1482,113 @@ obtiene en el registro de Pimia o en el panel de integrador).
     re-registro y un consentimiento nuevo por cada cliente, y no distingue entre
     sus verticales — el mismo client sirve a las que sustituyen y a las que no.
 
+    **13.28. Un módulo de integrador es un PROGRAMA APARTE, con su propia base
+    de datos, que habla con Pimia por la API pública (2026-09-08).** Es la
+    respuesta a la pregunta que **13.20 dejó abierta a propósito** —qué es
+    técnicamente un módulo creado por un integrador— y llega, como 13.20 pedía,
+    **después de las dos mediciones**: el CRM sacado del núcleo
+    (`Pimia-AI/pimia-modulo-crm`) y la app externa sacada del núcleo
+    (`Pimia-AI/pimia-app-wabai`). Se le ofrecieron a 👤 las tres formas medidas
+    —**C1** un manifiesto declarativo, **C2** código que vive dentro del núcleo,
+    **C3** por niveles— y eligió una cuarta que estaba implícita en su propio
+    encargo: **la forma de wab-ai, también para los módulos**. Con sus palabras:
+    «que `pimia-modulo-crm` sea un módulo independiente de ejemplo **como si
+    fuera creado por Zoomo**», y «desplegado en **su servidor**».
+
+    **Lo que esto ZANJA, y era lo que estaba en juego:** la decisión 7 del
+    2026-08-22 —ningún código de tercero dentro del núcleo— **se mantiene**. El
+    experimento 13.20 la puso a prueba y midió lo que costaba saltársela:
+    submódulo git, un registro Composer privado que no existe, un rebuild de
+    nuestra imagen por cada versión suya, y 18 choques anotados. Con un programa
+    aparte no hace falta nada de eso y el integrador actualiza a su ritmo.
+
+    **Lo que DESCARTA, y hay que decirlo porque era el estado del repo:** el
+    paquete Composer dentro del núcleo. Eso es exactamente lo que
+    `pimia-modulo-crm` era hasta el 2026-09-08. El experimento no se tira: es lo
+    que permitió medir el coste de la otra opción, y su lista de choques sigue
+    siendo la referencia.
+
+    **La contrapartida, dicha: lo que el módulo necesite del núcleo tiene que
+    existir en la API pública.** Medido sobre el CRM real el mismo día: de las
+    ocho dependencias que tenía dentro quedan **cuatro** una vez fuera —con
+    tareas y notas fuera del primer corte por decisión de 👤— y **las cuatro ya
+    tienen endpoint**:
+
+    | lo que usaba | por dónde pasa ahora |
+    |---|---|
+    | `User` (responsable) | `GET /crm/assignable-users`, que desde el 2026-09-08 no exige `crm:read` |
+    | `Estimate` (presupuestos, cierre) | `GET /estimates?opportunity_id=` (13.23) |
+    | `Customer` (conversión) | `POST /customers` |
+    | `Company`/`CompanySetting`/moneda | `GET /bootstrap` |
+
+    Dos de esos endpoints son de esa misma semana, y no por casualidad. Ahí está
+    el aviso que este punto deja escrito: **cada módulo que salga fuera va a
+    destapar lo que a la API le falta, y eso es trabajo del núcleo, no del
+    integrador.**
+
+    **⛔ Lo que NO puede viajar, y por qué importa más que lo que sí:** la
+    migración `add_lead_id_to_estimates_table` del paquete escribía una columna
+    en una tabla **del núcleo**. Fuera del núcleo eso no existe, y no hay forma
+    de que exista. Su trabajo lo hace `estimates.opportunity_id`, que es del core
+    y funciona venga el CRM de donde venga (13.23), y el módulo guarda el camino
+    de vuelta en su propia tabla. **Ésa es la prueba de que la forma se
+    sostiene**: si una sola pieza del módulo hubiera necesitado escribir en una
+    tabla del núcleo, la decisión sería impracticable.
+
+    **El hueco que abrió, cerrado el mismo día.** Al verificarlo en vivo sobre
+    `talleres-ana` —la instancia de la vertical `erp-studio`, con `crm`
+    sustituido— un `POST /estimates` con la oportunidad dentro daba `422`: los
+    tres caminos para tener una oportunidad estaban cerrados a la vez, así que un
+    integrador que sustituye el CRM **no tenía forma de crear una**. La pieza 9
+    del carril C funcionaba entera con el CRM nativo y no servía para quien lo
+    sustituye, que es el caso para el que existe. Arreglado en
+    galeote/factSaas#801: `POST /estimates` acepta `opportunity` como objeto, con
+    los cuatro campos de 13.26 y ninguno más.
+
+    **Aislamiento entre los clientes del integrador: un ESQUEMA POR INSTANCIA**
+    (👤, 2026-09-08). Un módulo se instala en tantos tenants de Pimia como el
+    integrador tenga en su vertical, y su base es una sola. Preguntado entre una
+    columna discriminadora en cada fila y un esquema Postgres por instancia —lo
+    que el propio Pimia hace con stancl—, 👤 eligió **esquema**: el aislamiento
+    lo garantiza **el motor** y no el cuidado del código, de modo que una
+    consulta que se olvide de filtrar no puede ver filas de otro cliente porque
+    no están en su `search_path`; y borrar un cliente es un `DROP SCHEMA`. La
+    contrapartida asumida es que el módulo tiene que saber aprovisionar esquemas
+    y resolver el suyo en cada petición, con el nombre del esquema como único
+    trozo de entrada que acaba concatenado a SQL.
+
+    ⚠️ **El esquema separa instancias, no empresas.** Una instancia de Pimia
+    tiene varias, y esa frontera la sigue sosteniendo un `where`. Es la que puede
+    romperse en silencio, y por eso es la que se cubre con un test que se pone
+    **rojo** al quitar el filtro.
+
+    **Y una consecuencia buena que no se buscaba: un módulo así NO necesita
+    identidad de servicio.** Medido en el fork de Zoomo: todas sus llamadas a
+    Pimia pasan por un único proxy de transporte que ya lleva el token del
+    usuario, así que el módulo lo reenvía tal cual y **Pimia sigue decidiendo los
+    permisos** —si el usuario no puede ver clientes, el módulo tampoco puede
+    verlos por él—. Un módulo con credencial propia habría que auditarlo aparte,
+    y habría esperado a la pieza 5 de la fase 1, que está a medias.
+
+    **Dónde corre cada cosa** (👤, el mismo día): el módulo se despliega en el
+    servidor **del integrador**; `hetzner-dev` es para Pimia y su núcleo. No es
+    comodidad de despliegue: es la misma decisión vista desde la máquina. Un
+    módulo que no es de Pimia no tiene por qué correr —ni siquiera para
+    probarse— en la caja del ERP.
+
+    **Lo que queda abierto y se decide al construirlo:** dentro del núcleo la
+    puerta del CRM era la ability `crm:read` del token. Con el CRM sustituido esa
+    ability no aplica —13.27 la saca del grant—, y quien define los permisos del
+    módulo pasa a ser el integrador. En el primer corte la puerta es «el token es
+    válido para esta instancia y esta empresa», lo que significa que **cualquier
+    usuario de la instancia ve todos los leads de su empresa**, y en el CRM
+    nativo no era así. Se anota como lo que es: una diferencia de comportamiento,
+    no un detalle de implementación.
+
+    **Lo que este punto NO decide:** si los módulos sencillos —los que sólo
+    declaran nombre, precio, permisos y menú— merecen además la forma
+    declarativa de C1. Se decide cuando haya uno, no antes.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
