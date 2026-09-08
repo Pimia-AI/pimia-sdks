@@ -81,10 +81,15 @@ nulo, o usa el cliente que ya sabías que tenía grant propio.
 ### Lo que hay que tener delante para integrarlo
 
 - `@pimia/design-tokens` sube a 0.27.0 **sin cambios de código**.
-- El primer consumidor es el módulo CRM de la vertical, que sustituye su cliente
-  HTTP escrito a mano por el SDK de PHP en cuanto esta versión esté publicada
-  (Pimia-AI/pimia-modulo-crm#7, que **no puede mergearse antes que esta
-  release**).
+- El primer consumidor es el módulo CRM de la vertical
+  (`Pimia-AI/pimia-modulo-crm`), que ya sustituyó su cliente HTTP escrito a mano
+  por el SDK de PHP: su PR #7 **está mergeado**.
+- ⛔ **Y entró pidiendo `^0.22.0`, que es otra cosa** —el plano central—, porque
+  esta release se numeró primero con ese número por error. Lo corrige su PR #12,
+  que hay que **mergear justo después de publicar esta versión**. Hasta
+  entonces, el `main` de ese repo pide un SDK que no trae lo que usa: no rompe
+  nada hoy (su `composer.lock` no la tiene) pero un `composer update` a ciegas
+  sí.
 
 ## [0.26.0] — 2026-09-07
 
