@@ -634,6 +634,70 @@ final class PimiaClientTest extends TestCase
     }
 
     /**
+     * Las tres costuras que un CRM de fuera necesita y que el SDK no cubría.
+     *
+     * Salieron de construir el CRM de la vertical: sin ellas, ese módulo tenía
+     * que escribirse su propio cliente HTTP para tres de sus cuatro llamadas —y
+     * entonces el SDK deja de ser «la única superficie» y pasa a ser «la
+     * superficie para lo fácil».
+     */
+    public function test_las_tres_costuras_del_crm_de_fuera_pegan_en_sus_rutas(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json([]),
+            new TokenSet('at-1'),
+        );
+
+        $client->bootstrap->get();
+        $client->crm->assignableUsers();
+        $client->opportunities->create(['name' => 'Talleres Gómez'], 'lead:42:opportunity');
+
+        $this->assertSame(self::BASE.'/api/v1/bootstrap', $transport->calls[0]['url']);
+        $this->assertSame(self::BASE.'/api/v1/crm/assignable-users', $transport->calls[1]['url']);
+        $this->assertSame('POST', $transport->calls[2]['method']);
+        $this->assertSame(self::BASE.'/api/v1/opportunities', $transport->calls[2]['url']);
+        $this->assertSame('lead:42:opportunity', $transport->calls[2]['headers']['idempotency-key']);
+        $this->assertSame(['name' => 'Talleres Gómez'], json_decode($transport->calls[2]['body'], true));
+    }
+
+    /**
+     * ⛔ `/bootstrap` NO envuelve en `data`, y los ayudantes leen de la RAÍZ.
+     *
+     * Es la trampa que este recurso existe para tapar: un desenvolvedor de
+     * `data` escrito «para todas las llamadas» no encuentra nada aquí y
+     * devuelve vacío sin error, así que el fallo se ve como una empresa sin
+     * resolver o como una moneda que cae al respaldo — nunca como un fallo.
+     */
+    public function test_el_arranque_se_lee_de_la_raiz_porque_no_viene_envuelto(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json([
+                'current_company' => ['id' => 7, 'name' => 'Talleres Gómez'],
+                'current_company_currency' => ['code' => 'JPY', 'precision' => 0],
+            ]),
+            new TokenSet('at-1'),
+        );
+
+        $this->assertSame(7, $client->bootstrap->currentCompanyId());
+        // Cero decimales, no dos: la escala decide qué filas salen de un filtro
+        // por importe y qué se guarda en una ficha. Un 2 supuesto no da un
+        // error, da otro resultado.
+        $this->assertSame(['code' => 'JPY', 'precision' => 0], $client->bootstrap->currency());
+    }
+
+    /** Y lo que el arranque no publica se dice con `null`, no con un cero ni un euro. */
+    public function test_lo_que_el_arranque_no_publica_es_null(): void
+    {
+        [$client] = $this->client(
+            static fn () => FakeTransport::json(['current_company_currency' => null]),
+            new TokenSet('at-1'),
+        );
+
+        $this->assertNull($client->bootstrap->currentCompanyId());
+        $this->assertNull($client->bootstrap->currency());
+    }
+
+    /**
      * @param  array<string, mixed>  $config
      * @return array{PimiaClient, FakeTransport}
      */

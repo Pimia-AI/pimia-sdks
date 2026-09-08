@@ -8,6 +8,73 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.22.0] — 2026-09-08
+
+**El SDK de PHP deja de quedarse corto para un integrador que SUSTITUYE el CRM.**
+Entran las tres costuras que le faltaban —`GET /bootstrap`,
+`GET /crm/assignable-users` y `POST /opportunities`— y un **modo «token
+prestado»**: construir el cliente desde un bearer ya obtenido, sin `clientId`,
+sin `TokenStore` y sin ceremonia OAuth. Todo aditivo salvo un detalle de tipo,
+abajo.
+
+**Sin cambios de spec**: no hay sincronización con el núcleo en esta versión.
+`POST /opportunities` es más nueva que la última foto del contrato
+(galeote/factSaas#805) y todavía **no aparece en `spec/pimia-api-v1.json`**; el
+recurso lo dice en su docblock, y contra una instancia anterior a esa ruta la
+llamada contesta 404.
+
+**⚠️ Asimetría entre SDKs, anotada a propósito** (la regla de la 0.5.0): esto
+entra **sólo en PHP**. `@pimia/sdk` no lleva ni los tres recursos ni el modo de
+token prestado. El encargo era el SDK de PHP porque es el que consume el módulo
+CRM de la vertical; el hueco en TypeScript queda abierto y nombrado aquí para
+que no se descubra desde fuera.
+
+### Añadido
+
+- **`$pimia->bootstrap`** — `get()`, `currentCompanyId()` y `currency()`.
+  ⛔ `GET /bootstrap` es **la única respuesta del API que no viene envuelta en
+  `data`**: sus claves cuelgan de la raíz. Un desenvolvedor de `data` escrito
+  «para todas las llamadas» devuelve vacío **sin error**, así que el fallo se ve
+  como una empresa sin resolver o como una moneda que cae al respaldo. Medido
+  construyendo el módulo CRM, que tuvo que anotarlo en su código y en su arnés.
+- **`$pimia->crm->assignableUsers()`** — el censo de a quién se le puede asignar
+  trabajo. Reenvía lo que conteste el núcleo, campos de más incluidos: el
+  recorte y el filtro son suyos y copiarlos aquí es tener la misma política en
+  dos sitios que pueden divergir.
+- **`$pimia->opportunities->create()`** — estrena la oportunidad a la que
+  después irán dirigidos los presupuestos. Es lo que permite que un CRM de fuera
+  enlace un lead sin fabricar un presupuesto borrador y quemar un número de la
+  serie del cliente. Cuelga de `estimates:write`; no estrena scope.
+- **`PimiaClient::withBorrowedToken()`**, **`Config::forBorrowedToken()`**,
+  **`Config::ownsGrant()`** y **`Pimia\OAuth\BorrowedTokenStore`** — el modo
+  para un servicio que reenvía el `Authorization` de su usuario. No refresca
+  nunca: el refresh es del dueño del grant, y con la rotación de Pimia tocarlo
+  revoca ese grant entero en cascada. Un 401 sube tal cual.
+
+### Cambiado
+
+- **`PimiaClient::$oauth` pasa de `OAuthClient` a `?OAuthClient`.** Es `null`
+  —y sólo— en el modo de token prestado. Un cliente construido como siempre lo
+  sigue teniendo. En tiempo de ejecución no cambia nada; lo que puede saltar es
+  el análisis estático de quien lea `$client->oauth->…` sin comprobar el nulo.
+
+### Cómo migrar
+
+Nada que hacer si construyes el cliente como hasta ahora. Si tu análisis
+estático se queja de `$client->oauth`, es porque ahora admite nulo: o compruebas
+el nulo, o afirmas que tu cliente tiene grant propio (`$config->ownsGrant()`).
+
+### Lo que hay que tener delante para integrarlo
+
+- `@pimia/design-tokens` y `@pimia/sdk` suben a 0.22.0 **sin cambios de código**.
+- El primer consumidor es el módulo CRM de la vertical
+  (`Pimia-AI/pimia-modulo-crm`), que sustituye su cliente HTTP escrito a mano
+  por este SDK en cuanto la versión esté publicada. La decisión 8 de
+  `docs/DECISIONES.md` dice que el SDK es la única superficie de los anfitriones
+  abiertos, y ese módulo es el ejemplo de cómo un integrador construye el suyo
+  (punto 13.28): decir «usad el SDK» mientras nuestro propio ejemplo se lo salta
+  era incoherente.
+
 ## [0.21.0] — 2026-09-03
 
 **⚠️ SEGUNDO CAMBIO INCOMPATIBLE DE SCOPE del mismo día: la campana sale del
