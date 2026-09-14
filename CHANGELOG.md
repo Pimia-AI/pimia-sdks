@@ -8,6 +8,149 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.29.0] — 2026-09-14
+
+**El cobro del cliente del integrador (galeote/factSaas#835) entra en los dos
+planos.** En `PimiaCentralClient`, «Facturo con Pimia»: la factura fiscal de lo
+que el integrador cobra a sus clientes con su propio Stripe, y el listado de
+esas facturas con su estado. En el cliente de instancia, `billing.integrador`:
+el perfil del cliente enseña su suscripción y abre el portal de Stripe. Métodos
+nuevos, todos aditivos; y **`/api/v1` se sincroniza por primera vez desde la
+0.22.0**, con tres cambios de tipos incompatibles que trae el contrato, abajo.
+
+Specs sincronizados con **factSaas@808976ba** (2026-09-14) — plano central
+**1.16.0, 65 operaciones** (venía de 1.15.0 y 61) y `/api/v1` **1.1.0, 441
+operaciones** (venía de 1.0.0 y 438). Ninguna operación desaparece de ninguno.
+
+### Añadido — plano central 1.16.0 (sólo TypeScript)
+
+- **Los ajustes de facturación** — `central.facturacionAClientes`:
+  - `get()` → `GET /desarrollador/facturacion-a-clientes`: `factura_con_pimia`,
+    `tenant_emisor_id`, `tipo_iva` (⚠️ decimal como **texto**, `"21.00"`) y
+    `emisoras` (`{ id, name }[]`, las instancias propias elegibles).
+  - `update(body: FacturacionAClientesRequest)` → `PUT`: los tres ajustes a la
+    vez; `tipo_iva` numérico de 0 a 100. Una emisora no elegible es un 422 en
+    `tenant_emisor_id`.
+- **Las facturas de los cobros** — `central.facturasAClientes`:
+  - `list(query?: FacturasAClientesQuery): Promise<FacturasAClientesPage>` →
+    `GET /desarrollador/facturas-a-clientes` con `estado` y `cursor`: una
+    página de hasta 50 filas (`FacturaACliente`) y `next_cursor`.
+  - `iterate(query?): AsyncGenerator<FacturaACliente>`: todas las páginas
+    siguiendo `next_cursor`, perezoso (cortar el `for await` no pide más) y sin
+    bucle si el cursor no avanzara.
+  - `retry(id): Promise<FacturaAClienteReintento>` →
+    `POST /desarrollador/facturas-a-clientes/{id}/reintentar`: sólo acepta
+    `error` y `pendiente_sin_nif` (`FacturaAClienteReintentable`); cualquier
+    otro estado es 409 y una fila ajena, `NotFoundError`.
+  - `FacturaAClienteEstado`: `pendiente` | `pendiente_alta` |
+    `pendiente_sin_nif` | `error` | `emitida` |
+    `omitida_sin_facturar_con_pimia` | `omitida_importe_cero`. Sale del enum
+    del filtro del spec; la fila publica `estado` como `string` y el SDK la
+    estrecha a esa lista.
+- **Stripe**: `StripeCorteCode` suma `stripe_account_in_use` (409: hay
+  suscripciones de clientes vivas y no se puede desvincular ni cambiar de cuenta
+  o modo), y `StripeWebhookEvent` tipa los **siete** `webhook_events` que hay
+  que marcar en el endpoint (los dos `payment_intent.*` y
+  `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+  `customer.subscription.updated`, `customer.subscription.deleted`).
+- `ContratacionCorteCode`: el 409 `contratacion_gestionada_por_stripe` de
+  `PUT /desarrollador/tenants/{slug}/contratacion` cuando el cliente paga por
+  Stripe. Esa operación sigue sin helper (`central.request()`).
+
+### Añadido — `/api/v1` 1.1.0 (TypeScript y PHP)
+
+- `client.billing.integrador.subscription(options?)` →
+  `GET /billing/integrador/subscription` (`integrador-billing:read`): planes de
+  la vertical, estado en Stripe, mora (`debe_desde`, `baja_en`) y `hoy`. Tipo
+  `IntegradorSubscription`.
+- `client.billing.integrador.portal(body: IntegradorBillingPortalRequest, options?)`
+  → `POST /billing/integrador/portal` (`integrador-billing:write`) con
+  `{ return_url }`; devuelve `data.url`. El cuerpo va en snake_case y tipado del
+  spec, como el resto de escrituras del cliente (y como
+  `central.billing.portal`).
+- Cortes en `code` (`IntegradorBillingCorteCode`): 404
+  `suscripcion_no_disponible`; 409 `suscripcion_de_baja`,
+  `suscripcion_modificada`, `stripe_plan_unknown`; 422
+  `return_url_no_permitida`; 503 `stripe_unavailable`. Además de los scopes,
+  exige dueño o administrador de la empresa (403).
+- `SCOPES.integradorBillingRead` / `integradorBillingWrite`.
+- **PHP**: `$pimia->billing->integrador->subscription()` y
+  `->portal(string $returnUrl)`; `Scopes::INTEGRADOR_BILLING_READ` y
+  `Scopes::INTEGRADOR_BILLING_WRITE`.
+
+### Cambiado — lo que trae la sincronización de `/api/v1` (1.0.0 → 1.1.0)
+
+El documento llevaba sin sincronizarse desde la 0.22.0. El diff toca 436
+operaciones, pero casi todo es una sola cosa:
+
+- **La cabecera `company` se publica** en 432 operaciones (el id de la empresa
+  sobre la que trabaja la llamada; omitida, la API resuelve una a la que
+  pertenece la identidad). No cambia nada en tiempo de ejecución: ya se mandaba
+  con la opción `headers` del cliente.
+- **`POST /opportunities` entra en el spec** (`OpportunityRequest`). La 0.27.0
+  la había declarado a mano: `OpportunityRequest` pasa a salir del spec (mismos
+  cuatro campos) y `OpportunityResource` pasa de `{ id; [key]: unknown }` a los
+  cinco campos del `201` (`id`, `name`, `contact_name`, `email`, `phone`).
+- **Presupuestos con oportunidad**: `opportunity_id` en `Estimate`,
+  `EstimateResource`, `EstimateSummaryResource` e `Invoice`; `opportunity_id` y
+  `opportunity` (la ficha, para una oportunidad sin cliente) en
+  `EstimatesRequest`; `lead_id`/`lead` quedan `deprecated`.
+- **Filtros de listado publicados**: `GET /customers` (`limit`, `search`,
+  `customer_id`, `display_name`, `contact_name`, `phone`), `GET /estimates`
+  (`limit`, `search`, `customer_id`, `opportunity_id`, `from_date`/`to_date`
+  —⚠️ van siempre juntos—, `status`, `estimate_number`, `estimate_series_id`),
+  `GET /invoices` (`search`, `customer_id`, `from_date`/`to_date`, `status`,
+  `paid_status`, `invoice_number`, `invoice_series_id`) y `GET /appointments`
+  (`from`, `to`, `status`, `customer_id`). Ya se podían mandar en `query`.
+- `GET /crm/assignable-users` pasa a lectura libre en el contrato (antes
+  `crm:read`), como ya hacía el núcleo desde el 2026-09-08.
+- Aditivos en respuestas: `default_sales_tax_type_id` y
+  `default_sales_tax_type` en `CurrentCompanyResource`; `substituted_modules`
+  en `/bootstrap` y `substituted_slugs` en `/tenant-modules`; 403 publicado en
+  las diez operaciones de VeriFactu, Facturae/einvoice y firma de PDF.
+- El 422 de altas y ediciones de `customers`, `estimates` e `invoices` (y de
+  `convert-to-invoice`) se publica con la forma de `external_ref_already_used`
+  (`existing_id`…), la que ya tipaba `DuplicateExternalRefError`.
+- ⚠️ **Incompatible en tipos: `POST /mail/test` devuelve `reason`, ya no
+  `message`** (la misma lista cerrada que `CorreoPruebaReason`). Sin helper en
+  el SDK; afecta a quien lea el tipo de `@pimia/sdk/api`.
+- ⚠️ **Incompatible en tipos: `MailEnvironmentRequest.mail_port` pasa de
+  `number` a `"25" | "465" | "587" | "2525"`** (y `mail_ses_region` gana
+  patrón): el spec publica la regla `in:` del núcleo como enum de texto.
+- ⚠️ **Incompatible en tipos: `/bootstrap` `installed_modules` pasa de
+  `string` a `unknown[]`**. Los helpers de `bootstrap` no lo leen.
+
+### Cómo migrar
+
+- Si tipabas la respuesta de `POST /mail/test` con `@pimia/sdk/api`: lee
+  `reason` en vez de `message`.
+- Si construyes un `MailEnvironmentRequest` con `mail_port: 587`: pásalo como
+  `'587'`.
+- Si leías `installed_modules` de `bootstrap.get()` como `string`: es una
+  lista.
+- Si usabas `OpportunityResource` con claves arbitrarias (`[key: string]:
+  unknown`): ahora sólo tiene sus cinco campos.
+
+### Lo que hay que tener delante para integrarlo
+
+- **Asimetría TS/PHP, la de siempre**: el plano central sigue siendo **sólo
+  TypeScript** (desde la 0.22.0), así que `facturacionAClientes` y
+  `facturasAClientes` no tienen par en PHP. `billing.integrador` sí, porque es
+  `/api/v1`.
+- **El alta con cobro no está en el SDK, a propósito**:
+  `POST /api/auth/register/checkout` y el alta firmada con `checkout_session`
+  van por el client OAuth confidencial, fuera de los dos contratos, y el SDK
+  nunca ha expuesto `register`. No se añade.
+- **Dos huecos del contrato central**, anotados para el núcleo: el reintento
+  contesta **202** y el spec publica 200 sin 404/409 (el SDK acepta cualquier
+  2xx y documenta los dos errores); y `DELETE /desarrollador/stripe` también
+  corta con 409 `stripe_account_in_use` en el controlador, pero el spec sólo lo
+  publica en el `PUT`.
+- La entrada del núcleo (docs/changelog-desarrollador.md) dice «mismas 61
+  operaciones» para central 1.16.0: son 65 porque la parte D (#842) añadió las
+  cuatro de facturación a clientes sobre la misma versión.
+- `@pimia/design-tokens` sube a 0.29.0 **sin cambios de código**.
+
 ## [0.28.0] — 2026-09-14
 
 **El correo y el Stripe propios del integrador entran en `PimiaCentralClient`**
