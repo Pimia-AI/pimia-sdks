@@ -57,10 +57,13 @@ export type TenantInvitationRequest = Body<'tenantInvitation.store'>
 export type TransferOwnershipRequest = Body<'tenant.transferOwnership'>
 /**
  * Cuerpo de `PUT /desarrollador/catalogo`: el catálogo del integrador ENTERO —
- * cabecera (nombre comercial, soporte, moneda ISO 4217, enlace de contratación)
- * y filas (`kind` ∈ `base|module|app`, `slug`, `price_cents` en subunidades de
- * esa moneda, `contract_url` propio opcional, `enabled`)—. Lo que no venga deja
- * de existir.
+ * la moneda ISO 4217 y las filas (`kind` ∈ `base|module|app`, `slug`,
+ * `price_cents` en subunidades de esa moneda, `contract_url` propio opcional,
+ * `enabled`)—. Lo que no venga deja de existir.
+ *
+ * ⚠️ Desde el contrato 1.9.0 ya no lleva cabecera de marca: el nombre
+ * comercial, el soporte y el enlace de contratación son de cada VERTICAL
+ * (`PATCH /desarrollador/verticales/{v}`), y `perfil` sale siempre `null`.
  */
 export type CatalogoDelIntegradorRequest = Body<'integradorCatalogo.update'>
 /**
@@ -69,8 +72,79 @@ export type CatalogoDelIntegradorRequest = Body<'integradorCatalogo.update'>
  * planes de canal).
  */
 export type ActivacionMayoristaRequest = Body<'integradorActivacion.store'>
+/**
+ * Cuerpo de `POST /desarrollador/dominios`. ⚠️ Desde el contrato 1.9.0 pide
+ * `vertical`: el nombre de login es de una vertical del integrador, no de la
+ * cuenta.
+ */
 export type IntegradorDominioRequest = Body<'integradorDominio.store'>
 export type IntegradorTokenRequest = Body<'integradorToken.store'>
+
+/**
+ * Cuerpo de `PUT /desarrollador/correo` (1.15.0): `mail_driver` (`smtp` |
+ * `ses`), el remitente, `reply_to` opcional y los datos del driver. Los
+ * secretos (`mail_password`, `mail_ses_secret`) no vuelven nunca: omitirlos
+ * conserva el guardado, mandarlos lo sustituye.
+ */
+export type IntegradorCorreoRequest = Body<'integradorCorreo.update'>
+/** Cuerpo de `POST /desarrollador/correo/prueba`: `to` y, opcionales, `subject` y `message`. */
+export type CorreoPruebaRequest = Body<'integradorCorreo.prueba'>
+/** Por qué no salió la prueba (`error`): sin cuenta guardada, o el envío falló. */
+export type CorreoPruebaError = 'mail_not_configured' | 'mail_send_failed'
+/**
+ * Con `mail_send_failed`, la causa (`reason`), de lista cerrada. El texto que
+ * conteste el servidor de correo no se devuelve.
+ */
+export type CorreoPruebaReason =
+  | 'connection_failed'
+  | 'auth_failed'
+  | 'tls_failed'
+  | 'rejected'
+  | 'timeout'
+  | 'unknown'
+/**
+ * La respuesta de la prueba: siempre `200`; se mira `success`. El spec publica
+ * `error` y `reason` como `string`; aquí se estrechan a su lista cerrada
+ * (docs/changelog-desarrollador.md del núcleo, 2026-09-14).
+ */
+export type CorreoPruebaResult = Omit<Ok<'integradorCorreo.prueba'>, 'error' | 'reason'> & {
+  error?: CorreoPruebaError
+  reason?: CorreoPruebaReason
+}
+/**
+ * Códigos de corte del correo del integrador (`PimiaApiError.code`):
+ * `mail_host_not_allowed` es el 422 de un `mail_host` que no es público (IP
+ * privada, local, reservada o que no resuelve).
+ */
+export type CorreoCorteCode = 'mail_host_not_allowed'
+
+/**
+ * Cuerpo de `PUT /desarrollador/stripe` (1.15.0): `publishable_key` (`pk_`),
+ * `secret_key` (`sk_`; `rk_` restringida, opcional), `webhook_secret`
+ * (`whsec_`, opcional; `null` lo borra y apaga la recepción) y `mode`
+ * (`test` | `live`). `publishable_key` y `mode` van en cada PUT; omitir un
+ * secreto lo conserva.
+ */
+export type IntegradorStripeRequest = Body<'integradorStripe.update'>
+/**
+ * Códigos de corte del Stripe del integrador (`PimiaApiError.code`). Ninguno
+ * guarda cambios:
+ * - 422 `stripe_key_invalid`: falta la clave en el alta o Stripe no la autentica.
+ * - 422 `stripe_key_permissions`: clave `rk_` sin lectura; el cuerpo trae
+ *   `missing_permissions` ({@link StripeMissingPermission}).
+ * - 422 `stripe_mode_mismatch`: prefijos o `livemode` que no casan con `mode`.
+ * - 429 `stripe_too_many_attempts`: cinco fallos en una hora; llega como
+ *   `RateLimitError`, con `retry_after` en el cuerpo y `Retry-After`.
+ * - 503 `stripe_unavailable`: Stripe no contesta; se reintenta.
+ */
+export type StripeCorteCode =
+  | 'stripe_key_invalid'
+  | 'stripe_key_permissions'
+  | 'stripe_mode_mismatch'
+  | 'stripe_too_many_attempts'
+  | 'stripe_unavailable'
+/** Lo que le falta a una clave restringida: identificadores del contrato, no scopes OAuth. */
+export type StripeMissingPermission = 'account:read' | 'balance:read'
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -291,12 +365,91 @@ export class PimiaCentralClient {
     }
   }
 
+  // ── Su cuenta de correo: desde dónde salen SUS invitaciones ─────────────
+  //    (habilidad `desarrollador`; contrato 1.15.0, galeote/factSaas#831)
+
+  get correo() {
+    return {
+      /**
+       * `GET /desarrollador/correo`: la cuenta guardada, sin secretos
+       * (`mail_password_set`, `mail_ses_secret_set`). `configured: false`
+       * significa que lo suyo sale desde Pimia, y entonces el remitente es
+       * `null`.
+       */
+      get: () => this.request<Ok<'integradorCorreo.show'>>('/desarrollador/correo'),
+      /**
+       * `PUT /desarrollador/correo`: guardarla. Una cuenta por integrador, para
+       * todas sus verticales. 422 con `code: mail_host_not_allowed` si el
+       * servidor no es público; el puerto, uno de 25, 465, 587 o 2525.
+       *
+       * ⚠️ Con la cuenta puesta, si el envío falla la invitación NO sale desde
+       * Pimia: `invitations.create` responde 502 `integrator_mail_failed` y la
+       * invitación no se crea.
+       */
+      update: (body: IntegradorCorreoRequest) =>
+        this.request<Ok<'integradorCorreo.update'>>('/desarrollador/correo', {
+          method: 'PUT',
+          body,
+        }),
+      /** `DELETE /desarrollador/correo`: quitarla; lo suyo vuelve a salir desde Pimia. */
+      delete: () =>
+        this.request<Ok<'integradorCorreo.destroy'>>('/desarrollador/correo', { method: 'DELETE' }),
+      /**
+       * `POST /desarrollador/correo/prueba`: envía un correo con lo GUARDADO.
+       * Contesta siempre 200: no lanza por un envío fallido, hay que mirar
+       * `success` y, si es `false`, `error` y `reason`.
+       */
+      test: (body: CorreoPruebaRequest) =>
+        this.request<CorreoPruebaResult>('/desarrollador/correo/prueba', { method: 'POST', body }),
+    }
+  }
+
+  // ── Su Stripe propio: una cuenta independiente, sin Connect y sin tocar ──
+  //    la facturación de Pimia (habilidad `desarrollador`; contrato 1.15.0)
+  //
+  //    El receptor `POST /stripe/integrador/{opaco}` está en el contrato pero
+  //    NO aquí: lo llama Stripe, firmado, sin Bearer. Su URL es `webhook_url`.
+
+  get stripe() {
+    return {
+      /**
+       * `GET /desarrollador/stripe`: el estado de la vinculación (`linked`,
+       * `mode`, la cuenta), sin secretos, y `webhook_url` + `webhook_events`
+       * para dar de alta el endpoint a mano en Stripe.
+       */
+      get: () => this.request<Ok<'integradorStripe.show'>>('/desarrollador/stripe'),
+      /**
+       * `PUT /desarrollador/stripe`: validar en Stripe (`/v1/account` y
+       * `/v1/balance`, solo lecturas) y guardar. Los cortes llegan con
+       * `error.code` ∈ {@link StripeCorteCode}; nada se guarda en ellos.
+       * Límite: 10 PUT/minuto y 5 fallos/hora.
+       */
+      update: (body: IntegradorStripeRequest) =>
+        this.request<Ok<'integradorStripe.update'>>('/desarrollador/stripe', {
+          method: 'PUT',
+          body,
+        }),
+      /**
+       * `DELETE /desarrollador/stripe`: desvincular y borrar los recibos
+       * locales. Idempotente. No revoca claves ni borra el endpoint en Stripe;
+       * una vinculación nueva tiene otra `webhook_url`.
+       */
+      delete: () =>
+        this.request<Ok<'integradorStripe.destroy'>>('/desarrollador/stripe', { method: 'DELETE' }),
+    }
+  }
+
   // ── Lo que hace en el grupo compartido (habilidad `central`) ────────────
 
   get invitations() {
     return {
       list: () => this.request<Ok<'tenantInvitation.index'>>('/tenant-invitations'),
-      /** El cliente se registra y nace dueño; `billing` dice quién paga. */
+      /**
+       * El cliente se registra y nace dueño; `billing` dice quién paga.
+       * ⚠️ Si el integrador tiene su correo puesto (`correo.update`) y el envío
+       * falla, responde 502 con `code: integrator_mail_failed` y la invitación
+       * NO se crea: no sale desde Pimia en su lugar.
+       */
       create: (body: TenantInvitationRequest) =>
         this.request<Ok<'tenantInvitation.store'>>('/tenant-invitations', { method: 'POST', body }),
       revoke: (id: number | string) =>

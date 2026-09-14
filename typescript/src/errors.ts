@@ -22,6 +22,22 @@ export class PimiaApiError extends PimiaError {
     super(message)
   }
 
+  /**
+   * El código de corte que trae el cuerpo, si trae uno: `code` (p. ej.
+   * `stripe_key_invalid`, `mail_host_not_allowed`) o, en su defecto, `error`
+   * (p. ej. `token_sin_habilidad`, `integrator_mail_failed`). Es lo que se
+   * compara, no el `message`, que es prosa y puede cambiar.
+   */
+  get code(): string | undefined {
+    const body = this.body
+    if (!body || typeof body !== 'object') return undefined
+    const record = body as Record<string, unknown>
+    for (const key of ['code', 'error']) {
+      if (typeof record[key] === 'string' && record[key] !== '') return record[key] as string
+    }
+    return undefined
+  }
+
   static from(status: number, body: unknown, requestId?: string): PimiaApiError {
     const message = messageFrom(body) ?? `HTTP ${status}`
 

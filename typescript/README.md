@@ -277,6 +277,46 @@ la llamada lanza `MissingAbilityError` con `ability` diciendo cuál. Lo que el
 plano central NO da es contenido fiscal de ningún cliente: a los datos de una
 instancia se llega por OAuth consentido, con `PimiaClient`.
 
+Tu correo y tu Stripe propios (contrato central 1.15.0, habilidad
+`desarrollador`):
+
+```ts
+import { PimiaApiError, RateLimitError, type StripeCorteCode } from '@pimia/sdk'
+
+// Las invitaciones que mandas salen desde tu servidor de correo.
+await central.correo.update({
+  mail_driver: 'smtp',
+  from_name: 'ERP Studio',
+  from_mail: 'hola@erpstudio.es',
+  mail_host: 'smtp.erpstudio.es',
+  mail_port: '587',
+  mail_username: 'hola@erpstudio.es',
+  mail_password: process.env.SMTP_PASSWORD!,
+})
+const prueba = await central.correo.test({ to: 'yo@erpstudio.es' })
+if (!prueba.success) console.warn(prueba.error, prueba.reason) // 200 siempre: no lanza
+
+// Tu cuenta de Stripe, independiente de la facturación de Pimia.
+try {
+  const { data } = await central.stripe.update({
+    publishable_key: 'pk_live_…',
+    secret_key: process.env.STRIPE_SECRET_KEY!,
+    mode: 'live',
+  })
+  console.log(data.webhook_url) // dala de alta a mano en Stripe y guarda su whsec_
+} catch (error) {
+  if (error instanceof RateLimitError) {
+    // stripe_too_many_attempts o el límite de 10 PUT/minuto: espera error.retryAfter
+  } else if (error instanceof PimiaApiError) {
+    const code = error.code as StripeCorteCode | undefined // stripe_key_invalid, stripe_mode_mismatch…
+  }
+}
+```
+
+`error.code` es el código de corte del cuerpo (`code`, o `error`): compara eso,
+no el `message`. El receptor `POST /stripe/integrador/{opaco}` no es un método:
+lo llama Stripe, firmado.
+
 Los tipos salen de `spec/pimia-central-v1.json` (`@pimia/sdk/central-api`).
 
 ## Más
