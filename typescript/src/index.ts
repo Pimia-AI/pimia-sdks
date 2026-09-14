@@ -15,6 +15,9 @@ export type {
   CustomerResource,
   EstimateResource,
   EstimatesRequest,
+  IntegradorBillingCorteCode,
+  IntegradorBillingPortalRequest,
+  IntegradorSubscription,
   InvoiceResource,
   InvoicesRequest,
   ItemWarehouseStockResource,
@@ -41,11 +44,19 @@ export type {
   CentralRequestOptions,
   CentralResponseMeta,
   CentralResponseWithMeta,
+  ContratacionCorteCode,
   CorreoCorteCode,
   CorreoPruebaError,
   CorreoPruebaReason,
   CorreoPruebaRequest,
   CorreoPruebaResult,
+  FacturaACliente,
+  FacturaAClienteEstado,
+  FacturaAClienteReintentable,
+  FacturaAClienteReintento,
+  FacturacionAClientesRequest,
+  FacturasAClientesPage,
+  FacturasAClientesQuery,
   IntegradorCorreoRequest,
   IntegradorDominioRequest,
   IntegradorStripeRequest,
@@ -54,6 +65,7 @@ export type {
   SponsorshipRequest,
   StripeCorteCode,
   StripeMissingPermission,
+  StripeWebhookEvent,
   BillingPortalRequest,
   TenantInvitationRequest,
   TransferOwnershipRequest,
@@ -206,6 +218,14 @@ export const SCOPES = {
    */
   approvalsWrite: 'approvals:write',
   approvalsSubmit: 'approvals:submit',
+  /**
+   * Ver la suscripción del cliente en el Stripe de SU integrador
+   * (`GET /billing/integrador/subscription`, `/api/v1` 1.1.0). No da acceso a
+   * la facturación de Pimia (`billing:*`). Exige además dueño o administrador.
+   */
+  integradorBillingRead: 'integrador-billing:read',
+  /** Abrir el portal de Stripe de esa suscripción (`POST /billing/integrador/portal`). */
+  integradorBillingWrite: 'integrador-billing:write',
 } as const
 
 export type Scope = (typeof SCOPES)[keyof typeof SCOPES]

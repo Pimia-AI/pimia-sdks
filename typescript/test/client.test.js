@@ -396,6 +396,33 @@ test('las tres costuras del CRM de fuera pegan en sus rutas', async () => {
   assert.deepEqual(JSON.parse(calls[2].init.body), { name: 'Talleres Gómez' })
 })
 
+test('la suscripción del cliente en el Stripe de su integrador (/api/v1 1.1.0)', async () => {
+  const { client, calls } = clientWith(() => json({ data: { url: 'https://billing.stripe.com/p/session/x' } }), {
+    accessToken: 'at-1',
+  })
+
+  await client.billing.integrador.subscription()
+  const portal = await client.billing.integrador.portal({ return_url: 'https://app.erpstudio.es/perfil' })
+
+  assert.equal(calls[0].url, `${BASE}/api/v1/billing/integrador/subscription`)
+  assert.equal(calls[0].init.method, 'GET')
+  assert.equal(calls[1].url, `${BASE}/api/v1/billing/integrador/portal`)
+  assert.equal(calls[1].init.method, 'POST')
+  assert.deepEqual(JSON.parse(calls[1].init.body), { return_url: 'https://app.erpstudio.es/perfil' })
+  assert.equal(portal.data.url, 'https://billing.stripe.com/p/session/x')
+})
+
+test('los cortes de billing.integrador se distinguen por code', async () => {
+  const sin = clientWith(() => json({ code: 'suscripcion_no_disponible' }, 404), { accessToken: 'at-1' })
+  await assert.rejects(() => sin.client.billing.integrador.subscription(), (e) => e.status === 404 && e.code === 'suscripcion_no_disponible')
+
+  const url = clientWith(() => json({ code: 'return_url_no_permitida' }, 422), { accessToken: 'at-1' })
+  await assert.rejects(
+    () => url.client.billing.integrador.portal({ return_url: 'https://otro.example' }),
+    (e) => e instanceof ValidationError && e.code === 'return_url_no_permitida',
+  )
+})
+
 /**
  * ⛔ `/bootstrap` NO envuelve en `data`, y los ayudantes leen de la RAÍZ.
  *

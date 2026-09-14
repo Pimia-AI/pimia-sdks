@@ -498,7 +498,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Usuarios a los que se les puede asignar una tarea o un lead */
+        /**
+         * Usuarios a los que se les puede asignar una tarea o un lead
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["crm.assignableUsers"];
         put?: never;
         post?: never;
@@ -1827,7 +1830,9 @@ export interface paths {
          *     nombre de fichero en `Content-Disposition`. El contrato lo publica como
          *     `application/octet-stream` porque el tipo depende del formato.
          *
-         *     Casos que no son el `200`: `404` con `{error: true, message, available}`
+         *     Casos que no son el `200`: `403` si el usuario no tiene `view-invoice`;
+         *     `404` sin cuerpo si la factura no es de la empresa activa (la de la
+         *     cabecera `company`), y `404` con `{error: true, message, available}`
          *     si el país del emisor no ofrece el formato pedido —o no ofrece ninguno—,
          *     donde `available` lista los que sí ofrece; `422` de validación (`{message,
          *     errors}`) si la factura está en borrador, sin número o sin fecha de
@@ -2207,7 +2212,9 @@ export interface paths {
         };
         /**
          * Download FacturaE XML for an invoice
-         * @description Casos que no son el `200`: `404` con `{error: true, message}` si el
+         * @description Casos que no son el `200`: `403` si el usuario no tiene `view-invoice`;
+         *     `404` sin cuerpo si la factura no es de la empresa activa (la de la
+         *     cabecera `company`), y `404` con `{error: true, message}` si el
          *     emisor no ofrece Facturae; `422` de validación (`{message, errors}`) si la
          *     factura está en borrador, sin número o sin fecha de expedición —el
          *     Facturae solo existe sobre una factura publicada—; `500` con `{error:
@@ -3514,6 +3521,11 @@ export interface paths {
          *     y el secret de SES— son OPCIONALES por diseño: omitirlos significa «deja
          *     el que hay», porque la lectura no los devuelve y el panel no puede
          *     reenviar lo que no puede leer.
+         *
+         *     El servidor (`mail_host`) tiene que ser un nombre o una IP pública: uno que
+         *     resuelva a una dirección privada, local o reservada, o que no resuelva, se
+         *     rechaza con `422` y `code: mail_host_not_allowed`. El puerto, uno de 25,
+         *     465, 587 o 2525.
          */
         post: operations["mailConfiguration.saveMailEnvironment"];
         delete?: never;
@@ -3544,6 +3556,11 @@ export interface paths {
          *     `mail_send_failed`) en vez de un error de transporte sin traducir. O sea
          *     que aquí un `200` NO significa que el correo saliera: hay que mirar
          *     `success`.
+         *
+         *     Con `mail_send_failed` va `reason`, uno de `connection_failed`,
+         *     `auth_failed`, `tls_failed`, `rejected`, `timeout` o `unknown`. Hasta
+         *     #831 iba `message` con el texto de la excepción, que incluye lo que
+         *     contestó el servidor al que se conectó la caja; ya no se devuelve.
          */
         post: operations["mailConfiguration.testEmailConfig"];
         delete?: never;
@@ -3778,6 +3795,32 @@ export interface paths {
          *     respuesta es un 422 con `{success: false, error}`.
          */
         post: operations["smart-ocr.process"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opportunities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea la oportunidad y devuelve su id
+         * @description El cuerpo son los cuatro campos de 13.26 —`name` obligatorio; el resto,
+         *     opcionales— y la empresa sale de la cabecera `company`, como en toda la
+         *     API de instancia.
+         *
+         *     ⛔ La respuesta es la FICHA, no un objeto que crecerá: si algún día la
+         *     oportunidad gana campos del módulo, no será por aquí (13.26, vigilado por
+         *     `LaFichaDeLaOportunidadNoCreceTest`).
+         */
+        post: operations["opportunity.opportunities"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5285,6 +5328,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/integrador/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Planes publicados de la vertical y estado de la suscripción. Dueño y administradores */
+        get: operations["suscripcionIntegrador.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/integrador/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abrir el portal de la cuenta del integrador para este cliente.
+         *     return_url debe pertenecer a los orígenes registrados de su app/vertical
+         */
+        post: operations["suscripcionIntegrador.portal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks/{task}/status": {
         parameters: {
             query?: never;
@@ -6407,9 +6487,11 @@ export interface paths {
          *     de la factura nunca encontraba el motivo del rechazo (#646). `sync` y
          *     `retry` ya desenvolvían con `VeriFactuClient::datos()` desde el #505.
          *
-         *     Casos que no son el `200`: `422` si la factura no está registrada en
-         *     VeriFactu (no tiene `verifactu_record_id`); `500` si el servicio no
-         *     contesta o devuelve error, con el motivo en `message`.
+         *     Casos que no son el `200`: `403` si el usuario no tiene `view-invoice`;
+         *     `404` si la factura no existe o no es de la empresa activa (la de la
+         *     cabecera `company`); `422` si la factura no está registrada en VeriFactu
+         *     (no tiene `verifactu_record_id`); `500` si el servicio no contesta o
+         *     devuelve error, con el motivo en `message`.
          */
         get: operations["veriFactu.detail"];
         put?: never;
@@ -7302,6 +7384,12 @@ export interface components {
             /** @description Id de la moneda en la que factura esta empresa. */
             currency_id: string | null;
             currency: components["schemas"]["CurrencyResource"] | null;
+            /**
+             * @description Id del impuesto con el que esta empresa factura por defecto, o
+             *     `null` si no ha marcado ninguno para venta.
+             */
+            default_sales_tax_type_id: number | null;
+            default_sales_tax_type: components["schemas"]["TaxTypeResource"] | null;
         };
         /** CustomFieldRequest */
         CustomFieldRequest: {
@@ -7832,6 +7920,7 @@ export interface components {
             base_sub_total: number;
             base_tax: number;
             base_discount_val: number;
+            opportunity_id: number | null;
         };
         /** EstimateItemResource */
         EstimateItemResource: {
@@ -7905,6 +7994,16 @@ export interface components {
              *     inventa una serie que no existe.
              */
             estimate_series_id: number | null;
+            /**
+             * @description A qué oportunidad comercial pertenece este presupuesto. Funciona
+             *     igual venga el CRM de Pimia o el que hayas puesto tú.
+             */
+            opportunity_id: number | null;
+            /**
+             * @deprecated
+             * @description Usa `opportunity_id`. Este es el enlace al CRM de
+             *     Pimia: si tu vertical sustituye ese módulo, llega `null`.
+             */
             lead_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay).
@@ -7931,6 +8030,23 @@ export interface components {
              */
             items?: components["schemas"]["EstimateItemResource"][];
             customer?: components["schemas"]["CustomerResource"] | null;
+            /**
+             * @description A quién va dirigido el presupuesto cuando todavía no hay cliente,
+             *     y lo justo para poder mandárselo: nombre, contacto, correo y
+             *     teléfono. La etapa, la probabilidad, el importe esperado y la
+             *     actividad comercial son de TU CRM y no viajan por aquí.
+             */
+            opportunity?: {
+                id: number;
+                name: string;
+                contact_name: string | null;
+                email: string | null;
+                phone: string | null;
+            };
+            /**
+             * @deprecated
+             * @description Usa `opportunity`. Ver `lead_id`.
+             */
             lead?: {
                 id: number;
                 title: string;
@@ -8000,6 +8116,16 @@ export interface components {
             total: number;
             currency_id: number | null;
             customer_id: number | null;
+            /**
+             * @description A qué oportunidad comercial pertenece, venga el CRM de Pimia o el
+             *     que hayas puesto tú.
+             */
+            opportunity_id: number | null;
+            /**
+             * @deprecated
+             * @description Usa `opportunity_id`. Este es el enlace al CRM de
+             *     Pimia: si tu vertical sustituye ese módulo, llega `null`.
+             */
             lead_id: number | null;
             /**
              * @description Referencia externa del client OAuth del token (null si no hay),
@@ -8018,12 +8144,64 @@ export interface components {
                 email: string | null;
                 phone: string | null;
             };
+            /**
+             * @description A quién va dirigido cuando todavía no hay cliente: lo justo para
+             *     la columna del listado y para prefijar el destinatario del envío.
+             */
+            opportunity?: {
+                id: number;
+                name: string;
+                contact_name: string | null;
+                email: string | null;
+                phone: string | null;
+            };
         };
         /** EstimatesRequest */
         EstimatesRequest: {
             estimate_date: string;
             expiry_date?: string | null;
+            /**
+             * @description Un presupuesto va dirigido a ALGUIEN: un cliente de la ficha, o
+             *     una oportunidad. `required_without_all` y no `required_without` a
+             *     secas —que exigiría cliente en cuanto faltara cualquiera de los
+             *     dos— porque el caso que esta pieza existe para habilitar es
+             *     justamente el de una oportunidad SIN cliente detrás.
+             */
             customer_id?: number | null;
+            /**
+             * @description A qué oportunidad comercial pertenece este presupuesto. Funciona
+             *     igual venga el CRM de Pimia o el que hayas puesto tú. Es un
+             *     entero de Pimia, no el id de TU sistema: para eso está
+             *     `external_ref`, aquí abajo. Con `opportunity_id` o con
+             *     `customer_id` basta; no hacen falta los dos.
+             */
+            opportunity_id?: number | null;
+            /**
+             * @description A quién va dirigido, cuando la oportunidad **es tuya**: si tu
+             *     vertical sustituye el CRM de Pimia, mándala aquí y Pimia la
+             *     guarda con el presupuesto. En el alta la crea; al editar,
+             *     actualiza la que el documento ya tuviera. Solo lo que Pimia necesita para emitir el documento, enviarlo,
+             *     imprimirlo y contarlo: a quién va (`name`), con quién se habla
+             *     (`contact_name`), y por dónde escribirle (`email`, `phone`). La
+             *     etapa, la probabilidad y el importe esperado son de TU CRM y no
+             *     caben aquí.
+             *
+             *     Manda `opportunity` **o** `opportunity_id`, nunca los dos.
+             */
+            opportunity?: {
+                name?: string;
+                contact_name?: string | null;
+                /** Format: email */
+                email?: string | null;
+                phone?: string | null;
+            };
+            /**
+             * @deprecated
+             * @description Usa `opportunity_id`. Este es el enlace al CRM de
+             *     Pimia; si tu vertical sustituye ese módulo, no te sirve. Sigue
+             *     funcionando: cuando llega sin `opportunity_id`, el servidor lo
+             *     traduce y deja escritos los dos.
+             */
             lead_id?: number | null;
             /**
              * @description Referencia externa: TU identificador para este presupuesto (el
@@ -8421,6 +8599,7 @@ export interface components {
             contract_id: number | null;
             export_batch_id: number | null;
             operation_nature: string | null;
+            opportunity_id: number | null;
         };
         /** InvoiceItem */
         InvoiceItem: {
@@ -9243,7 +9422,11 @@ export interface components {
             /** Format: email */
             from_mail: string;
             mail_host?: string;
-            mail_port?: number;
+            /**
+             * @description 25, 465, 587 o 2525.
+             * @enum {integer}
+             */
+            mail_port?: "25" | "465" | "587" | "2525";
             mail_username?: string | null;
             mail_password?: string | null;
             /** @enum {string|null} */
@@ -9254,6 +9437,7 @@ export interface components {
             mail_local_domain?: string | null;
             mail_ses_key?: string;
             mail_ses_secret?: string | null;
+            /** @description Una región de AWS, como `eu-west-1`. */
             mail_ses_region?: string | null;
         };
         /** Note */
@@ -9305,6 +9489,34 @@ export interface components {
              * @description Alias de `document` para la app móvil. Mismos tipos y mismo tope.
              */
             file?: Blob;
+        };
+        /**
+         * OpportunityRequest
+         * @description La ficha de la oportunidad: **los cuatro campos de 13.26 y ninguno más**.
+         *
+         *     Las reglas son LAS MISMAS que ya valida `EstimatesRequest` para el objeto
+         *     `opportunity` embebido (`EstimatesRequest:203-206`), y eso es deliberado: son
+         *     dos puertas al mismo dato, así que aceptar aquí algo que allí se rechaza
+         *     —o al revés— sería que la forma de la oportunidad dependiera de por dónde
+         *     entró.
+         *
+         *     ⛔ **Etapa, probabilidad, importe esperado y actividad comercial NO entran.**
+         *     Son del módulo de CRM —el de Pimia o el que ponga el integrador— y el core no
+         *     los guarda: es la decisión 13.26, y `LaFichaDeLaOportunidadNoCreceTest` la
+         *     vigila. Un campo de más aquí no se guardaría en ningún sitio; se rechaza para
+         *     que quien lo mande se entere en vez de creer que se guardó.
+         */
+        OpportunityRequest: {
+            name: string;
+            contact_name?: string | null;
+            /** Format: email */
+            email?: string | null;
+            /**
+             * @description 30 y no 20: es el ancho que el CRM nativo ya usaba para el
+             *     teléfono de un lead, y esta ficha tiene que poder recibir lo que
+             *     aquél tenía sin recortarlo. Igual que en `EstimatesRequest`.
+             */
+            phone?: string | null;
         };
         /** PDFConfigurationRequest */
         PDFConfigurationRequest: {
@@ -10866,7 +11078,10 @@ export interface operations {
     "role.abilities": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -10892,7 +11107,10 @@ export interface operations {
     "absence.balance": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -10935,7 +11153,10 @@ export interface operations {
             query?: {
                 month?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -10965,7 +11186,10 @@ export interface operations {
     "absence.approve": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The absence ID */
                 absence: number;
@@ -10999,7 +11223,10 @@ export interface operations {
     "absence.reject": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The absence ID */
                 absence: number;
@@ -11033,7 +11260,10 @@ export interface operations {
     "absence.cancel": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The absence ID */
                 absence: number;
@@ -11063,7 +11293,10 @@ export interface operations {
                 scope?: string;
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11090,7 +11323,10 @@ export interface operations {
     "absence.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11118,7 +11354,10 @@ export interface operations {
     "absence.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The absence ID */
                 absence: number;
@@ -11151,7 +11390,10 @@ export interface operations {
                 year?: number | null;
                 group_by?: "customer" | "category" | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11211,7 +11453,10 @@ export interface operations {
     "contract.activateContract": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -11265,8 +11510,20 @@ export interface operations {
     };
     "appointment.index": {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Desde esta fecha y hora de comienzo, inclusive. A diferencia de facturas y presupuestos, aquí `from` y `to` SÍ filtran por separado. */
+                from?: string;
+                /** @description Hasta esta fecha y hora de comienzo, inclusive. */
+                to?: string;
+                /** @description Estado de la cita. */
+                status?: string;
+                /** @description Solo las de este cliente. */
+                customer_id?: number;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11287,7 +11544,10 @@ export interface operations {
     "appointment.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11324,7 +11584,10 @@ export interface operations {
     "appointment.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The appointment ID */
                 appointment: number;
@@ -11349,7 +11612,10 @@ export interface operations {
     "appointment.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The appointment ID */
                 appointment: number;
@@ -11379,7 +11645,10 @@ export interface operations {
     "appointment.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The appointment ID */
                 appointment: number;
@@ -11404,7 +11673,10 @@ export interface operations {
     "approvals.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11475,7 +11747,10 @@ export interface operations {
     "approvals.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -11543,7 +11818,10 @@ export interface operations {
     "apps.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11597,7 +11875,10 @@ export interface operations {
     "apps.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11662,7 +11943,10 @@ export interface operations {
     "apps.install": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11733,7 +12017,10 @@ export interface operations {
     "apps.uninstall": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11800,7 +12087,10 @@ export interface operations {
     "apps.config": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11833,7 +12123,10 @@ export interface operations {
     "apps.updateConfig": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11867,7 +12160,10 @@ export interface operations {
     "apps.rotateCredential": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -11891,7 +12187,10 @@ export interface operations {
     "crm.assignableUsers": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11930,7 +12229,10 @@ export interface operations {
     "bank-accounts.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11952,7 +12254,10 @@ export interface operations {
     "bank-accounts.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11987,7 +12292,10 @@ export interface operations {
     "bank-accounts.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 bank_account: string;
             };
@@ -12011,7 +12319,10 @@ export interface operations {
     "bank-accounts.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 bank_account: string;
             };
@@ -12048,7 +12359,10 @@ export interface operations {
     "bank-accounts.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 bank_account: string;
             };
@@ -12073,7 +12387,10 @@ export interface operations {
     "bankImport.import": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12118,7 +12435,10 @@ export interface operations {
     "bankImport.history": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12140,7 +12460,10 @@ export interface operations {
     "bankImport.presets": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12162,7 +12485,10 @@ export interface operations {
     "general.bootstrap": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12210,7 +12536,24 @@ export interface operations {
                             group: string;
                         }[];
                         modules: unknown[];
-                        installed_modules: string;
+                        /**
+                         * @description Lo instalado, SIN lo que la vertical sustituyó: para la web, un
+                         *     módulo sustituido está apagado y además no existe.
+                         */
+                        installed_modules: unknown[];
+                        /**
+                         * @description Los módulos de Pimia que el integrador SUSTITUYÓ por software
+                         *     suyo en esta vertical (13.19). No basta con que salgan de `installed_modules`: la web esconde
+                         *     pantallas por ahí, pero su VOCABULARIO sigue repartido por vistas
+                         *     que no son del módulo —el embudo del panel, «oportunidad» como
+                         *     destinatario de un presupuesto, las tareas de un lead—. Con esta
+                         *     lista puede apagar también esas ramas. La costura es suya y es de
+                         *     la fase 1; el núcleo solo publica el dato.
+                         *
+                         *     Lista vacía en todo lo que no sea un tenant de vertical, que es
+                         *     casi todo.
+                         */
+                        substituted_modules: string[];
                     };
                 };
             };
@@ -12219,7 +12562,10 @@ export interface operations {
     "general.bulkExchangeRate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12247,7 +12593,10 @@ export interface operations {
     "contract.cancelContract": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -12285,7 +12634,10 @@ export interface operations {
     "estimate.changeEstimateStatus": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -12328,7 +12680,10 @@ export interface operations {
     "invoice.changeInvoiceStatus": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 invoice: string;
             };
@@ -12366,7 +12721,10 @@ export interface operations {
     "estimate.cloneEstimate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -12393,7 +12751,10 @@ export interface operations {
     "invoice.cloneInvoice": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -12420,7 +12781,10 @@ export interface operations {
     "company.company": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12442,7 +12806,10 @@ export interface operations {
     "company.getUser": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12464,7 +12831,10 @@ export interface operations {
     "company.updateProfile": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12491,7 +12861,10 @@ export interface operations {
     "company.uploadAvatar": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12518,7 +12891,10 @@ export interface operations {
     "company.updateCompany": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12546,7 +12922,10 @@ export interface operations {
     "company.uploadCompanyLogo": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12573,7 +12952,10 @@ export interface operations {
     "settings.companyCurrencyCheckTransactions": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12595,7 +12977,10 @@ export interface operations {
     "general.config": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12616,7 +13001,10 @@ export interface operations {
     "connectedApps.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12656,7 +13044,10 @@ export interface operations {
     "connectedApps.destroyCredential": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 credentialId: number;
             };
@@ -12680,7 +13071,10 @@ export interface operations {
     "connectedApps.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 authorizationId: number;
             };
@@ -12706,7 +13100,10 @@ export interface operations {
             query: {
                 customer_id: number;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12730,7 +13127,10 @@ export interface operations {
     "contact.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12758,7 +13158,10 @@ export interface operations {
     "contact.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contact ID */
                 contact: number;
@@ -12785,7 +13188,10 @@ export interface operations {
     "contact.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contact ID */
                 contact: number;
@@ -12817,7 +13223,10 @@ export interface operations {
     "contact.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contact ID */
                 contact: number;
@@ -12843,7 +13252,10 @@ export interface operations {
     "contractDocument.upload": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -12881,7 +13293,10 @@ export interface operations {
     "contractDocument.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -12908,7 +13323,10 @@ export interface operations {
     "contracts.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12935,7 +13353,10 @@ export interface operations {
     "contracts.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12961,7 +13382,10 @@ export interface operations {
     "contracts.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -12989,7 +13413,10 @@ export interface operations {
     "contracts.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -13016,7 +13443,10 @@ export interface operations {
     "contracts.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -13048,7 +13478,10 @@ export interface operations {
     "contracts.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -13085,7 +13518,10 @@ export interface operations {
     "estimate.convertEstimate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -13111,7 +13547,35 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "general.countries": {
@@ -13139,7 +13603,10 @@ export interface operations {
     "invoice.creditNote": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 invoice: string;
             };
@@ -13165,7 +13632,10 @@ export interface operations {
     "general.currencies": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13187,7 +13657,10 @@ export interface operations {
     "custom-fields.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13210,7 +13683,10 @@ export interface operations {
     "custom-fields.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13238,7 +13714,10 @@ export interface operations {
     "custom-fields.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The custom field ID */
                 customField: number;
@@ -13265,7 +13744,10 @@ export interface operations {
     "custom-fields.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The custom field ID */
                 customField: number;
@@ -13297,7 +13779,10 @@ export interface operations {
     "custom-fields.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The custom field ID */
                 customField: number;
@@ -13323,7 +13808,10 @@ export interface operations {
     "report.customerSalesReport": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -13345,7 +13833,10 @@ export interface operations {
     "customer.customerStats": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The customer ID */
                 customer: number;
@@ -13415,7 +13906,10 @@ export interface operations {
     "customers.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13444,10 +13938,25 @@ export interface operations {
             query?: {
                 /** @description Con `summary`, cada fila trae solo los campos del listado: nombre, contacto, NIF, saldo pendiente neto en subunidades y fechas — sin direcciones, campos personalizados, empresa, moneda ni método de pago, y sin el avatar (que cuesta una consulta por fila). Pensado para índices y para recuentos que solo leen el `meta`; la ficha completa sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
+                /** @description Cuántas filas por página. Sin él, 10. */
+                limit?: number;
+                /** @description Busca por nombre. Es el filtro que usa un integrador para encontrar a alguien sin conocer su id, y hasta hoy no estaba publicado en ninguna parte. */
+                search?: string;
+                /** @description Solo los de este cliente. */
+                customer_id?: number;
+                /** @description Coincidencia parcial por el nombre que se muestra. */
+                display_name?: string;
+                /** @description Coincidencia parcial por el nombre de la persona de contacto. */
+                contact_name?: string;
+                /** @description Coincidencia parcial por teléfono. */
+                phone?: string;
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13482,7 +13991,10 @@ export interface operations {
     "customers.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13504,13 +14016,44 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "customers.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The customer ID */
                 customer: number;
@@ -13537,7 +14080,10 @@ export interface operations {
     "customers.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The customer ID */
                 customer: number;
@@ -13563,7 +14109,35 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "dashboard.dashboard": {
@@ -13580,7 +14154,10 @@ export interface operations {
                 start?: string;
                 end?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13691,7 +14268,10 @@ export interface operations {
     "general.dateFormats": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13716,7 +14296,10 @@ export interface operations {
     "delegableCatalog.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13756,7 +14339,10 @@ export interface operations {
     "delegableCatalog.delegations": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13802,7 +14388,10 @@ export interface operations {
     "delegableCatalog.approveProposal": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -13858,7 +14447,10 @@ export interface operations {
     "delegableCatalog.rejectProposal": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -13913,7 +14505,10 @@ export interface operations {
     "delegableCatalog.needsChangesProposal": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -13967,7 +14562,10 @@ export interface operations {
     "delegableCatalog.upsert": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 task_type: string;
             };
@@ -14020,7 +14618,10 @@ export interface operations {
     "delegableCatalog.disable": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 task_type: string;
             };
@@ -14060,7 +14661,10 @@ export interface operations {
     "delegableCatalog.discover": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14093,7 +14697,10 @@ export interface operations {
     "delegableCatalog.reverify": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 task_type: string;
             };
@@ -14134,7 +14741,10 @@ export interface operations {
     "delegableCatalog.execute": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14168,7 +14778,10 @@ export interface operations {
     "delegableCatalog.delegate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14222,7 +14835,10 @@ export interface operations {
     "deliveryNotes.markDelivered": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -14257,7 +14873,10 @@ export interface operations {
     "deliveryNotes.convertToInvoice": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -14293,7 +14912,10 @@ export interface operations {
     "deliveryNotes.deleteMultiple": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14320,7 +14942,10 @@ export interface operations {
     "delivery-notes.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14342,7 +14967,10 @@ export interface operations {
     "delivery-notes.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14384,7 +15012,10 @@ export interface operations {
     "delivery-notes.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 delivery_note: string;
             };
@@ -14408,7 +15039,10 @@ export interface operations {
     "delivery-notes.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 delivery_note: string;
             };
@@ -14452,7 +15086,10 @@ export interface operations {
     "delivery-notes.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 delivery_note: string;
             };
@@ -14486,7 +15123,10 @@ export interface operations {
     "desarrolladorLink.status": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14529,7 +15169,10 @@ export interface operations {
     "desarrolladorLink.request": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14578,7 +15221,10 @@ export interface operations {
     "desarrolladorLink.revoke": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14604,7 +15250,10 @@ export interface operations {
                 /** @description Formato del documento electrónico: `facturae` (España, XML) o `facturx` (Francia, PDF/A-3). Sin él, el primero que ofrezca el país del emisor. */
                 format?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -14622,6 +15271,7 @@ export interface operations {
                     "application/octet-stream": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
             500: {
@@ -14642,7 +15292,10 @@ export interface operations {
             query?: {
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14669,7 +15322,10 @@ export interface operations {
     "employees.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14697,7 +15353,10 @@ export interface operations {
     "employees.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The employee ID */
                 employee: number;
@@ -14724,7 +15383,10 @@ export interface operations {
     "employees.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The employee ID */
                 employee: number;
@@ -14756,7 +15418,10 @@ export interface operations {
     "employees.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The employee ID */
                 employee: number;
@@ -14782,7 +15447,10 @@ export interface operations {
     "pdf.estimatePdf": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate unique hash */
                 estimate: string | null;
@@ -14805,7 +15473,10 @@ export interface operations {
     "estimate-series.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14828,7 +15499,10 @@ export interface operations {
     "estimate-series.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14856,7 +15530,10 @@ export interface operations {
     "estimate-series.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate series ID */
                 estimateSeries: number;
@@ -14883,7 +15560,10 @@ export interface operations {
     "estimate-series.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate series ID */
                 estimateSeries: number;
@@ -14915,7 +15595,10 @@ export interface operations {
     "estimate-series.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate series ID */
                 estimateSeries: number;
@@ -14941,7 +15624,10 @@ export interface operations {
     "estimate.estimateTemplates": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14968,7 +15654,10 @@ export interface operations {
     "estimates.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14997,10 +15686,31 @@ export interface operations {
             query?: {
                 /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, estado, importes en subunidades, el cliente reducido a `{id, name, email, phone}` y la URL del PDF — sin líneas, impuestos, empresa ni moneda. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
+                /** @description Cuántas filas por página. Sin él, 10. */
+                limit?: number;
+                /** @description Busca por número de documento o por nombre del cliente. */
+                search?: string;
+                /** @description Solo los de este cliente. */
+                customer_id?: number;
+                /** @description Solo los de esta oportunidad comercial. Funciona igual venga el CRM de Pimia o el que hayas puesto tú. */
+                opportunity_id?: number;
+                /** @description ⚠️ Va SIEMPRE con `to_date`: el filtro de fechas mira los dos a la vez, así que mandar solo uno devuelve la lista SIN FILTRAR y con aspecto de filtrada. Formato `YYYY-MM-DD`. */
+                from_date?: string;
+                /** @description ⚠️ Va SIEMPRE con `from_date`; ver ahí. Formato `YYYY-MM-DD`. */
+                to_date?: string;
+                /** @description Estado del presupuesto (`DRAFT`, `SENT`, `VIEWED`, `EXPIRED`, `ACCEPTED`, `REJECTED`). */
+                status?: string;
+                /** @description Coincidencia parcial por número de presupuesto. */
+                estimate_number?: string;
+                /** @description Solo los de esta serie de numeración. */
+                estimate_series_id?: number;
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15035,7 +15745,10 @@ export interface operations {
     "estimates.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15057,13 +15770,44 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "estimates.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -15090,7 +15834,10 @@ export interface operations {
     "estimates.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -15116,13 +15863,44 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "categories.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15145,7 +15923,10 @@ export interface operations {
     "categories.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15173,7 +15954,10 @@ export interface operations {
     "categories.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The category ID */
                 category: number;
@@ -15200,7 +15984,10 @@ export interface operations {
     "categories.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The category ID */
                 category: number;
@@ -15232,7 +16019,10 @@ export interface operations {
     "categories.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The category ID */
                 category: number;
@@ -15258,7 +16048,10 @@ export interface operations {
     "expenses.uploadReceipt": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The expense ID */
                 expense: number;
@@ -15296,7 +16089,10 @@ export interface operations {
     "expenses.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15323,7 +16119,10 @@ export interface operations {
     "expenses.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15349,7 +16148,10 @@ export interface operations {
     "expenses.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15377,7 +16179,10 @@ export interface operations {
     "expenses.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The expense ID */
                 expense: number;
@@ -15404,7 +16209,10 @@ export interface operations {
     "expenses.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The expense ID */
                 expense: number;
@@ -15436,7 +16244,10 @@ export interface operations {
     "report.expensesReport": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -15462,7 +16273,10 @@ export interface operations {
                 from_date: string;
                 to_date: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -15487,7 +16301,10 @@ export interface operations {
                 from_date: string;
                 to_date: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -15512,7 +16329,10 @@ export interface operations {
                 from_date: string;
                 to_date: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -15534,7 +16354,10 @@ export interface operations {
     "facturae.download": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -15552,6 +16375,7 @@ export interface operations {
                     "application/xml": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
             500: {
@@ -15572,7 +16396,10 @@ export interface operations {
             query?: {
                 year?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15600,7 +16427,10 @@ export interface operations {
     "fiscalQuarter.toggle": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15644,7 +16474,10 @@ export interface operations {
                 to?: string;
                 per_page?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15695,7 +16528,10 @@ export interface operations {
                 status?: "open" | "closed" | "submitted" | "declared" | "rejected";
                 per_page?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15737,7 +16573,10 @@ export interface operations {
     "frSettings.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15823,7 +16662,10 @@ export interface operations {
     "frSettings.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15943,7 +16785,10 @@ export interface operations {
             query?: {
                 q?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15969,7 +16814,10 @@ export interface operations {
     "gestoriaLink.status": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16023,7 +16871,10 @@ export interface operations {
     "gestoriaLink.request": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16077,7 +16928,10 @@ export interface operations {
     "gestoriaLink.revoke": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16100,7 +16954,10 @@ export interface operations {
     "general.getAllUsedCurrencies": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16123,7 +16980,10 @@ export interface operations {
             query: {
                 "settings[]": string[];
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16143,7 +17003,10 @@ export interface operations {
     "settings.updateCompanySettings": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16174,7 +17037,10 @@ export interface operations {
     "exchangeRate.getExchangeRate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The currency ID */
                 currency: number;
@@ -16202,7 +17068,10 @@ export interface operations {
             query: {
                 key: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16225,7 +17094,10 @@ export interface operations {
     "settings.updateSettings": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16254,7 +17126,10 @@ export interface operations {
             query: {
                 "settings[]": string[];
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16276,7 +17151,10 @@ export interface operations {
     "settings.updateUserSettings": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16302,7 +17180,10 @@ export interface operations {
     "inboundEInvoice.approve": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -16334,7 +17215,10 @@ export interface operations {
     "inboundEInvoice.refuse": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -16365,7 +17249,10 @@ export interface operations {
     "incidence.review": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The incidence ID */
                 incidence: number;
@@ -16404,7 +17291,10 @@ export interface operations {
                 scope?: string;
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16430,7 +17320,10 @@ export interface operations {
     "incidences.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16458,7 +17351,10 @@ export interface operations {
     "incidences.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The incidence ID */
                 incidence: number;
@@ -16485,7 +17381,10 @@ export interface operations {
     "incidences.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The incidence ID */
                 incidence: number;
@@ -16525,7 +17424,10 @@ export interface operations {
     "investmentAssets.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16556,7 +17458,10 @@ export interface operations {
             query?: {
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16605,7 +17510,10 @@ export interface operations {
     "investment-assets.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16642,7 +17550,10 @@ export interface operations {
     "investment-assets.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The investment asset ID */
                 investment_asset: number;
@@ -16669,7 +17580,10 @@ export interface operations {
     "investment-assets.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The investment asset ID */
                 investment_asset: number;
@@ -16710,7 +17624,10 @@ export interface operations {
     "investment-assets.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The investment asset ID */
                 investment_asset: number;
@@ -16736,7 +17653,10 @@ export interface operations {
     "invoiceFiscal.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -16779,7 +17699,10 @@ export interface operations {
     "invoice.invoiceFormats": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16822,7 +17745,10 @@ export interface operations {
     "pdf.invoicePdf": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice unique hash */
                 invoice: string | null;
@@ -16845,7 +17771,10 @@ export interface operations {
     "invoice-series.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16868,7 +17797,10 @@ export interface operations {
     "invoice-series.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16896,7 +17828,10 @@ export interface operations {
     "invoice-series.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice series ID */
                 invoiceSeries: number;
@@ -16923,7 +17858,10 @@ export interface operations {
     "invoice-series.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice series ID */
                 invoiceSeries: number;
@@ -16955,7 +17893,10 @@ export interface operations {
     "invoice-series.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice series ID */
                 invoiceSeries: number;
@@ -16992,7 +17933,10 @@ export interface operations {
     "invoiceTemplate.duplicate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17028,7 +17972,10 @@ export interface operations {
     "invoiceTemplate.preview": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17057,7 +18004,10 @@ export interface operations {
     "invoiceTemplate.showLetterhead": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17080,7 +18030,10 @@ export interface operations {
     "invoiceTemplate.uploadLetterhead": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17118,7 +18071,10 @@ export interface operations {
     "invoiceTemplate.deleteLetterhead": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17145,7 +18101,10 @@ export interface operations {
     "invoice-templates.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17168,7 +18127,10 @@ export interface operations {
     "invoice-templates.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17196,7 +18158,10 @@ export interface operations {
     "invoice-templates.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17223,7 +18188,10 @@ export interface operations {
     "invoice-templates.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17255,7 +18223,10 @@ export interface operations {
     "invoice-templates.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice template ID */
                 invoiceTemplate: number;
@@ -17292,7 +18263,10 @@ export interface operations {
     "invoice.invoiceTemplatePreview": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17334,7 +18308,10 @@ export interface operations {
     "invoice.invoiceTemplates": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17361,7 +18338,10 @@ export interface operations {
     "invoices.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17391,10 +18371,29 @@ export interface operations {
                 limit?: string;
                 /** @description Con `summary`, cada fila trae solo los campos del listado: fechas, número, los tres ejes de estado (documento, cobro y AEAT), importes en subunidades —incluidos los netos de rectificativas—, el cliente reducido a `{id, name, email, phone}` y la URL del PDF; sin líneas, impuestos, pagos, empresa ni la factura rectificada. Pensado para índices y para recuentos que solo leen el `meta`; el documento completo sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
+                /** @description Busca por número de documento o por nombre del cliente. */
+                search?: string;
+                /** @description Solo los de este cliente. */
+                customer_id?: number;
+                /** @description ⚠️ Va SIEMPRE con `to_date`: el filtro de fechas mira los dos a la vez, así que mandar solo uno devuelve la lista SIN FILTRAR y con aspecto de filtrada. Formato `YYYY-MM-DD`. */
+                from_date?: string;
+                /** @description ⚠️ Va SIEMPRE con `from_date`; ver ahí. Formato `YYYY-MM-DD`. */
+                to_date?: string;
+                /** @description Estado de la factura (`DRAFT`, `SENT`, `VIEWED`, `COMPLETED`). */
+                status?: string;
+                /** @description Estado de cobro: `PAID`, `UNPAID`, `PARTIALLY_PAID`, y además `DUE` y `OVERDUE`, que son las vencidas. */
+                paid_status?: string;
+                /** @description Coincidencia parcial por número de factura. */
+                invoice_number?: string;
+                /** @description Solo las de esta serie de numeración. */
+                invoice_series_id?: number;
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17429,7 +18428,10 @@ export interface operations {
     "invoices.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17451,13 +18453,44 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "invoices.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -17484,7 +18517,10 @@ export interface operations {
     "invoices.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -17510,7 +18546,35 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: components["responses"]["ValidationException"];
+            /**
+             * @description La `external_ref` que mandas ya la usa otro recurso del mismo tipo dentro de tu espacio (tu client y esa empresa), y `error` vale `external_ref_already_used`.
+             *
+             *     No es necesariamente un error tuyo: es la respuesta a un reintento. `existing_id` trae el recurso que YA lleva esa referencia, así que con esta respuesta resuelves el find-or-create sin mantener ningún mapeo local — intenta crear, y si choca, ya lo tienes.
+             *
+             *     ⚠️ Comparte código con el 422 de validación: distínguelos por `error`, no por el estado.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Siempre `external_ref_already_used` en esta respuesta.
+                         * @enum {string}
+                         */
+                        error: "external_ref_already_used";
+                        /** @description Explicación en castellano, para el registro del integrador. No la programes: programa `error`. */
+                        message: string;
+                        /** @description La referencia que mandaste y ya estaba cogida. */
+                        external_ref: string;
+                        /** @description Qué tipo de recurso la lleva (`customer`, `estimate`, `invoice`…). */
+                        entity_type: string;
+                        /** @description El id del recurso que YA lleva esa referencia. Es lo que convierte el error en un find-or-create. */
+                        existing_id: number;
+                    };
+                };
+            };
         };
     };
     "item-categories.index": {
@@ -17518,7 +18582,10 @@ export interface operations {
             query?: {
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17539,7 +18606,10 @@ export interface operations {
     "item-categories.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17569,7 +18639,10 @@ export interface operations {
     "item-categories.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The item category ID */
                 itemCategory: number;
@@ -17594,7 +18667,10 @@ export interface operations {
     "item-categories.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The item category ID */
                 itemCategory: number;
@@ -17628,7 +18704,10 @@ export interface operations {
     "item-categories.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The item category ID */
                 itemCategory: number;
@@ -17653,7 +18732,10 @@ export interface operations {
     "exports.items": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17673,7 +18755,10 @@ export interface operations {
     "exports.items-template": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17693,7 +18778,10 @@ export interface operations {
     "items-export": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17713,7 +18801,10 @@ export interface operations {
     "items-template": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17733,7 +18824,10 @@ export interface operations {
     "itemImportExport.import": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17778,7 +18872,10 @@ export interface operations {
     "report.itemSalesReport": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -17800,7 +18897,10 @@ export interface operations {
     "items.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17830,7 +18930,10 @@ export interface operations {
                 /** @description Con `summary`, cada fila trae solo lo que los listados leen: identidad, precios y banderas, la categoría reducida a `{id, name}`, el nombre de la unidad y los impuestos del artículo (enteros, con la misma forma que la vista completa). Sin empresa, sin moneda y sin la unidad como objeto — el recurso completo arrastra la empresa entera por fila, roles incluidos, y contra un catálogo de 200 artículos eso son ~4 s y ~900 KB de los que el 86 % es ese lastre. El artículo completo sigue en el detalle y en el índice sin este parámetro. */
                 view?: "summary";
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17867,7 +18970,10 @@ export interface operations {
     "items.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -17895,7 +19001,10 @@ export interface operations {
     "items.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 item: string;
             };
@@ -17920,7 +19029,10 @@ export interface operations {
     "items.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 item: string;
             };
@@ -17950,7 +19062,10 @@ export interface operations {
     "lead.updateStage": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -17985,7 +19100,10 @@ export interface operations {
     "lead.setClosingEstimate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18019,7 +19137,10 @@ export interface operations {
     "lead.convert": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18058,7 +19179,10 @@ export interface operations {
     "lead.estimates": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18085,7 +19209,10 @@ export interface operations {
     "lead.notes": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18111,7 +19238,10 @@ export interface operations {
     "lead.storeNote": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18145,7 +19275,10 @@ export interface operations {
     "lead.destroyNote": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18172,7 +19305,10 @@ export interface operations {
     "lead.activities": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18205,7 +19341,10 @@ export interface operations {
                 orderByField?: string;
                 orderBy?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18232,7 +19371,10 @@ export interface operations {
     "leads.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18260,7 +19402,10 @@ export interface operations {
     "leads.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18287,7 +19432,10 @@ export interface operations {
     "leads.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18319,7 +19467,10 @@ export interface operations {
     "leads.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The lead ID */
                 lead: number;
@@ -18345,7 +19496,10 @@ export interface operations {
     "legalReport.employees": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18376,7 +19530,10 @@ export interface operations {
     "legalReport.preview": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18461,7 +19618,10 @@ export interface operations {
     "legalReport.pdf": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18481,7 +19641,10 @@ export interface operations {
     "legalReport.csv": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18501,7 +19664,10 @@ export interface operations {
     "legalReport.signatures": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18534,7 +19700,10 @@ export interface operations {
     "mailConfiguration.getMailDrivers": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18554,7 +19723,10 @@ export interface operations {
     "mailConfiguration.getMailEnvironment": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18590,7 +19762,10 @@ export interface operations {
     "mailConfiguration.saveMailEnvironment": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18617,7 +19792,10 @@ export interface operations {
     "mailConfiguration.testEmailConfig": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18640,7 +19818,7 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         error?: string;
-                        message?: string;
+                        reason?: string;
                     };
                 };
             };
@@ -18663,7 +19841,10 @@ export interface operations {
                 /** @description Id del cliente, para los formatos de numeración que llevan su serie o su contador (`{{CUSTOMER_SERIES}}`, `{{CUSTOMER_SEQUENCE}}`). Irrelevante en el resto de formatos. */
                 userId?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18688,7 +19869,10 @@ export interface operations {
     "notes.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18736,7 +19920,10 @@ export interface operations {
     "notes.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18764,7 +19951,10 @@ export interface operations {
     "notes.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The note ID */
                 note: number;
@@ -18791,7 +19981,10 @@ export interface operations {
     "notes.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The note ID */
                 note: number;
@@ -18823,7 +20016,10 @@ export interface operations {
     "notes.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The note ID */
                 note: number;
@@ -18849,7 +20045,10 @@ export interface operations {
     "notifications.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18881,7 +20080,10 @@ export interface operations {
     "notifications.markRead": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -18904,7 +20106,10 @@ export interface operations {
     "notifications.markAllRead": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18925,7 +20130,10 @@ export interface operations {
     "notifications.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -18948,7 +20156,10 @@ export interface operations {
     "general.numberPlaceholders": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18970,7 +20181,10 @@ export interface operations {
     "ocr.extract": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -18999,7 +20213,10 @@ export interface operations {
     "smart-ocr.process": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19025,10 +20242,49 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "opportunity.opportunities": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            name: string;
+                            contact_name: string | null;
+                            email: string | null;
+                            phone: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "pDFConfiguration.getDrivers": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19051,7 +20307,10 @@ export interface operations {
     "pDFConfiguration.getEnvironment": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19076,7 +20335,10 @@ export interface operations {
     "pDFConfiguration.saveEnvironment": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19104,7 +20366,10 @@ export interface operations {
     "payment-methods.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19127,7 +20392,10 @@ export interface operations {
     "payment-methods.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19155,7 +20423,10 @@ export interface operations {
     "payment-methods.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment method ID */
                 paymentMethod: number;
@@ -19182,7 +20453,10 @@ export interface operations {
     "payment-methods.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment method ID */
                 paymentMethod: number;
@@ -19214,7 +20488,10 @@ export interface operations {
     "payment-methods.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment method ID */
                 paymentMethod: number;
@@ -19240,7 +20517,10 @@ export interface operations {
     "pdf.paymentPdf": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment unique hash */
                 payment: string | null;
@@ -19263,7 +20543,10 @@ export interface operations {
     "payments.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19290,7 +20573,10 @@ export interface operations {
     "payments.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19316,7 +20602,10 @@ export interface operations {
     "payments.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19344,7 +20633,10 @@ export interface operations {
     "payments.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment ID */
                 payment: number;
@@ -19371,7 +20663,10 @@ export interface operations {
     "payments.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment ID */
                 payment: number;
@@ -19403,7 +20698,10 @@ export interface operations {
     "invoice.pdfFonts": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19429,7 +20727,10 @@ export interface operations {
     "pdfSign.sign": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -19447,6 +20748,7 @@ export interface operations {
                     "application/pdf": string;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: {
                 headers: {
@@ -19464,7 +20766,10 @@ export interface operations {
     "pdfSign.certificateInfo": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19486,12 +20791,16 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "pdfSign.uploadCertificate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19526,13 +20835,17 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
     "pdfSign.deleteCertificate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19550,12 +20863,16 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "report.profitLossReport": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -19580,7 +20897,10 @@ export interface operations {
                 orderByField?: string;
                 orderBy?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19606,7 +20926,10 @@ export interface operations {
     "projects.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19634,7 +20957,10 @@ export interface operations {
     "projects.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The project ID */
                 project: number;
@@ -19661,7 +20987,10 @@ export interface operations {
     "projects.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The project ID */
                 project: number;
@@ -19693,7 +21022,10 @@ export interface operations {
     "projects.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The project ID */
                 project: number;
@@ -19719,7 +21051,10 @@ export interface operations {
     "receivedInvoices.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19746,7 +21081,10 @@ export interface operations {
     "receivedInvoices.showDocument": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -19770,7 +21108,10 @@ export interface operations {
     "receivedInvoices.uploadDocument": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -19808,7 +21149,10 @@ export interface operations {
     "receivedInvoices.deleteDocument": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -19837,7 +21181,10 @@ export interface operations {
             query?: {
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19863,7 +21210,10 @@ export interface operations {
     "received-invoices.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19891,7 +21241,10 @@ export interface operations {
     "received-invoices.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -19918,7 +21271,10 @@ export interface operations {
     "received-invoices.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The received invoice ID */
                 received_invoice: number;
@@ -19950,7 +21306,10 @@ export interface operations {
     "receivedInvoices.markAsPaid": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19980,7 +21339,10 @@ export interface operations {
     "receivedInvoices.markGoodsReceived": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20019,7 +21381,10 @@ export interface operations {
                 to_date?: string | null;
                 per_page?: number | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20065,7 +21430,10 @@ export interface operations {
             query?: {
                 bank_account_id?: number | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20096,7 +21464,10 @@ export interface operations {
     "reconciliation.autoMatch": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20142,7 +21513,10 @@ export interface operations {
     "reconciliation.suggestions": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20176,7 +21550,10 @@ export interface operations {
     "reconciliation.match": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20210,7 +21587,10 @@ export interface operations {
     "reconciliation.unmatch": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20235,7 +21615,10 @@ export interface operations {
     "reconciliation.ignore": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20260,7 +21643,10 @@ export interface operations {
     "reconciliation.reconcile": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -20285,7 +21671,10 @@ export interface operations {
     "recurringInvoice.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20312,7 +21701,10 @@ export interface operations {
     "recurring-invoices.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20338,7 +21730,10 @@ export interface operations {
     "recurring-invoices.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20366,7 +21761,10 @@ export interface operations {
     "recurring-invoices.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The recurring invoice ID */
                 recurringInvoice: number;
@@ -20393,7 +21791,10 @@ export interface operations {
     "recurring-invoices.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The recurring invoice ID */
                 recurringInvoice: number;
@@ -20425,7 +21826,10 @@ export interface operations {
     "recurring-invoices.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The recurring invoice ID */
                 recurringInvoice: number;
@@ -20451,7 +21855,10 @@ export interface operations {
     "recurringInvoice.recurringInvoiceFrequency": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20476,7 +21883,10 @@ export interface operations {
                 from_date: string;
                 to_date: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -20501,7 +21911,10 @@ export interface operations {
                 from_date: string;
                 to_date: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -20523,7 +21936,10 @@ export interface operations {
     "contract.renewContract": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -20555,7 +21971,10 @@ export interface operations {
     "roles.getAbilities": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 role: string;
             };
@@ -20579,7 +21998,10 @@ export interface operations {
     "roles.updateAbilities": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 role: string;
             };
@@ -20608,7 +22030,10 @@ export interface operations {
     "roles.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20631,7 +22056,10 @@ export interface operations {
     "roles.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20659,7 +22087,10 @@ export interface operations {
     "roles.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The role ID */
                 role: string;
@@ -20686,7 +22117,10 @@ export interface operations {
     "roles.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The role ID */
                 role: string;
@@ -20718,7 +22152,10 @@ export interface operations {
     "roles.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 role: string;
             };
@@ -20742,7 +22179,10 @@ export interface operations {
     "general.search": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20810,7 +22250,10 @@ export interface operations {
     "general.searchUsers": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20832,7 +22275,10 @@ export interface operations {
     "estimate.sendEstimate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -20872,7 +22318,10 @@ export interface operations {
                 cc?: string | null;
                 bcc?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -20897,7 +22346,10 @@ export interface operations {
     "invoice.sendInvoice": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -20935,7 +22387,10 @@ export interface operations {
                 cc?: string | null;
                 bcc?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -20960,7 +22415,10 @@ export interface operations {
     "payment.sendPayment": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment ID */
                 payment: number;
@@ -20998,7 +22456,10 @@ export interface operations {
                 cc?: string | null;
                 bcc?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The payment ID */
                 payment: number;
@@ -21023,7 +22484,10 @@ export interface operations {
     "sepaRemittance.download": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -21058,7 +22522,10 @@ export interface operations {
     "sepaRemittance.eligibleInvoices": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21080,7 +22547,10 @@ export interface operations {
     "sepa-remittances.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21102,7 +22572,10 @@ export interface operations {
     "sepa-remittances.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21149,7 +22622,10 @@ export interface operations {
     "sepa-remittances.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 sepa_remittance: string;
             };
@@ -21173,7 +22649,10 @@ export interface operations {
     "sepa-remittances.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 sepa_remittance: string;
             };
@@ -21197,7 +22676,10 @@ export interface operations {
     "invoice.sharedLink": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The invoice ID */
                 invoice: number;
@@ -21237,7 +22719,10 @@ export interface operations {
     "contract.sharedLink": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The contract ID */
                 contract: number;
@@ -21277,7 +22762,10 @@ export interface operations {
     "estimate.sharedLink": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The estimate ID */
                 estimate: number;
@@ -21317,7 +22805,10 @@ export interface operations {
     "expense.showReceipt": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The expense ID */
                 expense: number;
@@ -21341,7 +22832,10 @@ export interface operations {
     "specializationInstall.install": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -21425,7 +22919,10 @@ export interface operations {
     "specializationInstall.status": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -21458,7 +22955,10 @@ export interface operations {
     "specializations.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21494,7 +22994,10 @@ export interface operations {
     "specializations.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -21543,7 +23046,10 @@ export interface operations {
     "item.stockAdjustments": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 item: string;
             };
@@ -21573,7 +23079,10 @@ export interface operations {
     "stockCounts.confirm": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -21606,7 +23115,10 @@ export interface operations {
     "stockCounts.cancel": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -21642,7 +23154,10 @@ export interface operations {
                 /** @description Solo los de este almacén. */
                 warehouse_id?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21665,7 +23180,10 @@ export interface operations {
     "stock-counts.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21691,7 +23209,10 @@ export interface operations {
     "stock-counts.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 stock_count: string;
             };
@@ -21716,7 +23237,10 @@ export interface operations {
     "stock-counts.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 stock_count: string;
             };
@@ -21752,7 +23276,10 @@ export interface operations {
     "stock-counts.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 stock_count: string;
             };
@@ -21787,7 +23314,10 @@ export interface operations {
                 /** @description Hasta esta fecha (YYYY-MM-DD). */
                 to_date?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21823,7 +23353,10 @@ export interface operations {
     "stockMovements.forItem": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 item: string;
             };
@@ -21903,7 +23436,10 @@ export interface operations {
     "storeModules.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21952,7 +23488,10 @@ export interface operations {
     "storeModules.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -22014,7 +23553,10 @@ export interface operations {
     "supplier.supplierStats": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The supplier ID */
                 supplier: number;
@@ -22061,7 +23603,10 @@ export interface operations {
     "suppliers.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22088,7 +23633,10 @@ export interface operations {
     "suppliers.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22114,7 +23662,10 @@ export interface operations {
     "suppliers.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22142,7 +23693,10 @@ export interface operations {
     "suppliers.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The supplier ID */
                 supplier: number;
@@ -22169,7 +23723,10 @@ export interface operations {
     "suppliers.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The supplier ID */
                 supplier: number;
@@ -22198,10 +23755,207 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "suscripcionIntegrador.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planes: {
+                                id: number;
+                                key: string;
+                                name: string;
+                                price_cents: number;
+                            }[];
+                            currency: string;
+                            stripe_status: string | null;
+                            cancel_at_period_end: boolean;
+                            current_period_end: string | null;
+                            debe_desde: string | null;
+                            baja_en: string | null;
+                            hoy: {
+                                [key: string]: unknown;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description No autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            /** @description Exige el scope de la operación y ser el dueño o un administrador. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            /** @description Sin suscripción disponible de su integrador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "suscripcion_no_disponible";
+                    };
+                };
+            };
+            /** @description Suscripción de baja o no modificable. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "suscripcion_de_baja" | "suscripcion_modificada" | "stripe_plan_unknown";
+                    };
+                };
+            };
+        };
+    };
+    "suscripcionIntegrador.portal": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    return_url: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                        };
+                    };
+                };
+            };
+            /** @description No autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            /** @description Exige el scope de la operación y ser el dueño o un administrador. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            /** @description Sin suscripción disponible de su integrador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "suscripcion_no_disponible";
+                    };
+                };
+            };
+            /** @description Suscripción de baja o no modificable. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "suscripcion_de_baja" | "suscripcion_modificada" | "stripe_plan_unknown";
+                    };
+                };
+            };
+            /** @description Campos inválidos o return_url fuera de los orígenes permitidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors?: {
+                            [key: string]: string[];
+                        };
+                    } | {
+                        /** @enum {string} */
+                        code: "return_url_no_permitida";
+                    };
+                };
+            };
+            /** @description Stripe no pudo completar la operación; reintentar. Sin diagnóstico externo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_unavailable";
+                    };
+                };
+            };
+        };
+    };
     "task.updateStatus": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22236,7 +23990,10 @@ export interface operations {
     "task.delegation": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22287,7 +24044,10 @@ export interface operations {
     "task.delegate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22398,7 +24158,10 @@ export interface operations {
                 orderByField?: string;
                 orderBy?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22426,7 +24189,10 @@ export interface operations {
     "tasks.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22454,7 +24220,10 @@ export interface operations {
     "tasks.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22481,7 +24250,10 @@ export interface operations {
     "tasks.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22513,7 +24285,10 @@ export interface operations {
     "tasks.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The task ID */
                 task: number;
@@ -22539,7 +24314,10 @@ export interface operations {
     "report.taxSummaryReport": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 hash: string;
             };
@@ -22561,7 +24339,10 @@ export interface operations {
     "tax-types.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22584,7 +24365,10 @@ export interface operations {
     "tax-types.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22612,7 +24396,10 @@ export interface operations {
     "tax-types.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The tax type ID */
                 taxType: number;
@@ -22639,7 +24426,10 @@ export interface operations {
     "tax-types.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The tax type ID */
                 taxType: number;
@@ -22671,7 +24461,10 @@ export interface operations {
     "tax-types.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The tax type ID */
                 taxType: number;
@@ -22697,7 +24490,10 @@ export interface operations {
     "taxTypes.toggleActive": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The tax type ID */
                 taxType: number;
@@ -22724,7 +24520,10 @@ export interface operations {
     "tenantBilling.plans": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22785,7 +24584,10 @@ export interface operations {
     "tenantBilling.subscription": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22879,7 +24681,10 @@ export interface operations {
     "tenantBilling.checkoutFromPanel": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22915,7 +24720,10 @@ export interface operations {
     "tenantBilling.portal": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -22954,7 +24762,10 @@ export interface operations {
     "tenantBilling.changePlan": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23001,7 +24812,10 @@ export interface operations {
     "tenantDelegationCallback.delegatedIndex": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23049,7 +24863,10 @@ export interface operations {
     "tenantDelegationCallback.taskClaim": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -23096,7 +24913,10 @@ export interface operations {
     "tenantDelegationCallback.taskPropose": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -23177,7 +24997,10 @@ export interface operations {
     "tenantDelegationCallback.taskComplete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -23232,7 +25055,10 @@ export interface operations {
     "tenantDelegationCallback.taskFail": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -23287,7 +25113,10 @@ export interface operations {
     "tenantModules.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23325,6 +25154,7 @@ export interface operations {
                             dependents: string[];
                         }[];
                         installed_slugs: string[];
+                        substituted_slugs: string[];
                         addons: {
                             price_cents: number;
                             price: string;
@@ -23339,7 +25169,10 @@ export interface operations {
     "tenantModules.install": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -23374,7 +25207,10 @@ export interface operations {
     "tenantModules.disable": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 slug: string;
             };
@@ -23403,7 +25239,10 @@ export interface operations {
     "timeClock.punch": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23448,7 +25287,10 @@ export interface operations {
     "timeClock.today": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23484,7 +25326,10 @@ export interface operations {
                 to?: string;
                 period?: "day" | "week" | "month";
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23528,7 +25373,10 @@ export interface operations {
             query?: {
                 date?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23559,7 +25407,10 @@ export interface operations {
     "timeClockCorrection.approve": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The correction ID */
                 correction: number;
@@ -23593,7 +25444,10 @@ export interface operations {
     "timeClockCorrection.reject": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The correction ID */
                 correction: number;
@@ -23630,7 +25484,10 @@ export interface operations {
                 scope?: string;
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23667,7 +25524,10 @@ export interface operations {
     "timeClockCorrection.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23695,7 +25555,10 @@ export interface operations {
     "timeClockCorrection.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The correction ID */
                 correction: number;
@@ -23722,7 +25585,10 @@ export interface operations {
     "timeEntry.pendingForCustomer": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 customer: number;
             };
@@ -23779,7 +25645,10 @@ export interface operations {
                 orderByField?: string;
                 orderBy?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23806,7 +25675,10 @@ export interface operations {
     "time-entries.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23834,7 +25706,10 @@ export interface operations {
     "time-entries.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The time entry ID */
                 timeEntry: number;
@@ -23861,7 +25736,10 @@ export interface operations {
     "time-entries.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The time entry ID */
                 timeEntry: number;
@@ -23908,7 +25786,10 @@ export interface operations {
     "time-entries.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The time entry ID */
                 timeEntry: number;
@@ -23949,7 +25830,10 @@ export interface operations {
     "general.timeFormats": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23978,7 +25862,10 @@ export interface operations {
                 date_from?: string;
                 date_to?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -24024,7 +25911,10 @@ export interface operations {
                 date_from?: string;
                 date_to?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -24044,7 +25934,10 @@ export interface operations {
     "general.timezones": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26580,7 +28473,10 @@ export interface operations {
     "units.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26603,7 +28499,10 @@ export interface operations {
     "units.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26631,7 +28530,10 @@ export interface operations {
     "units.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The unit ID */
                 unit: number;
@@ -26658,7 +28560,10 @@ export interface operations {
     "units.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The unit ID */
                 unit: number;
@@ -26690,7 +28595,10 @@ export interface operations {
     "units.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The unit ID */
                 unit: number;
@@ -26716,7 +28624,10 @@ export interface operations {
     "expense.uploadReceipt": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The expense ID */
                 expense: number;
@@ -26748,7 +28659,10 @@ export interface operations {
     "users.delete": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26775,7 +28689,10 @@ export interface operations {
     "users.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26811,7 +28728,10 @@ export interface operations {
     "users.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26839,7 +28759,10 @@ export interface operations {
     "users.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The user ID */
                 user: number;
@@ -26866,7 +28789,10 @@ export interface operations {
     "users.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The user ID */
                 user: number;
@@ -26898,7 +28824,10 @@ export interface operations {
     "users.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The user ID */
                 user: number;
@@ -26928,7 +28857,10 @@ export interface operations {
                 orderBy?: string;
                 per_page?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26950,12 +28882,16 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "veriFactu.detail": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 invoice: string;
             };
@@ -26996,12 +28932,16 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
         };
     };
     "veriFactu.sync": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 invoice: string;
             };
@@ -27030,6 +28970,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -27056,7 +28997,10 @@ export interface operations {
     "veriFactu.retry": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 invoice: string;
             };
@@ -27076,6 +29020,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -27102,7 +29047,10 @@ export interface operations {
     "veriFactuSettings.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27144,7 +29092,10 @@ export interface operations {
     "veriFactuSettings.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27195,7 +29146,10 @@ export interface operations {
     "veriFactuSettings.storeTaxpayer": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27228,7 +29182,10 @@ export interface operations {
     "veriFactuSettings.uploadCertificate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27269,7 +29226,10 @@ export interface operations {
                 /** @description Solo los artículos con saldo distinto de cero (`1`). */
                 only_with_stock?: boolean;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The warehouse ID */
                 warehouse: number;
@@ -27304,7 +29264,10 @@ export interface operations {
                 /** @description Solo los activos (`1`) o solo los desactivados (`0`). */
                 is_active?: boolean;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27327,7 +29290,10 @@ export interface operations {
     "warehouses.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27353,7 +29319,10 @@ export interface operations {
     "warehouses.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The warehouse ID */
                 warehouse: number;
@@ -27380,7 +29349,10 @@ export interface operations {
     "warehouses.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The warehouse ID */
                 warehouse: number;
@@ -27412,7 +29384,10 @@ export interface operations {
     "warehouses.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The warehouse ID */
                 warehouse: number;
@@ -27438,7 +29413,10 @@ export interface operations {
     "webhookEndpoints.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27470,7 +29448,10 @@ export interface operations {
     "webhookEndpoints.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27513,7 +29494,10 @@ export interface operations {
     "webhookEndpoints.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -27549,7 +29533,10 @@ export interface operations {
     "webhookEndpoints.deliveries": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: number;
             };
@@ -27598,7 +29585,10 @@ export interface operations {
     "webhookEndpoints.replay": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 id: string;
             };
@@ -27651,7 +29641,10 @@ export interface operations {
     "workCalendar.importTemplate": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27695,7 +29688,10 @@ export interface operations {
     "workCalendar.storeHoliday": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27734,7 +29730,10 @@ export interface operations {
     "workCalendar.destroyHoliday": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27762,7 +29761,10 @@ export interface operations {
     "work-calendars.index": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27785,7 +29787,10 @@ export interface operations {
     "work-calendars.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27813,7 +29818,10 @@ export interface operations {
     "work-calendars.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27840,7 +29848,10 @@ export interface operations {
     "work-calendars.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27872,7 +29883,10 @@ export interface operations {
     "work-calendars.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work calendar ID */
                 workCalendar: number;
@@ -27900,7 +29914,10 @@ export interface operations {
             query?: {
                 limit?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27923,7 +29940,10 @@ export interface operations {
     "work-schedules.store": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27951,7 +29971,10 @@ export interface operations {
     "work-schedules.show": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work schedule ID */
                 workSchedule: number;
@@ -27978,7 +30001,10 @@ export interface operations {
     "work-schedules.update": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work schedule ID */
                 workSchedule: number;
@@ -28010,7 +30036,10 @@ export interface operations {
     "work-schedules.destroy": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
             path: {
                 /** @description The work schedule ID */
                 workSchedule: number;

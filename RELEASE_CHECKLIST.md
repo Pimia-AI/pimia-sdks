@@ -133,7 +133,8 @@ que es lo único que se puede comprobar hoy.
 | 0.25.0 | *sin tag propio* (dentro de la 0.27.0) | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
 | 0.26.0 | *sin tag propio* (dentro de la 0.27.0) | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
 | 0.27.0 | 2026-09-08 | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. Arrastra las 0.22.0–0.26.0. | ✅ |
-| 0.28.0 | *sin publicar* | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | — |
+| 0.28.0 | 2026-09-14 | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | ✅ |
+| 0.29.0 | *sin publicar* | El cobro del cliente del integrador (#835): «Facturo con Pimia» en `PimiaCentralClient` (central **1.16.0, 65 operaciones**) y `billing.integrador` en los dos SDKs (`/api/v1` **1.1.0, 441 operaciones**, primera sincronización desde la 0.22.0). `factSaas@808976ba`. | — |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,

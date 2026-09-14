@@ -16,6 +16,7 @@ use Pimia\OAuth\BorrowedTokenStore;
 use Pimia\OAuth\OAuthClient;
 use Pimia\OAuth\TokenSet;
 use Pimia\OAuth\TokenStore;
+use Pimia\Resource\Billing;
 use Pimia\Resource\Bootstrap;
 use Pimia\Resource\Contracts;
 use Pimia\Resource\Crm;
@@ -77,6 +78,9 @@ final class PimiaClient
 
     public readonly Bootstrap $bootstrap;
 
+    /** La suscripción del cliente en el Stripe de su integrador: `$client->billing->integrador`. */
+    public readonly Billing $billing;
+
     /** @var array{limit: ?int, remaining: ?int} */
     private array $rateLimit = ['limit' => null, 'remaining' => null];
 
@@ -98,6 +102,7 @@ final class PimiaClient
         $this->opportunities = new Opportunities($this);
         $this->crm = new Crm($this);
         $this->bootstrap = new Bootstrap($this);
+        $this->billing = new Billing($this);
     }
 
     /**

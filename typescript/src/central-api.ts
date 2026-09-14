@@ -668,6 +668,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/facturacion-a-clientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ajustes y selector de emisoras propias elegibles. No consulta esquemas de clientes
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        get: operations["integradorFacturacionClientes.show"];
+        /**
+         * Reemplaza los ajustes fiscales, separados de las credenciales Stripe
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        put: operations["integradorFacturacionClientes.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/facturas-a-clientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cobros propios, con el estado de factura y su enlace autenticado en la emisora
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        get: operations["integradorFacturacionClientes.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/facturas-a-clientes/{id}/reintentar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reintenta una factura propia pendiente de NIF o con error, sin duplicar el documento
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        post: operations["integradorFacturacionClientes.retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/desarrollador/tenants/{slug}/produccion": {
         parameters: {
             query?: never;
@@ -912,13 +976,12 @@ export interface paths {
         put?: never;
         /**
          * Recibir eventos firmados de la cuenta propia del integrador
-         * @description Crear manualmente un endpoint Your account, snapshot, con estos eventos:
-         *     payment_intent.succeeded y payment_intent.payment_failed. Guardar su
-         *     whsec en PUT /desarrollador/stripe. Stripe-Signature firma el cuerpo
-         *     crudo con ese secreto (tolerancia 300 s). No usa Bearer.
-         *     Verifica livemode y account cuando está presente. Solo registra un
-         *     recibo deduplicado por vinculación: no procesa cobros ni toca Cashier.
-         *     Otros tipos firmados se acusan como ignored:true sin guardarlos.
+         * @description Endpoint Your account, snapshot, con los eventos de GET /desarrollador/stripe.
+         *     Stripe-Signature firma el cuerpo crudo con su whsec (tolerancia 300 s).
+         *     No usa Bearer. Verifica modo y cuenta; aplica el ciclo de suscripción
+         *     y deduplica junto con sus efectos locales. Un fallo transitorio devuelve
+         *     503 para permitir reentrega. Los pagos del integrador no alimentan Cashier.
+         *     Checkout sin alta crea una pendiente; solo el alta puede asignarle tenant.
          */
         post: operations["integradorStripeWebhook"];
         delete?: never;
@@ -1151,6 +1214,14 @@ export interface paths {
          *     es lo que su cliente ve en el login y en su pantalla de plan, y lo que el
          *     fork del integrador lee al arrancar. La cara de login se declara aparte,
          *     en `POST /dominios` con la vertical, porque lleva secreto.
+         *
+         *     Pasarla a producción (`fase: produccion`, 13.30) no tiene vuelta y exige
+         *     lo que la producción exige a cada alta. Cortes, con su código en `error`
+         *     (y en `code` los de Stripe): `vertical_sin_planes`,
+         *     `canal_sin_metodo_de_pago`, `stripe_no_vinculado` (sin tu Stripe
+         *     vinculado) y `stripe_modo_incorrecto` (vinculado en test: el núcleo
+         *     cobra el plan de cada alta con esas claves, #835), todos 422; y
+         *     `fase_irreversible` para volver a desarrollo.
          *
          *     Apagarla no toca a las instancias que ya entraron por ella: deja de
          *     admitir altas nuevas y nada más, porque cambiar un cliente de vertical
@@ -2688,6 +2759,17 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "contratacion_gestionada_por_stripe";
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -2948,6 +3030,137 @@ export interface operations {
                 content: {
                     "application/json": {
                         message: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorFacturacionClientes.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            factura_con_pimia: boolean;
+                            tenant_emisor_id: string | null;
+                            tipo_iva: string;
+                            emisoras: {
+                                id: string;
+                                name: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorFacturacionClientes.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    factura_con_pimia: boolean;
+                    tenant_emisor_id: string | null;
+                    tipo_iva: number;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            factura_con_pimia: boolean;
+                            tenant_emisor_id: string | null;
+                            tipo_iva: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorFacturacionClientes.index": {
+        parameters: {
+            query?: {
+                estado?: "pendiente" | "pendiente_alta" | "pendiente_sin_nif" | "error" | "emitida" | "omitida_sin_facturar_con_pimia" | "omitida_importe_cero";
+                cursor?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            stripe_invoice: string;
+                            importe_total: number;
+                            moneda: string;
+                            cobrado_en: string;
+                            estado: string;
+                            tenant_emisor_id: string | null;
+                            invoice_id: number | null;
+                            tipo: string | null;
+                            motivo: string | null;
+                            invoice_url: string | null;
+                        }[];
+                        next_cursor: number | null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorFacturacionClientes.retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            estado: string;
+                        };
                     };
                 };
             };
@@ -3330,7 +3543,7 @@ export interface operations {
                             account_name: string | null;
                             verified_at: string | null;
                             webhook_url: string | null;
-                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed")[];
+                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed" | "checkout.session.completed" | "invoice.paid" | "invoice.payment_failed" | "customer.subscription.updated" | "customer.subscription.deleted")[];
                         };
                     };
                 };
@@ -3377,13 +3590,29 @@ export interface operations {
                             webhook_url: string | null;
                             webhook_events: [
                                 "payment_intent.succeeded",
-                                "payment_intent.payment_failed"
+                                "payment_intent.payment_failed",
+                                "checkout.session.completed",
+                                "invoice.paid",
+                                "invoice.payment_failed",
+                                "customer.subscription.updated",
+                                "customer.subscription.deleted"
                             ];
                         };
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stripe_account_in_use";
+                    };
+                };
+            };
             /** @description No guarda cambios. Corte de Stripe o validación de campos. stripe_key_permissions, con missing_permissions, solo puede darse si se usa una clave restringida sin los permisos de lectura. */
             422: {
                 headers: {
@@ -3457,7 +3686,7 @@ export interface operations {
                             account_name: string | null;
                             verified_at: string | null;
                             webhook_url: string | null;
-                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed")[];
+                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed" | "checkout.session.completed" | "invoice.paid" | "invoice.payment_failed" | "customer.subscription.updated" | "customer.subscription.deleted")[];
                         };
                     };
                 };
@@ -3507,10 +3736,10 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
-                        code: "stripe_webhook_invalid";
+                        code: "stripe_webhook_account_mismatch";
                     } | {
                         /** @constant */
-                        code: "stripe_webhook_account_mismatch";
+                        code: "stripe_webhook_invalid";
                     };
                 };
             };
@@ -3522,6 +3751,18 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         code: "stripe_webhook_unknown";
+                    };
+                };
+            };
+            /** @description No se publica la excepción: puede contener la clave o datos del cliente. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stripe_webhook_retry";
                     };
                 };
             };

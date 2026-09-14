@@ -257,6 +257,23 @@ del contrato y **todavía no aparece en el spec**: contra una instancia anterior
 a esa ruta la llamada es un 404, y eso es lo que hay que mirar antes de dar por
 hecho que el token está mal.
 
+
+### La suscripción del cliente en el Stripe de su integrador
+
+Si tu vertical cobra a sus clientes con tu Stripe (galeote/factSaas#835), el
+perfil del cliente enseña su plan y abre el portal de Stripe para cambiarlo o
+darse de baja. Scopes `integrador-billing:read` / `integrador-billing:write`
+(`SCOPES.integradorBillingRead` · `Scopes::INTEGRADOR_BILLING_READ`), y el
+usuario tiene que ser dueño o administrador de la empresa.
+
+| Qué | TypeScript | PHP |
+|-----|-----------|-----|
+| Planes de la vertical y estado de la suscripción | `client.billing.integrador.subscription()` | `$pimia->billing->integrador->subscription()` |
+| URL del portal de Stripe | `client.billing.integrador.portal({ return_url })` | `$pimia->billing->integrador->portal($returnUrl)` |
+
+No hay `cancel` ni `changePlan`: todo pasa por el portal. Los cortes llegan en
+`code` (`suscripcion_no_disponible`, `return_url_no_permitida`…).
+
 ## Tu identificador dentro de Pimia: `external_ref`
 
 Cuelga **tu** identificador —el id del deal, del pedido, de la oportunidad— del

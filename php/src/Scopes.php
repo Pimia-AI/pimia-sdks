@@ -137,6 +137,17 @@ final class Scopes
 
     public const APPROVALS_SUBMIT = 'approvals:submit';
 
+    /**
+     * Ver la suscripción del cliente en el Stripe de SU integrador
+     * (`GET /billing/integrador/subscription`, `/api/v1` 1.1.0). No da acceso
+     * a la facturación de Pimia (`billing:*`). Exige además dueño o
+     * administrador.
+     */
+    public const INTEGRADOR_BILLING_READ = 'integrador-billing:read';
+
+    /** Abrir el portal de Stripe de esa suscripción (`POST /billing/integrador/portal`). */
+    public const INTEGRADOR_BILLING_WRITE = 'integrador-billing:write';
+
     private function __construct()
     {
     }

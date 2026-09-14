@@ -12,6 +12,7 @@ import {
   ForbiddenError,
   MissingAbilityError,
   NotAuthenticatedError,
+  NotFoundError,
   PimiaApiError,
   PimiaCentralClient,
   RateLimitError,
@@ -391,4 +392,87 @@ test('code cae a `error` cuando no hay `code`, y es undefined sin cuerpo JSON', 
 
   const texto = clientWith(() => new Response('Bad Gateway', { status: 502 }))
   await assert.rejects(() => texto.client.correo.get(), (e) => e instanceof PimiaApiError && e.code === undefined)
+})
+
+test('1.16.0: los ajustes de «Facturo con Pimia», por la ruta del contrato', async () => {
+  const { client, calls } = clientWith(() =>
+    json({ data: { factura_con_pimia: true, tenant_emisor_id: 'mi-empresa', tipo_iva: '21.00', emisoras: [] } }),
+  )
+
+  await client.facturacionAClientes.get()
+  await client.facturacionAClientes.update({ factura_con_pimia: true, tenant_emisor_id: 'mi-empresa', tipo_iva: 21 })
+
+  assert.equal(calls[0].url, `${BASE}/api/desarrollador/facturacion-a-clientes`)
+  assert.equal(calls[0].init.method, 'GET')
+  assert.equal(calls[1].url, `${BASE}/api/desarrollador/facturacion-a-clientes`)
+  assert.equal(calls[1].init.method, 'PUT')
+  assert.deepEqual(JSON.parse(calls[1].init.body), { factura_con_pimia: true, tenant_emisor_id: 'mi-empresa', tipo_iva: 21 })
+})
+
+test('1.16.0: el listado de facturas manda estado y cursor, y omite los que no vienen', async () => {
+  const { client, calls } = clientWith(() => json({ data: [], next_cursor: null }))
+
+  await client.facturasAClientes.list()
+  await client.facturasAClientes.list({ estado: 'pendiente_sin_nif', cursor: 50 })
+
+  assert.equal(calls[0].url, `${BASE}/api/desarrollador/facturas-a-clientes`)
+  assert.equal(calls[1].url, `${BASE}/api/desarrollador/facturas-a-clientes?estado=pendiente_sin_nif&cursor=50`)
+})
+
+test('1.16.0: iterate sigue next_cursor hasta null y conserva el filtro', async () => {
+  const paginas = {
+    '': { data: [{ id: 1 }, { id: 2 }], next_cursor: 2 },
+    2: { data: [{ id: 3 }], next_cursor: 3 },
+    3: { data: [], next_cursor: null },
+  }
+  const { client, calls } = clientWith((url) => {
+    const cursor = new URL(url).searchParams.get('cursor') ?? ''
+    return json(paginas[cursor])
+  })
+
+  const ids = []
+  for await (const fila of client.facturasAClientes.iterate({ estado: 'error' })) ids.push(fila.id)
+
+  assert.deepEqual(ids, [1, 2, 3])
+  assert.equal(calls.length, 3)
+  assert.ok(calls.every((c) => new URL(c.url).searchParams.get('estado') === 'error'))
+})
+
+test('1.16.0: iterate es perezoso y no entra en bucle con un cursor que no avanza', async () => {
+  const perezoso = clientWith(() => json({ data: [{ id: 1 }, { id: 2 }], next_cursor: 2 }))
+  for await (const fila of perezoso.client.facturasAClientes.iterate()) {
+    if (fila.id === 1) break
+  }
+  assert.equal(perezoso.calls.length, 1, 'cortar el for await no pide la página siguiente')
+
+  const atascado = clientWith(() => json({ data: [{ id: 9 }], next_cursor: 9 }))
+  const filas = []
+  for await (const fila of atascado.client.facturasAClientes.iterate()) filas.push(fila)
+  assert.equal(atascado.calls.length, 2)
+  assert.equal(filas.length, 2)
+})
+
+test('1.16.0: reintentar acepta el 202 del núcleo; el 409 y el 404 llegan tipados', async () => {
+  const bien = clientWith(() => json({ data: { id: 7, estado: 'pendiente' } }, 202))
+  const r = await bien.client.facturasAClientes.retry(7)
+  assert.deepEqual(r, { data: { id: 7, estado: 'pendiente' } })
+  assert.equal(bien.calls[0].url, `${BASE}/api/desarrollador/facturas-a-clientes/7/reintentar`)
+  assert.equal(bien.calls[0].init.method, 'POST')
+
+  const conflicto = clientWith(() => json({ message: 'Solo se reintentan cobros con error o pendientes de NIF.' }, 409))
+  await assert.rejects(() => conflicto.client.facturasAClientes.retry(7), (e) => e instanceof PimiaApiError && e.status === 409)
+
+  const ajena = clientWith(() => json({ message: 'Not Found' }, 404))
+  await assert.rejects(() => ajena.client.facturasAClientes.retry(8), (e) => e instanceof NotFoundError)
+})
+
+test('1.16.0: stripe_account_in_use y contratacion_gestionada_por_stripe llegan en code', async () => {
+  const enUso = clientWith(() => json({ code: 'stripe_account_in_use' }, 409))
+  await assert.rejects(() => enUso.client.stripe.delete(), (e) => e.status === 409 && e.code === 'stripe_account_in_use')
+
+  const gestionada = clientWith(() => json({ code: 'contratacion_gestionada_por_stripe' }, 409))
+  await assert.rejects(
+    () => gestionada.client.request('/desarrollador/tenants/acme/contratacion', { method: 'PUT', body: {} }),
+    (e) => e.status === 409 && e.code === 'contratacion_gestionada_por_stripe',
+  )
 })

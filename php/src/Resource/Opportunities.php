@@ -21,10 +21,10 @@ use Pimia\PimiaClient;
  *
  * `POST /opportunities` es la puerta que se abrió para eso (galeote/factSaas#805).
  *
- * ⚠️ **Todavía no está en el spec publicado** (`spec/pimia-api-v1.json`, que va
- * a la última sincronización del contrato): la ruta es más nueva que esa foto.
- * Contra una instancia anterior a ella la llamada contesta 404, y eso es lo que
- * hay que mirar antes de dar por hecho que el token está mal.
+ * Publicada en el contrato desde `/api/v1` 1.1.0 (`OpportunityRequest` en
+ * `spec/pimia-api-v1.json`). Contra una instancia anterior a la ruta la llamada
+ * contesta 404, y eso es lo que hay que mirar antes de dar por hecho que el
+ * token está mal.
  *
  * ── El scope ────────────────────────────────────────────────────────────────
  *
@@ -52,7 +52,7 @@ final class Opportunities
      * una segunda oportunidad para el mismo trato.
      *
      * @param  array{name: string, contact_name?: ?string, email?: ?string, phone?: ?string}  $data
-     * @return mixed `array{data: array<string, mixed>}`; el id, en `data.id`.
+     * @return mixed `array{data: array{id: int, name: string, contact_name: ?string, email: ?string, phone: ?string}}`
      */
     public function create(array $data, ?string $idempotencyKey = null): mixed
     {

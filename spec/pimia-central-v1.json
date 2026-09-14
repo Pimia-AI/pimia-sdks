@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.15.0",
+        "version": "1.16.0",
         "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), la tarjeta de su canal guardada antes del primer cliente (13.30a), el traspaso de propiedad, sus verticales (el sector para el que arma su producto, por cu\u00e1l entr\u00f3 cada instancia qu\u00e9 m\u00f3dulos nacen encendidos en sus clientes nuevos y qu\u00e9 m\u00f3dulos de Pimia sustituye por software suyo), su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice), sus tokens de m\u00e1quina, qui\u00e9n pertenece a cada instancia (para traspasarla) y el portal de Stripe de su canal. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
@@ -3361,6 +3361,25 @@
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "const": "contratacion_gestionada_por_stripe"
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     }
@@ -4022,6 +4041,362 @@
                                     },
                                     "required": [
                                         "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/facturacion-a-clientes": {
+            "get": {
+                "operationId": "integradorFacturacionClientes.show",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "Ajustes y selector de emisoras propias elegibles. No consulta esquemas de clientes",
+                "tags": [
+                    "IntegradorFacturacionClientes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "factura_con_pimia": {
+                                                    "type": "boolean"
+                                                },
+                                                "tenant_emisor_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "tipo_iva": {
+                                                    "type": "string"
+                                                },
+                                                "emisoras": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "name"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "factura_con_pimia",
+                                                "tenant_emisor_id",
+                                                "tipo_iva",
+                                                "emisoras"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            },
+            "put": {
+                "operationId": "integradorFacturacionClientes.update",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "Reemplaza los ajustes fiscales, separados de las credenciales Stripe",
+                "tags": [
+                    "IntegradorFacturacionClientes"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "factura_con_pimia": {
+                                        "type": "boolean"
+                                    },
+                                    "tenant_emisor_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "tipo_iva": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                    }
+                                },
+                                "required": [
+                                    "factura_con_pimia",
+                                    "tenant_emisor_id",
+                                    "tipo_iva"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "factura_con_pimia": {
+                                                    "type": "boolean"
+                                                },
+                                                "tenant_emisor_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "tipo_iva": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "factura_con_pimia",
+                                                "tenant_emisor_id",
+                                                "tipo_iva"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/facturas-a-clientes": {
+            "get": {
+                "operationId": "integradorFacturacionClientes.index",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "Cobros propios, con el estado de factura y su enlace autenticado en la emisora",
+                "tags": [
+                    "IntegradorFacturacionClientes"
+                ],
+                "parameters": [
+                    {
+                        "name": "estado",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pendiente",
+                                "pendiente_alta",
+                                "pendiente_sin_nif",
+                                "error",
+                                "emitida",
+                                "omitida_sin_facturar_con_pimia",
+                                "omitida_importe_cero"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "stripe_invoice": {
+                                                        "type": "string"
+                                                    },
+                                                    "importe_total": {
+                                                        "type": "integer"
+                                                    },
+                                                    "moneda": {
+                                                        "type": "string"
+                                                    },
+                                                    "cobrado_en": {
+                                                        "type": "string"
+                                                    },
+                                                    "estado": {
+                                                        "type": "string"
+                                                    },
+                                                    "tenant_emisor_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "invoice_id": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "tipo": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "motivo": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "invoice_url": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "stripe_invoice",
+                                                    "importe_total",
+                                                    "moneda",
+                                                    "cobrado_en",
+                                                    "estado",
+                                                    "tenant_emisor_id",
+                                                    "invoice_id",
+                                                    "tipo",
+                                                    "motivo",
+                                                    "invoice_url"
+                                                ]
+                                            }
+                                        },
+                                        "next_cursor": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "next_cursor"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "x-pimia-required-ability": "desarrollador",
+                "x-pimia-partner-availability": "developer-account"
+            }
+        },
+        "/desarrollador/facturas-a-clientes/{id}/reintentar": {
+            "post": {
+                "operationId": "integradorFacturacionClientes.retry",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "summary": "Reintenta una factura propia pendiente de NIF o con error, sin duplicar el documento",
+                "tags": [
+                    "IntegradorFacturacionClientes"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "estado": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "estado"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
                                     ]
                                 }
                             }
@@ -4910,7 +5285,12 @@
                                                         "type": "string",
                                                         "enum": [
                                                             "payment_intent.succeeded",
-                                                            "payment_intent.payment_failed"
+                                                            "payment_intent.payment_failed",
+                                                            "checkout.session.completed",
+                                                            "invoice.paid",
+                                                            "invoice.payment_failed",
+                                                            "customer.subscription.updated",
+                                                            "customer.subscription.deleted"
                                                         ]
                                                     }
                                                 }
@@ -5050,10 +5430,30 @@
                                                         {
                                                             "type": "string",
                                                             "const": "payment_intent.payment_failed"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "const": "checkout.session.completed"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "const": "invoice.paid"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "const": "invoice.payment_failed"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "const": "customer.subscription.updated"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "const": "customer.subscription.deleted"
                                                         }
                                                     ],
-                                                    "minItems": 2,
-                                                    "maxItems": 2,
+                                                    "minItems": 7,
+                                                    "maxItems": 7,
                                                     "additionalItems": false
                                                 }
                                             },
@@ -5073,6 +5473,25 @@
                                     },
                                     "required": [
                                         "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "const": "stripe_account_in_use"
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
                                     ]
                                 }
                             }
@@ -5276,7 +5695,12 @@
                                                         "type": "string",
                                                         "enum": [
                                                             "payment_intent.succeeded",
-                                                            "payment_intent.payment_failed"
+                                                            "payment_intent.payment_failed",
+                                                            "checkout.session.completed",
+                                                            "invoice.paid",
+                                                            "invoice.payment_failed",
+                                                            "customer.subscription.updated",
+                                                            "customer.subscription.deleted"
                                                         ]
                                                     }
                                                 }
@@ -5313,7 +5737,7 @@
         "/stripe/integrador/{opaco}": {
             "post": {
                 "operationId": "integradorStripeWebhook",
-                "description": "Crear manualmente un endpoint Your account, snapshot, con estos eventos:\npayment_intent.succeeded y payment_intent.payment_failed. Guardar su\nwhsec en PUT /desarrollador/stripe. Stripe-Signature firma el cuerpo\ncrudo con ese secreto (tolerancia 300 s). No usa Bearer.\nVerifica livemode y account cuando est\u00e1 presente. Solo registra un\nrecibo deduplicado por vinculaci\u00f3n: no procesa cobros ni toca Cashier.\nOtros tipos firmados se acusan como ignored:true sin guardarlos.",
+                "description": "Endpoint Your account, snapshot, con los eventos de GET /desarrollador/stripe.\nStripe-Signature firma el cuerpo crudo con su whsec (tolerancia 300 s).\nNo usa Bearer. Verifica modo y cuenta; aplica el ciclo de suscripci\u00f3n\ny deduplica junto con sus efectos locales. Un fallo transitorio devuelve\n503 para permitir reentrega. Los pagos del integrador no alimentan Cashier.\nCheckout sin alta crea una pendiente; solo el alta puede asignarle tenant.",
                 "summary": "Recibir eventos firmados de la cuenta propia del integrador",
                 "tags": [
                     "IntegradorStripeWebhook"
@@ -5395,6 +5819,25 @@
                             }
                         }
                     },
+                    "503": {
+                        "description": "No se publica la excepci\u00f3n: puede contener la clave o datos del cliente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "const": "stripe_webhook_retry"
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "400": {
                         "description": "",
                         "content": {
@@ -5406,7 +5849,7 @@
                                             "properties": {
                                                 "code": {
                                                     "type": "string",
-                                                    "const": "stripe_webhook_invalid"
+                                                    "const": "stripe_webhook_account_mismatch"
                                                 }
                                             },
                                             "required": [
@@ -5418,7 +5861,7 @@
                                             "properties": {
                                                 "code": {
                                                     "type": "string",
-                                                    "const": "stripe_webhook_account_mismatch"
+                                                    "const": "stripe_webhook_invalid"
                                                 }
                                             },
                                             "required": [
@@ -6627,7 +7070,7 @@
         "/desarrollador/verticales/{vertical}": {
             "patch": {
                 "operationId": "vertical.update",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLa marca (nombre comercial, color, soporte, d\u00f3nde se contrata) y las caras\n`web` y `app` del dominio son SUYAS desde el 2026-09-11 (\ud83d\udc64 2026-09-09):\nes lo que su cliente ve en el login y en su pantalla de plan, y lo que el\nfork del integrador lee al arrancar. La cara de login se declara aparte,\nen `POST /dominios` con la vertical, porque lleva secreto.\n\nApagarla no toca a las instancias que ya entraron por ella: deja de\nadmitir altas nuevas y nada m\u00e1s, porque cambiar un cliente de vertical\nes una migraci\u00f3n que 13.18 deja sin dise\u00f1ar.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nLa marca (nombre comercial, color, soporte, d\u00f3nde se contrata) y las caras\n`web` y `app` del dominio son SUYAS desde el 2026-09-11 (\ud83d\udc64 2026-09-09):\nes lo que su cliente ve en el login y en su pantalla de plan, y lo que el\nfork del integrador lee al arrancar. La cara de login se declara aparte,\nen `POST /dominios` con la vertical, porque lleva secreto.\n\nPasarla a producci\u00f3n (`fase: produccion`, 13.30) no tiene vuelta y exige\nlo que la producci\u00f3n exige a cada alta. Cortes, con su c\u00f3digo en `error`\n(y en `code` los de Stripe): `vertical_sin_planes`,\n`canal_sin_metodo_de_pago`, `stripe_no_vinculado` (sin tu Stripe\nvinculado) y `stripe_modo_incorrecto` (vinculado en test: el n\u00facleo\ncobra el plan de cada alta con esas claves, #835), todos 422; y\n`fase_irreversible` para volver a desarrollo.\n\nApagarla no toca a las instancias que ya entraron por ella: deja de\nadmitir altas nuevas y nada m\u00e1s, porque cambiar un cliente de vertical\nes una migraci\u00f3n que 13.18 deja sin dise\u00f1ar.",
                 "summary": "PATCH /api/desarrollador/verticales/{vertical} \u2014 renombrarla, apagarla, o\nponerle su marca y sus dominios",
                 "tags": [
                     "Vertical"

@@ -317,6 +317,24 @@ try {
 no el `message`. El receptor `POST /stripe/integrador/{opaco}` no es un método:
 lo llama Stripe, firmado.
 
+«Facturo con Pimia»: la factura de lo que cobras a tus clientes con tu Stripe
+(contrato central 1.16.0, habilidad `desarrollador`):
+
+```ts
+const { data: ajustes } = await central.facturacionAClientes.get() // emisoras elegibles, tipo_iva como texto
+await central.facturacionAClientes.update({
+  factura_con_pimia: true,
+  tenant_emisor_id: ajustes.emisoras[0]!.id,
+  tipo_iva: 21,
+})
+
+// Una página (hasta 50) con list(), o todas siguiendo next_cursor con iterate():
+for await (const f of central.facturasAClientes.iterate({ estado: 'pendiente_sin_nif' })) {
+  // corrige el NIF del cliente y vuelve a encolarla (solo error y pendiente_sin_nif; lo demás, 409)
+  await central.facturasAClientes.retry(f.id)
+}
+```
+
 Los tipos salen de `spec/pimia-central-v1.json` (`@pimia/sdk/central-api`).
 
 ## Más
