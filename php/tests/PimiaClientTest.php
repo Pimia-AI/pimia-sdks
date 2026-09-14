@@ -660,6 +660,24 @@ final class PimiaClientTest extends TestCase
         $this->assertSame(['name' => 'Talleres Gómez'], json_decode($transport->calls[2]['body'], true));
     }
 
+    public function test_la_suscripcion_del_cliente_en_el_stripe_de_su_integrador(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => ['url' => 'https://billing.stripe.com/p/session/x']]),
+            new TokenSet('at-1'),
+        );
+
+        $client->billing->integrador->subscription();
+        $portal = $client->billing->integrador->portal('https://app.erpstudio.es/perfil');
+
+        $this->assertSame('GET', $transport->calls[0]['method']);
+        $this->assertSame(self::BASE.'/api/v1/billing/integrador/subscription', $transport->calls[0]['url']);
+        $this->assertSame('POST', $transport->calls[1]['method']);
+        $this->assertSame(self::BASE.'/api/v1/billing/integrador/portal', $transport->calls[1]['url']);
+        $this->assertSame(['return_url' => 'https://app.erpstudio.es/perfil'], json_decode($transport->calls[1]['body'], true));
+        $this->assertSame('https://billing.stripe.com/p/session/x', $portal['data']['url']);
+    }
+
     /**
      * ⛔ `/bootstrap` NO envuelve en `data`, y los ayudantes leen de la RAÍZ.
      *

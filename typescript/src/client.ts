@@ -72,28 +72,50 @@ export type StockCountRequest = Schemas['StockCountRequest']
  * ⛔ La etapa, la probabilidad y el importe esperado son del CRM que llama —
  * Pimia no los guarda—, así que mandarlos es un 422. Y está bien que lo sea: el
  * día que los aceptara callando, habría dos sitios donde vive el embudo.
+ *
+ * Desde la 0.29.0 sale del spec (`/api/v1` 1.1.0); hasta entonces se escribía a
+ * mano con los mismos cuatro campos.
  */
-export interface OpportunityRequest {
-  name: string
-  contact_name?: string | null
-  email?: string | null
-  phone?: string | null
-}
+export type OpportunityRequest = Schemas['OpportunityRequest']
 
 /**
- * Una oportunidad recién creada.
- *
- * ⚠️ **No sale del spec**: `POST /opportunities` es más nueva que la última
- * sincronización del contrato (galeote/factSaas#805), así que el generador no
- * la conoce todavía. Lo único que este tipo promete es `id`, que es lo que hace
- * falta para colgarle presupuestos después; el resto llega y no se nombra.
- * Cuando la ruta entre en el spec, esto pasará a salir de `Ok<…>` como los
- * demás.
+ * Una oportunidad recién creada: `id`, `name`, `contact_name`, `email` y
+ * `phone`. Desde la 0.29.0 sale del `201` del spec; antes era
+ * `{ id: number; [key: string]: unknown }`.
  */
-export interface OpportunityResource {
-  id: number
-  [key: string]: unknown
-}
+export type OpportunityResource = Ok<'opportunity.opportunities'>['data']
+
+/**
+ * Cuerpo de `POST /billing/integrador/portal` (`/api/v1` 1.1.0): `return_url`,
+ * a dónde vuelve el cliente desde el portal de Stripe. Tiene que ser de uno de
+ * los orígenes registrados de la app de su vertical; si no, 422
+ * `return_url_no_permitida`.
+ */
+export type IntegradorBillingPortalRequest =
+  operations['suscripcionIntegrador.portal']['requestBody'] extends {
+    content: { 'application/json': infer B }
+  }
+    ? B
+    : never
+
+/** El estado de la suscripción del cliente en el Stripe de su integrador (`data` de `billing.integrador.subscription()`). */
+export type IntegradorSubscription = Ok<'suscripcionIntegrador.show'>['data']
+
+/**
+ * Códigos de corte de `billing.integrador` (`PimiaApiError.code`):
+ * - 404 `suscripcion_no_disponible`: el integrador de esta instancia no le
+ *   cobra por Stripe (o no hay suscripción).
+ * - 409 `suscripcion_de_baja`, `suscripcion_modificada`, `stripe_plan_unknown`.
+ * - 422 `return_url_no_permitida` (solo el portal).
+ * - 503 `stripe_unavailable`: reintentar (solo el portal).
+ */
+export type IntegradorBillingCorteCode =
+  | 'suscripcion_no_disponible'
+  | 'suscripcion_de_baja'
+  | 'suscripcion_modificada'
+  | 'stripe_plan_unknown'
+  | 'return_url_no_permitida'
+  | 'stripe_unavailable'
 
 /**
  * El cuerpo JSON de la respuesta de ÉXITO de una operación, sacado del OpenAPI.
@@ -754,10 +776,9 @@ export class PimiaClient {
    * No estrena scope: cuelga de `estimates:write`, porque la oportunidad es a
    * quién va dirigido un presupuesto y no una entidad del embudo.
    *
-   * ⚠️ **Todavía no está en el spec publicado** (galeote/factSaas#805 es más
-   * nueva que la última sincronización del contrato). Contra una instancia
-   * anterior a esa ruta la llamada contesta 404, y eso es lo que hay que mirar
-   * antes de dar por hecho que el token está mal.
+   * Publicada en el contrato desde `/api/v1` 1.1.0 (galeote/factSaas#805).
+   * Contra una instancia anterior a esa ruta la llamada contesta 404, y eso es
+   * lo que hay que mirar antes de dar por hecho que el token está mal.
    */
   get opportunities() {
     return {
@@ -767,7 +788,7 @@ export class PimiaClient {
        * no te estrenará una segunda para el mismo trato.
        */
       create: (body: OpportunityRequest, options?: WriteOptions) =>
-        this.post<ResourceEnvelope<OpportunityResource>>('/opportunities', body, options),
+        this.post<Ok<'opportunity.opportunities'>>('/opportunities', body, options),
     }
   }
 
@@ -790,14 +811,55 @@ export class PimiaClient {
        * mañana añade un campo para desempatar dos nombres iguales, tu copia lo
        * borraría sin que nadie entendiera por qué.
        *
-       * ⚠️ El scope: el contrato publicado la cobra con `crm:read`, pero el
-       * núcleo la abrió el 2026-09-08 a cualquier token válido de la empresa
-       * —precisamente para que un integrador que SUSTITUYE el CRM no tenga que
-       * pedir el scope del CRM que ya no usa—. Contra una instancia anterior a
-       * ese cambio sigue haciendo falta `crm:read`.
+       * Sin scope: la alcanza cualquier token válido de la empresa —para que
+       * un integrador que SUSTITUYE el CRM no tenga que pedir el scope del CRM
+       * que ya no usa—. El contrato lo publica así desde `/api/v1` 1.1.0 (antes
+       * decía `crm:read`). Contra una instancia anterior al 2026-09-08 sigue
+       * haciendo falta `crm:read`.
        */
       assignableUsers: (options?: ReadOptions) =>
         this.get<Ok<'crm.assignableUsers'>>('/crm/assignable-users', undefined, options),
+    }
+  }
+
+  /**
+   * La suscripción del CLIENTE en el Stripe de su integrador (`/api/v1` 1.1.0,
+   * galeote/factSaas#835 parte B): lo que un integrador que cobra con Stripe
+   * enseña en el perfil de su cliente para cambiar de plan o darse de baja.
+   *
+   * No es la facturación de Pimia (`billing:*`, reservada a la primera parte):
+   * sus scopes son `integrador-billing:read` y `integrador-billing:write`, y
+   * además exige que el usuario del token sea dueño o administrador de la
+   * empresa (403 si no). Siguen abiertas con la instancia suspendida.
+   *
+   * No hay `cancel` ni `changePlan`, a propósito: todo pasa por el portal de
+   * Stripe. Subir de plan es inmediato y cobra la diferencia; bajar o cancelar
+   * se aplica al final del periodo, y el GET no anuncia las bajadas pendientes.
+   * Los cortes, en {@link IntegradorBillingCorteCode}.
+   */
+  get billing() {
+    return {
+      integrador: {
+        /**
+         * `GET /billing/integrador/subscription`: los planes publicados de la
+         * vertical (`planes`, `currency`), el estado en Stripe
+         * (`stripe_status`, `cancel_at_period_end`, `current_period_end`), la
+         * mora (`debe_desde`, `baja_en`) y lo contratado hoy (`hoy`).
+         */
+        subscription: (options?: ReadOptions) =>
+          this.get<Ok<'suscripcionIntegrador.show'>>(
+            '/billing/integrador/subscription',
+            undefined,
+            options,
+          ),
+        /**
+         * `POST /billing/integrador/portal`: la URL (`data.url`) del portal de
+         * Stripe para esta suscripción. Redirige a ella en el momento: la sesión
+         * del portal caduca pronto, así que no la guardes.
+         */
+        portal: (body: IntegradorBillingPortalRequest, options?: WriteOptions) =>
+          this.post<Ok<'suscripcionIntegrador.portal'>>('/billing/integrador/portal', body, options),
+      },
     }
   }
 

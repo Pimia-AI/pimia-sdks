@@ -115,6 +115,23 @@ error — y el fallo se ve como una empresa sin resolver o como una moneda que c
 al respaldo, nunca como un fallo. `$pimia->bootstrap->currentCompanyId()` y
 `->currency()` lo leen bien; `->get()` te da el cuerpo tal cual.
 
+## La suscripción del cliente en el Stripe de su integrador
+
+Si tu vertical cobra con tu Stripe, el perfil del cliente puede enseñar su plan
+y mandarle al portal de Stripe (scopes `Scopes::INTEGRADOR_BILLING_READ` y
+`Scopes::INTEGRADOR_BILLING_WRITE`; dueño o administrador de la empresa):
+
+```php
+$suscripcion = $pimia->billing->integrador->subscription();
+$portal = $pimia->billing->integrador->portal('https://app.erpstudio.es/perfil');
+header('Location: '.$portal['data']['url']);
+```
+
+Los cortes llegan en `code` del cuerpo (`ApiException::$body`):
+`suscripcion_no_disponible` (404), `suscripcion_de_baja` (409),
+`return_url_no_permitida` (422)… No hay `cancel` ni `changePlan`: todo pasa por
+el portal.
+
 ## Reintentar un `POST` sin duplicar
 
 Manda una `Idempotency-Key` única por operación y Pimia ejecuta la escritura

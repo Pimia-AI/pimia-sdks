@@ -33,12 +33,12 @@ final class Crm
      * copia lo borraría sin que nadie entendiera por qué. **Reenvía lo que
      * conteste**, campos de más incluidos.
      *
-     * ⚠️ El scope: el contrato publicado la cobra con `crm:read`, pero el
-     * núcleo la abrió el 2026-09-08 a cualquier token válido de la empresa
-     * —precisamente para que un integrador que SUSTITUYE el CRM no tenga que
-     * pedir el scope del CRM que ya no usa—. Contra una instancia anterior a
-     * ese cambio sigue haciendo falta `crm:read`, así que si tu app puede
-     * hablar con instancias viejas, pídelo.
+     * Sin scope: la alcanza cualquier token válido de la empresa —para que un
+     * integrador que SUSTITUYE el CRM no tenga que pedir el scope del CRM que
+     * ya no usa—. El contrato lo publica así desde `/api/v1` 1.1.0 (antes decía
+     * `crm:read`). Contra una instancia anterior al 2026-09-08 sigue haciendo
+     * falta `crm:read`, así que si tu app puede hablar con instancias viejas,
+     * pídelo.
      *
      * @return mixed `array{data: list<array{id: int, name: string}>}`
      */

@@ -143,8 +143,88 @@ export type StripeCorteCode =
   | 'stripe_mode_mismatch'
   | 'stripe_too_many_attempts'
   | 'stripe_unavailable'
+  /**
+   * 409 (1.16.0) de `PUT` y `DELETE`: el integrador tiene suscripciones de
+   * clientes sin dar de baja (también pendientes), así que no puede
+   * desvincular ni cambiar de cuenta o de modo. Rotar la clave de la MISMA
+   * cuenta y modo sí se permite.
+   */
+  | 'stripe_account_in_use'
 /** Lo que le falta a una clave restringida: identificadores del contrato, no scopes OAuth. */
 export type StripeMissingPermission = 'account:read' | 'balance:read'
+/**
+ * Los eventos que hay que marcar al dar de alta el endpoint en Stripe
+ * (`stripe.get().data.webhook_events`). Desde 1.16.0 son siete: los dos
+ * `payment_intent.*` de siempre y los cinco del cobro de suscripciones
+ * (`checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+ * `customer.subscription.updated`, `customer.subscription.deleted`).
+ */
+export type StripeWebhookEvent = Ok<'integradorStripe.show'>['data']['webhook_events'][number]
+
+/**
+ * Código de corte de `PUT /desarrollador/tenants/{slug}/contratacion` (1.16.0):
+ * 409 si el cliente paga por Stripe. Lo contratado lo manda su suscripción, no
+ * el PUT manual. Esa operación no tiene helper: se llama con `request()`.
+ */
+export type ContratacionCorteCode = 'contratacion_gestionada_por_stripe'
+
+/**
+ * Cuerpo de `PUT /desarrollador/facturacion-a-clientes` (1.16.0): los TRES
+ * ajustes a la vez —`factura_con_pimia`, `tenant_emisor_id` (una de las
+ * `emisoras` del GET; `null` al desactivar) y `tipo_iva` (0 a 100, hasta dos
+ * decimales)—. Separados de `/stripe` para no reenviar credenciales.
+ */
+export type FacturacionAClientesRequest = Body<'integradorFacturacionClientes.update'>
+
+/**
+ * Estado de la factura de un cobro del integrador. Sale del filtro `estado` del
+ * contrato; el spec publica el campo de la fila como `string` y aquí se
+ * estrecha a esta lista.
+ *
+ * - `pendiente`: lista para la cola.
+ * - `pendiente_alta`: pago recibido, el alta aún no tiene instancia.
+ * - `pendiente_sin_nif`: sin NIF y por encima de 400 € (o en otra moneda): no
+ *   cabe simplificada. Reintentable tras corregir.
+ * - `error`: emisión o encolado incompletos; `motivo` dice qué. Reintentable.
+ * - `emitida`: documento creado y trabajos encolados (no confirma VeriFactu ni
+ *   la entrega del correo).
+ * - `omitida_sin_facturar_con_pimia`: el interruptor estaba apagado al cobrar.
+ *   Encenderlo después no factura hacia atrás.
+ * - `omitida_importe_cero`: cobro de importe cero; nunca lleva factura.
+ */
+export type FacturaAClienteEstado = NonNullable<
+  NonNullable<operations['integradorFacturacionClientes.index']['parameters']['query']>['estado']
+>
+/** Los únicos estados que `facturasAClientes.retry` acepta; los demás contestan 409. */
+export type FacturaAClienteReintentable = Extract<FacturaAClienteEstado, 'error' | 'pendiente_sin_nif'>
+
+type FilaFacturaAClienteSpec = Ok<'integradorFacturacionClientes.index'>['data'][number]
+/**
+ * Una fila de `GET /desarrollador/facturas-a-clientes`: el cobro de Stripe
+ * (`stripe_invoice`, `importe_total` en céntimos, `moneda`, `cobrado_en`) y su
+ * factura (`estado`, emisora, `invoice_id`, `tipo`, `motivo`, `invoice_url`
+ * —la ruta autenticada de la emisora; `null` si no tiene dominio—).
+ */
+export type FacturaACliente = Omit<FilaFacturaAClienteSpec, 'estado'> & {
+  estado: FacturaAClienteEstado
+}
+/** Una página del listado: hasta 50 filas por id ascendente y el cursor de la siguiente. */
+export interface FacturasAClientesPage {
+  data: FacturaACliente[]
+  /** El `cursor` de la página siguiente, o `null` si no hay más. */
+  next_cursor: number | null
+}
+/** Filtros del listado. `cursor` sale del `next_cursor` de la página anterior. */
+export interface FacturasAClientesQuery {
+  estado?: FacturaAClienteEstado
+  cursor?: number
+}
+/** La respuesta del reintento: la fila y su estado tras volver a encolarla. */
+export interface FacturaAClienteReintento {
+  data: Omit<Ok<'integradorFacturacionClientes.retry'>['data'], 'estado'> & {
+    estado: FacturaAClienteEstado
+  }
+}
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -423,6 +503,10 @@ export class PimiaCentralClient {
        * `/v1/balance`, solo lecturas) y guardar. Los cortes llegan con
        * `error.code` ∈ {@link StripeCorteCode}; nada se guarda en ellos.
        * Límite: 10 PUT/minuto y 5 fallos/hora.
+       *
+       * ⚠️ (1.16.0) Con suscripciones de clientes vivas, cambiar de cuenta o de
+       * modo es un 409 `stripe_account_in_use`. Cambiarlos renueva
+       * `webhook_url` y descarta el `whsec_` salvo que mandes uno nuevo.
        */
       update: (body: IntegradorStripeRequest) =>
         this.request<Ok<'integradorStripe.update'>>('/desarrollador/stripe', {
@@ -432,10 +516,98 @@ export class PimiaCentralClient {
       /**
        * `DELETE /desarrollador/stripe`: desvincular y borrar los recibos
        * locales. Idempotente. No revoca claves ni borra el endpoint en Stripe;
-       * una vinculación nueva tiene otra `webhook_url`.
+       * una vinculación nueva tiene otra `webhook_url`. Con suscripciones de
+       * clientes sin dar de baja, 409 `stripe_account_in_use` (1.16.0).
        */
       delete: () =>
         this.request<Ok<'integradorStripe.destroy'>>('/desarrollador/stripe', { method: 'DELETE' }),
+    }
+  }
+
+  // ── La factura de lo que cobra a sus clientes: «Facturo con Pimia» ──────
+  //    (habilidad `desarrollador`; contrato 1.16.0, galeote/factSaas#835 D)
+  //
+  //    Cada `invoice.paid` de una suscripción en SU Stripe deja un registro y,
+  //    con el interruptor encendido, una factura en la instancia emisora que
+  //    elija. Ni el Stripe de Pimia ni facturas de Stripe intervienen.
+
+  get facturacionAClientes() {
+    return {
+      /**
+       * `GET /desarrollador/facturacion-a-clientes`: `factura_con_pimia`,
+       * `tenant_emisor_id`, `tipo_iva` (⚠️ decimal como TEXTO, `"21.00"`) y
+       * `emisoras`, las instancias propias elegibles como `{ id, name }`. Por
+       * defecto, apagado y al 21 %.
+       */
+      get: () =>
+        this.request<Ok<'integradorFacturacionClientes.show'>>('/desarrollador/facturacion-a-clientes'),
+      /**
+       * `PUT /desarrollador/facturacion-a-clientes`: reemplaza los tres
+       * ajustes. Una emisora que no es propia, activa y de producción es un 422
+       * en `tenant_emisor_id`. Emisora e IVA se fijan al recibir cada pago:
+       * cambiarlos no toca las facturas de cobros ya registrados.
+       */
+      update: (body: FacturacionAClientesRequest) =>
+        this.request<Ok<'integradorFacturacionClientes.update'>>(
+          '/desarrollador/facturacion-a-clientes',
+          { method: 'PUT', body },
+        ),
+    }
+  }
+
+  get facturasAClientes() {
+    return {
+      /**
+       * `GET /desarrollador/facturas-a-clientes`: UNA página (hasta 50, por id
+       * ascendente) de los cobros propios con el estado de su factura. Para la
+       * siguiente, pasa `cursor: page.next_cursor`; o usa {@link iterate}.
+       */
+      list: (query: FacturasAClientesQuery = {}) =>
+        this.request<FacturasAClientesPage>('/desarrollador/facturas-a-clientes', {
+          query: { estado: query.estado, cursor: query.cursor },
+        }),
+      /**
+       * Recorre TODAS las páginas siguiendo `next_cursor`, fila a fila. Una
+       * llamada por página, perezosa: si cortas el `for await`, no pide más.
+       *
+       * ```ts
+       * for await (const f of central.facturasAClientes.iterate({ estado: 'error' })) {
+       *   console.log(f.stripe_invoice, f.motivo)
+       * }
+       * ```
+       */
+      iterate: (query: FacturasAClientesQuery = {}) =>
+        this.iterateFacturasAClientes(query),
+      /**
+       * `POST /desarrollador/facturas-a-clientes/{id}/reintentar`: vuelve a
+       * encolar una fila en `error` o `pendiente_sin_nif`
+       * ({@link FacturaAClienteReintentable}) tras corregir la causa. Si el
+       * documento ya existía, completa lo pendiente sin crear otra factura.
+       * Cualquier otro estado es un 409 (`PimiaApiError` con `status: 409`);
+       * una fila de otro integrador, 404 (`NotFoundError`).
+       * El núcleo contesta 202; el contrato lo publica como 200.
+       */
+      retry: (id: number | string) =>
+        this.request<FacturaAClienteReintento>(
+          `/desarrollador/facturas-a-clientes/${encodeURIComponent(String(id))}/reintentar`,
+          { method: 'POST' },
+        ),
+    }
+  }
+
+  private async *iterateFacturasAClientes(
+    query: FacturasAClientesQuery,
+  ): AsyncGenerator<FacturaACliente, void, undefined> {
+    let cursor = query.cursor
+    const vistos = new Set<number>()
+    while (true) {
+      const page = await this.facturasAClientes.list({ estado: query.estado, cursor })
+      yield* page.data
+      if (page.next_cursor === null || page.next_cursor === undefined) return
+      // Un cursor que no avanza sería un bucle infinito de peticiones.
+      if (vistos.has(page.next_cursor)) return
+      vistos.add(page.next_cursor)
+      cursor = page.next_cursor
     }
   }
 
