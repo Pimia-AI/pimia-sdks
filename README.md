@@ -397,14 +397,14 @@ aviso.
 [`spec/pimia-central-v1.json`](spec/pimia-central-v1.json) es el contrato del
 **plano central** para la cuenta de desarrollador (el integrador): su cartera
 de clientes con la atribución de cada alta, los vínculos con cada instancia,
-sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un
-cliente) y el traspaso de propiedad. Quince operaciones; no lleva contenido
-fiscal de ningún cliente. Se autentica con el **token personal** de la cuenta,
+sus clients OAuth, sus verticales, su catálogo y la activación mayorista, su
+login, su correo y su Stripe propios, las invitaciones, el patrocinio y el
+traspaso de propiedad. **1.15.0, 61 operaciones**; no lleva contenido fiscal
+de ningún cliente. Se autentica con el **token personal** de la cuenta,
 acotado por plano (`central`, `desarrollador`; cada operación declara la suya
-en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript
-(desde la 0.23.0, también el catálogo del integrador: `catalogo.get()` y
-`catalogo.replace()`; desde la 0.24.0, la activación mayorista:
-`activaciones.list()`, `activate()` y `deactivate()`).
+en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript;
+no todas las operaciones tienen método todavía (la lista, en la entrada 0.28.0
+del CHANGELOG), pero todas están tipadas y se llaman con `central.request()`.
 
 ```bash
 ./scripts/sync-spec.sh --api central /ruta/al/checkout/de/factSaas
@@ -422,27 +422,23 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**Última publicada: v0.21.0 (2026-09-03)** en npm (`@pimia/sdk`,
+**Última publicada: v0.27.0 (2026-09-08)** en npm (`@pimia/sdk`,
 `@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). Cada tag `v*` dispara
 el workflow de release, que publica los tres artefactos, y **los tres versionan
-en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes.
+en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes. Las
+0.22.0 a 0.26.0 no tuvieron tag propio: salieron dentro de la 0.27.0.
 
-> ⚠️ **`main` va por delante de lo publicado.** Las **0.22.0 a 0.26.0** —el
-> plano central y su contrato— están mergeadas y **sin tag**, así que lo que
-> hay en npm y en Packagist **no es lo que hay en este repo**. Las dos señales
-> coinciden: no hay tag en el remoto por encima de `v0.21.0`, y el paso 4 del
-> runbook (las dependencias del starter) sigue en `^0.21.0`.
+**El SDK habla dos contratos**:
 
-**El SDK habla dos contratos**, sincronizados con `factSaas@522cf264`
-(2026-09-07):
-
-- el del **tenant** (`spec/pimia-api-v1.json`, **438 operaciones**) — facturar,
-  cobrar, el almacén, el CRM: lo que usa una app de partner;
-- el del **plano central** (`spec/pimia-central-v1.json`, **1.4.0, 28
-  operaciones**) — la cuenta del integrador: cartera, vínculos, catálogo,
-  activación mayorista y el login de sus clientes. Vive en `PimiaCentralClient`
-  y es **sólo TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué,
-  en la entrada 0.22.0 del CHANGELOG).
+- el del **tenant** (`spec/pimia-api-v1.json`, **438 operaciones**,
+  `factSaas@522cf264`) — facturar, cobrar, el almacén, el CRM: lo que usa una
+  app de partner;
+- el del **plano central** (`spec/pimia-central-v1.json`, **1.15.0, 61
+  operaciones**, `factSaas@de884f44`) — la cuenta del integrador: cartera,
+  vínculos, verticales, catálogo, activación mayorista, el login de sus
+  clientes, y su correo y su Stripe. Vive en `PimiaCentralClient` y es **sólo
+  TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué, en la entrada
+  0.22.0 del CHANGELOG).
 
 El núcleo OAuth, el cliente, la idempotencia, los webhooks y los tipos están
 completos y con tests. Los helpers de dominio cubren —los mismos diez en los
@@ -450,14 +446,16 @@ dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
 
-**v0.27.0, preparada**: las tres costuras que le faltaban a un integrador que
-SUSTITUYE el CRM —`/bootstrap`, `/crm/assignable-users` y `POST /opportunities`—
-y el **modo de token prestado**, en los dos SDKs. Sin cambios de spec.
+**v0.28.0, preparada**: el contrato del plano central 1.15.0 — `central.correo`
+y `central.stripe`, `PimiaApiError.code`, y dos tipos incompatibles que traía
+el contrato desde la 1.9.0 (el catálogo sin cabecera de marca y el dominio con
+`vertical`). Sólo TypeScript.
 
 Lo anterior, por tramos, con el detalle en el [CHANGELOG](CHANGELOG.md):
 
 | | |
 |---|---|
+| **0.27.0** | Las tres costuras que le faltaban a un integrador que SUSTITUYE el CRM —`/bootstrap`, `/crm/assignable-users` y `POST /opportunities`— y el **modo de token prestado**, en los dos SDKs. |
 | **0.22.0 – 0.26.0** | El **plano central** entra en el SDK y crece contrato a contrato: `PimiaCentralClient` y `spec/pimia-central-v1.json` (0.22.0), el catálogo del integrador (0.23.0), la activación mayorista (0.24.0), el login del integrador (0.25.0) y el contrato central 1.4.0 para `pimia-central-web` (0.26.0). |
 | **0.18.0 – 0.21.0** | El plan y la contratación de la instancia, y el contrato al día con la facturación francesa. ⚠️ Y **dos cambios incompatibles de scope el mismo día**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*` (0.20.0), y la campana pasa a `notifications:*` (0.21.0). Un grant vivo que sólo pidió `crm:*` tiene que **reconectar**. |
 | **0.13.0 – 0.17.0** | El almacén se vuelve una DIMENSIÓN, los documentos declaran a cuál, el recuento de inventario y el stock comprometido (fase N2 del estudio de stock); más el sello de exportación contable. |

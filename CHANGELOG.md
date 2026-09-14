@@ -8,6 +8,120 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.28.0] — 2026-09-14
+
+**El correo y el Stripe propios del integrador entran en `PimiaCentralClient`**
+(contrato del plano central **1.15.0**, galeote/factSaas#831): desde dónde salen
+las invitaciones que manda a sus clientes, y la cuenta de Stripe con la que
+cobra él —independiente, sin Connect y sin tocar la facturación de Pimia—.
+Métodos nuevos, todos aditivos; y **dos tipos incompatibles** que no trae esta
+versión sino el contrato que se había quedado atrás, abajo.
+
+Specs sincronizados con **factSaas@de884f44** (2026-09-14) — plano central
+**1.15.0, 61 operaciones** (venía de 1.4.0 y 28: once versiones del contrato
+de golpe). `/api/v1` **no se sincroniza en esta versión**: ver «Lo que queda».
+
+### Añadido
+
+- **La cuenta de correo** — `central.correo` (habilidad `desarrollador`):
+  - `get()` → `GET /desarrollador/correo`: la cuenta, sin secretos
+    (`mail_password_set`, `mail_ses_secret_set`). `configured: false` quiere
+    decir que lo suyo sale desde Pimia, y entonces el remitente es `null`.
+  - `update(body: IntegradorCorreoRequest)` → `PUT`: `smtp` o `ses`,
+    remitente, `reply_to`. Omitir un secreto lo conserva; mandarlo lo sustituye.
+  - `delete()` → `DELETE`: lo suyo vuelve a salir desde Pimia.
+  - `test(body: CorreoPruebaRequest): Promise<CorreoPruebaResult>` →
+    `POST /desarrollador/correo/prueba`. ⛔ **Contesta siempre `200` y no
+    lanza por un envío fallido**: hay que mirar `success`, y con `false`,
+    `error` (`CorreoPruebaError`: `mail_not_configured` | `mail_send_failed`)
+    y `reason` (`CorreoPruebaReason`: `connection_failed`, `auth_failed`,
+    `tls_failed`, `rejected`, `timeout`, `unknown`). El spec publica esos dos
+    campos como `string`; el SDK los estrecha a su lista cerrada, que es la que
+    documenta el núcleo.
+  - El `422` de un servidor que no es público lleva
+    `code: mail_host_not_allowed` (`CorreoCorteCode`).
+- **El Stripe propio** — `central.stripe` (habilidad `desarrollador`):
+  - `get()` → `GET /desarrollador/stripe`: `linked`, `mode`, la cuenta, y
+    `webhook_url` + `webhook_events` para dar de alta el endpoint a mano.
+  - `update(body: IntegradorStripeRequest)` → `PUT`: `publishable_key`,
+    `secret_key` (`sk_`; `rk_` restringida opcional), `webhook_secret`
+    (opcional; `null` lo borra y apaga la recepción) y `mode`. El núcleo valida
+    en Stripe con lecturas antes de guardar.
+  - `delete()` → `DELETE`: idempotente; no revoca claves en Stripe.
+  - Los cortes, ninguno guarda nada (`StripeCorteCode`): 422
+    `stripe_key_invalid` / `stripe_key_permissions` (con
+    `missing_permissions`: `StripeMissingPermission[]`) /
+    `stripe_mode_mismatch`, 429 `stripe_too_many_attempts` (como
+    `RateLimitError`, con `retryAfter`) y 503 `stripe_unavailable`.
+  - **`POST /stripe/integrador/{opaco}` está en el spec y NO es un método**, a
+    propósito: lo llama Stripe, firmado y sin Bearer. Su URL es `webhook_url`.
+- **`PimiaApiError.code`**: el código de corte del cuerpo —`code`, o `error`
+  si no hay `code`—, `undefined` si no hay ninguno. Hasta ahora el cliente
+  tipaba por status (`ValidationError`, `RateLimitError`…) pero para distinguir
+  `stripe_key_invalid` de `stripe_mode_mismatch`, dos 422, había que leer
+  `body` a mano; es lo que se compara, no el `message`, que es prosa. Vale
+  también para el cliente del tenant.
+- Los docblocks de `invitations.create` avisan del **502
+  `integrator_mail_failed`** (1.15.0): con el correo del integrador puesto, si
+  el envío falla la invitación no se crea y **no sale desde Pimia en su lugar**.
+
+### Cambiado — lo que trae la sincronización (1.5.0 → 1.14.0)
+
+- ⚠️ **Incompatible en tipos (contrato 1.9.0): `CatalogoDelIntegradorRequest`
+  pierde `nombre_comercial`, `soporte_url`, `soporte_email` y `contract_url`
+  de cabecera**; queda `currency` + `items`. La marca pasó a ser de cada
+  VERTICAL (`PATCH /desarrollador/verticales/{v}`): un integrador con dos
+  productos tiene dos marcas. `catalogo.get().data.perfil` se tipa ahora
+  `null`, que es lo que devuelve.
+- ⚠️ **Incompatible en tipos (1.9.0): `IntegradorDominioRequest` pide
+  `vertical`** — el nombre de login es de una vertical, no de la cuenta.
+- Aditivos en respuestas: `vertical` en clients (1.10.0) y dominios;
+  `redirect_uris` en clients; `vertical` (con `fase`, `fase_de_entrada`) y
+  `contratacion` en cada fila de `overview().data.cartera` (1.12.0);
+  `metodo_de_pago` y `canal_puede_cobrar` en `facturacion()` (1.14.0);
+  `vertical` opcional en el cuerpo de `invitations.create`.
+- El `502` de `invitations.create` pasa a ser un `anyOf`: el de siempre
+  (`message`) o `integrator_mail_failed` (1.15.0).
+
+**En el spec, sin método todavía** — tipadas en `@pimia/sdk/central-api` y
+alcanzables con `central.request()`, pero sin helper en esta versión:
+
+| Contrato | Operaciones |
+|---|---|
+| 1.5.0 | Las verticales: `GET\|POST /desarrollador/verticales`, `PATCH\|DELETE /desarrollador/verticales/{vertical}`, y `PUT /desarrollador/tenants/{slug}/vertical` |
+| 1.6.0 | `PUT /desarrollador/verticales/{vertical}/nacimiento` (qué nace encendido) |
+| 1.7.0 | `PUT /desarrollador/verticales/{vertical}/sustituciones` (qué módulos de Pimia sustituye) |
+| 1.8.0 | Diez que ya respondían y el contrato no publicaba: `/desarrollador/modulos` (4), `/desarrollador/verticales/{vertical}/planes` (4) y `GET\|PUT /desarrollador/tenants/{slug}/contratacion` |
+| 1.10.0 | Alta y edición de clients: `POST /desarrollador/clients`, `PATCH /desarrollador/clients/{clientId}`, `POST /desarrollador/clients/{clientId}/secret` |
+| 1.13.0 | Las instancias de desarrollo: `POST …/tenants/{slug}/produccion`, `POST …/tenants/{slug}/pruebas`, `DELETE /desarrollador/tenants/{slug}` |
+| 1.14.0 | La tarjeta del canal: `POST /desarrollador/facturacion/metodo-de-pago` y `…/confirmar` |
+
+Son 25 de las 33 operaciones nuevas; las otras ocho son las de 1.15.0 (siete
+con método y el receptor de Stripe). Ninguna operación desaparece del
+contrato. Los helpers llegan cuando alguien los pida, no por completar la
+tabla.
+
+### Cómo migrar
+
+- Si llamas a `catalogo.replace()` con `nombre_comercial`, `soporte_*` o
+  `contract_url` de cabecera: TypeScript lo marca como error. Esos campos se
+  guardan ahora en la vertical (`central.request('/desarrollador/verticales/…',
+  { method: 'PATCH', body })`), y el núcleo ya no los lee aquí.
+- Si llamas a `dominios.declare()`: añade `vertical` (el slug de la vertical).
+
+### Lo que hay que tener delante para integrarlo
+
+- **Asimetría TS/PHP, la de siempre**: el plano central es **sólo TypeScript**
+  desde la 0.22.0 (el porqué, en aquella entrada), así que ni `correo` ni
+  `stripe` ni `code` tienen par en PHP. En PHP el código de corte de un error
+  del tenant se lee de `ApiException::$body`.
+- `@pimia/design-tokens` sube a 0.28.0 **sin cambios de código**.
+- **Lo que queda**: `/api/v1` no se sincroniza aquí. En `factSaas@de884f44` va
+  una operación por delante —`POST /opportunities`, que la 0.27.0 declaró a
+  mano— y trae el cambio de `POST /mail/test` (ya no devuelve `message`, sino
+  `reason`) y la guarda `422 mail_host_not_allowed` de `/mail/config`. Es otra
+  release: el diff del documento toca 436 operaciones y merece mirarse aparte.
+
 ## [0.27.0] — 2026-09-08
 
 **Los dos SDKs dejan de quedarse cortos para un integrador que SUSTITUYE el

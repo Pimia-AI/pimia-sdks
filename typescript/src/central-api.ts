@@ -130,10 +130,66 @@ export interface paths {
         /**
          * GET /api/desarrollador/facturacion — su suscripción de canal
          * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Desde la 1.14.0 publica también `metodo_de_pago` —la tarjeta guardada en
+         *     el Stripe de Pimia (13.30a), o `null`— y `canal_puede_cobrar`: si Pimia
+         *     puede cobrarle un asiento (canal vivo o tarjeta), que es lo que «Pasar a
+         *     producción» y cada alta en producción exigen.
          */
         get: operations["desarrollador.facturacion"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/facturacion/metodo-de-pago": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/facturacion/metodo-de-pago — guardar la tarjeta
+         *     del canal ANTES del primer cliente (13.30a; 1.14.0)
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Abre un Checkout de Stripe en modo setup: no cobra nada, deja la tarjeta
+         *     como método de pago por defecto del cliente de Stripe del integrador. Con
+         *     ella «Pasar a producción» ya no pide asumir a nadie, y el primer asiento
+         *     crea la suscripción de canal sin pantalla. `return_url` es la del panel
+         *     (mismo origen exacto que `CENTRAL_WEB_URL`, como el portal); Stripe
+         *     vuelve a ella con `metodo=ok&sesion=…` o `metodo=cancelado`.
+         */
+        post: operations["desarrollador.iniciarMetodoDePago"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/facturacion/metodo-de-pago/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/facturacion/metodo-de-pago/confirmar — la vuelta
+         *     del Checkout de setup: la sesión (`sesion`) se comprueba con Stripe y su
+         *     tarjeta pasa a ser la del canal. El webhook hace lo mismo si la pestaña
+         *     se cerró; confirmar dos veces no rompe nada
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        post: operations["desarrollador.confirmarMetodoDePago"];
         delete?: never;
         options?: never;
         head?: never;
@@ -224,10 +280,28 @@ export interface paths {
         /**
          * GET — los clients OAuth de este desarrollador
          * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Con sus `redirect_uris` y su `vertical` desde el alta en el panel
+         *     (1.10.0): es lo que la pantalla enseña y lo que se edita.
          */
         get: operations["desarrolladorLink.clients"];
         put?: never;
-        post?: never;
+        /**
+         * POST /api/desarrollador/clients — dar de alta un client para una vertical
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `redirect_uris`: adónde vuelve el código de autorización, exactos (el
+         *     AS los compara letra a letra en cada authorize). `https` obligatorio
+         *     salvo en `localhost`, que es el entorno de pruebas del integrador
+         *     (`http://localhost:3000/oauth/callback`). `confidential` (por defecto
+         *     `true`): un servidor guarda un secreto; una app de escritorio no puede
+         *     y va como client público, con PKCE. `scope` opcional: sin él, todo lo
+         *     que puede pedir cualquiera.
+         *
+         *     Sin `@response 201`, como en los dominios: Scramble se llevaría el
+         *     cuerpo —con el `client_secret`— del contrato.
+         */
+        post: operations["integradorClient.store"];
         delete?: never;
         options?: never;
         head?: never;
@@ -371,6 +445,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/clients/{clientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /api/desarrollador/clients/{clientId} — el nombre, los redirects o
+         *     la vertical de un client tuyo. Es lo que se toca al pasar de pruebas a
+         *     producción: añadir `https://app.tudominio.es/oauth/callback` cuando el
+         *     dominio exista. 404 si el client no es tuyo o está revocado
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        patch: operations["integradorClient.update"];
+        trace?: never;
+    };
+    "/desarrollador/clients/{clientId}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/clients/{clientId}/secret — rotar el secreto
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     El viejo muere en el acto: cada `/oauth/token` con él es `invalid_client`
+         *     desde ya, así que se cambia en el `.env` del fork ANTES de redesplegar.
+         *     Los tokens ya emitidos no dependen del secreto y siguen. 422 en un
+         *     client público, que no tiene secreto que rotar.
+         *
+         *     Sin `@response`: el cuerpo lleva el `client_secret` nuevo, una vez.
+         */
+        post: operations["integradorClient.rotarSecreto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}/contratacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/tenants/{slug}/contratacion
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Lo que paga hoy, lo previsto si lo hay, y su historial: los tres salen de
+         *     la misma tabla porque una contratación es una fila por periodo.
+         */
+        get: operations["integradorContratacion.show"];
+        /**
+         * PUT /api/desarrollador/tenants/{slug}/contratacion
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Contratar un plan o cambiárselo. `desde` en el futuro anuncia sin cobrar
+         *     todavía, que es lo que 13.29e llama «tiene alcance».
+         *
+         *     ⚠️ El **precio** se manda o se hereda del plan **en ese momento**: heredarlo
+         *     es una comodidad al contratar, no una lectura permanente. A partir de ahí
+         *     la fila manda, aunque el plan cambie.
+         */
+        put: operations["integradorContratacion.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/correo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/correo — la cuenta de correo, sin secretos
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `configured: false` significa que lo tuyo sale desde Pimia; entonces
+         *     `from_name`, `from_mail` y `reply_to` van a `null`. De cada secreto solo
+         *     sale si está guardado (`mail_password_set`, `mail_ses_secret_set`), nunca
+         *     el valor. Las claves del driver dependen del `mail_driver` guardado: las
+         *     de `smtp` o las de `ses`.
+         */
+        get: operations["integradorCorreo.show"];
+        /**
+         * PUT /api/desarrollador/correo — guarda la cuenta de correo
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Un secreto que no viene (`mail_password`, `mail_ses_secret`) conserva el
+         *     guardado; uno que viene lo sustituye. Cambiar de driver borra las
+         *     credenciales del anterior. Guardar no comprueba que el servidor acepte
+         *     las credenciales: para eso está `POST /correo/prueba`.
+         *
+         *     El servidor (`mail_host`) tiene que ser un nombre o una IP pública: uno que
+         *     resuelva a una dirección privada, local o reservada, o que no resuelva, se
+         *     rechaza con `422` y `code: mail_host_not_allowed`. El puerto, uno de 25,
+         *     465, 587 o 2525.
+         */
+        put: operations["integradorCorreo.update"];
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/correo — quita la cuenta de correo
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Lo tuyo vuelve a salir desde Pimia. Borrar lo que no existe no es un
+         *     error.
+         */
+        delete: operations["integradorCorreo.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/correo/prueba": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/correo/prueba — envía un correo de prueba con lo GUARDADO
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Síncrono a propósito, como `/mail/test` de la instancia: su razón de ser
+         *     es decirte si tu configuración funciona. Por eso responde **200 con
+         *     `success: false`** y el motivo en `error` —`mail_not_configured` (no hay
+         *     nada guardado, o le falta el servidor o la clave) o `mail_send_failed`
+         *     (no salió; el motivo va en `reason`)— en vez de un error
+         *     HTTP. Un `200` no significa que el correo saliera: mira `success`.
+         *
+         *     Con `mail_send_failed` va `reason`, uno de `connection_failed`,
+         *     `auth_failed`, `tls_failed`, `rejected`, `timeout` o `unknown`. No va el
+         *     texto del servidor: lo que conteste el otro lado no se devuelve.
+         *
+         *     Sin configurar NO se prueba el correo de Pimia: se contesta
+         *     `mail_not_configured`. `subject` y `message` son opcionales.
+         */
+        post: operations["integradorCorreo.prueba"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/desarrollador/dominios": {
         parameters: {
             query?: never;
@@ -424,6 +663,265 @@ export interface paths {
          *     integrador deja de tener a dónde reenviar. 404 si el nombre no es suyo.
          */
         delete: operations["integradorDominio.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}/produccion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/tenants/{slug}/produccion
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        post: operations["integradorInstancia.produccion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}/pruebas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/desarrollador/tenants/{slug}/pruebas
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        post: operations["integradorInstancia.pruebas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/tenants/{slug}
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        delete: operations["integradorInstancia.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/modulos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/modulos — los módulos que ha hecho el integrador
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Cada uno con en qué planes está metido, que es lo que el panel necesita
+         *     para no dejar borrar algo que se está usando.
+         */
+        get: operations["integradorModulo.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/modulos — dar de alta uno suyo
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `en_lugar_de` dice a qué módulo de Pimia le ocupa el sitio, o se omite si
+         *     es nuevo y convive con todo. **De ahí sale lo que la vertical sustituye**,
+         *     en cuanto un plan lo lleve (13.29g.4).
+         */
+        post: operations["integradorModulo.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/modulos/{modulo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/modulos/{modulo} — borrarlo
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     ⛔ No se borra lo que está EN USO: un plan que lo lleve se quedaría con una
+         *     clave que no apunta a nada, y sus clientes con una funcionalidad que nadie
+         *     declara. Se dice en qué planes está, que es lo accionable.
+         */
+        delete: operations["integradorModulo.destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /api/desarrollador/modulos/{modulo} — editarlo
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     ⚠️ Cambiar `en_lugar_de` cambia lo que sustituyen TODAS las verticales que
+         *     lo llevan en algún plan, así que se recalculan las suyas. Y si el cambio
+         *     dejara a alguna con dos proveedores para la misma función, se rechaza:
+         *     es 13.29k mirado desde el otro extremo.
+         */
+        patch: operations["integradorModulo.update"];
+        trace?: never;
+    };
+    "/desarrollador/verticales/{vertical}/planes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/verticales/{vertical}/planes
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         */
+        get: operations["integradorPlan.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/verticales/{vertical}/planes — publicar un plan
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `price_cents` es el precio PUBLICADO: lo que pide a quien lo contrate de
+         *     nuevas. Lo que paga un cliente vive en su contratación (13.29e).
+         */
+        post: operations["integradorPlan.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/verticales/{vertical}/planes/{plan}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/verticales/{vertical}/planes/{plan}
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Borrar el plan no le quita nada a quien lo tenga contratado: lo contratado
+         *     vive en su contratación. Lo que deja de existir es la oferta.
+         */
+        delete: operations["integradorPlan.destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /api/desarrollador/verticales/{vertical}/planes/{plan}
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     ⚠️ Cambiar la COMPOSICIÓN no es cambiar el precio (13.29f): el precio tiene
+         *     alcance sobre quien lo contrató y la composición todavía no. Qué pasa con
+         *     los clientes que ya tienen este plan **sigue sin decidirse**, así que este
+         *     endpoint guarda lo publicado y no toca ninguna contratación.
+         */
+        patch: operations["integradorPlan.update"];
+        trace?: never;
+    };
+    "/desarrollador/stripe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de la cuenta Stripe independiente del integrador
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Una por usuario, para todas sus verticales e instancias. Sin Connect ni
+         *     comisión. linked acredita identidad y modo, no permisos de cobro ni el
+         *     funcionamiento del webhook. Los secretos nunca se devuelven.
+         */
+        get: operations["integradorStripe.show"];
+        /**
+         * Validar y guardar Stripe propio, sin modificar la facturación de Pimia
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Copia la clave publicable (pk_) y la secreta (sk_) de Stripe →
+         *     Developers → API keys. Las sondas de cuenta y balance son lecturas;
+         *     esta fase no acredita permisos para cobrar (fuera de #831).
+         *     stripe_key_permissions solo puede darse si se usa una clave restringida
+         *     sin los permisos de lectura; missing_permissions identifica los faltantes.
+         *     La pk se valida por formato y modo, no por pertenencia a la cuenta.
+         *     secret_key ausente conserva (obligatoria en el alta). webhook_secret
+         *     ausente conserva; null elimina. Cambiar cuenta/modo renueva la URL y
+         *     descarta el whsec anterior salvo que se mande uno nuevo. Todo corte
+         *     conserva la vinculación anterior; 503 permite reintentar.
+         *     Límite de 10 PUT/minuto y de 5 fallos/hora por usuario. Tras el quinto
+         *     fallo, cualquier nuevo PUT recibe 429 stripe_too_many_attempts hasta
+         *     que venza la hora. Éxitos y caídas de Stripe (503) no consumen fallos;
+         *     un éxito tampoco borra los fallos anteriores.
+         */
+        put: operations["integradorStripe.update"];
+        post?: never;
+        /**
+         * Desvincular Stripe y borrar sus recibos locales, de forma idempotente
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     La URL anterior deja de aceptar entregas. No revoca la clave ni elimina
+         *     el endpoint que el integrador creó manualmente en Stripe.
+         */
+        delete: operations["integradorStripe.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stripe/integrador/{opaco}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir eventos firmados de la cuenta propia del integrador
+         * @description Crear manualmente un endpoint Your account, snapshot, con estos eventos:
+         *     payment_intent.succeeded y payment_intent.payment_failed. Guardar su
+         *     whsec en PUT /desarrollador/stripe. Stripe-Signature firma el cuerpo
+         *     crudo con ese secreto (tolerancia 300 s). No usa Bearer.
+         *     Verifica livemode y account cuando está presente. Solo registra un
+         *     recibo deduplicado por vinculación: no procesa cobros ni toca Cashier.
+         *     Otros tipos firmados se acusan como ignored:true sin guardarlos.
+         */
+        post: operations["integradorStripeWebhook"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -588,6 +1086,179 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/desarrollador/verticales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/desarrollador/verticales — las verticales del integrador
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Cada una con cuántas instancias entraron por ella, que es lo que el panel
+         *     necesita para separar la cartera por vertical (13.16b).
+         */
+        get: operations["vertical.index"];
+        put?: never;
+        /**
+         * POST /api/desarrollador/verticales — abrir una vertical
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     `slug` la nombra en la URL y en el panel del integrador y es único ENTRE
+         *     LAS SUYAS; `name` es cómo la llama de cara al cliente y `sector` qué
+         *     sector es, texto libre a propósito.
+         *
+         *     Sin `@response 201`: Scramble lo leería como el TIPO `201` y el cuerpo
+         *     desaparecería del contrato. El estado va en el `return`.
+         */
+        post: operations["vertical.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/verticales/{vertical}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /api/desarrollador/verticales/{vertical} — cerrarla
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Solo si no entró ninguna instancia por ella. Con clientes dentro, borrarla
+         *     dejaría instancias apuntando a un id que ya no existe y su paquete de
+         *     nacimiento sin dueño: para dejar de vender se apaga con el `PATCH`.
+         */
+        delete: operations["vertical.destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /api/desarrollador/verticales/{vertical} — renombrarla, apagarla, o
+         *     ponerle su marca y sus dominios
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     La marca (nombre comercial, color, soporte, dónde se contrata) y las caras
+         *     `web` y `app` del dominio son SUYAS desde el 2026-09-11 (👤 2026-09-09):
+         *     es lo que su cliente ve en el login y en su pantalla de plan, y lo que el
+         *     fork del integrador lee al arrancar. La cara de login se declara aparte,
+         *     en `POST /dominios` con la vertical, porque lleva secreto.
+         *
+         *     Apagarla no toca a las instancias que ya entraron por ella: deja de
+         *     admitir altas nuevas y nada más, porque cambiar un cliente de vertical
+         *     es una migración que 13.18 deja sin diseñar.
+         */
+        patch: operations["vertical.update"];
+        trace?: never;
+    };
+    "/desarrollador/tenants/{slug}/vertical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /api/desarrollador/tenants/{slug}/vertical — decir por qué vertical
+         *     entró una instancia que ya existe
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Es para las que nacieron antes de que la vertical existiera; lo normal es
+         *     que la vertical viaje en el alta. Se puede una sola vez: cambiar de
+         *     vertical es una migración (13.18) y aquí se rechaza con
+         *     `vertical_already_set` en vez de improvisarla.
+         *
+         *     Y es el TRASPASO de 13.30 (regla 3, 👤 2026-09-11): «un cliente de
+         *     Pimia que decide irse con un integrador solo puede irse a una de sus
+         *     verticales», y entrar por una vertical es entrar en su fase. En
+         *     desarrollo cuenta como una de las cinco de cortesía; en producción
+         *     contrata uno de sus planes (`plan`, obligatorio) y nace el asiento del
+         *     canal, como en el alta. Lo que ese cliente tuviera con Pimia lo resuelve
+         *     el asiento como siempre (`Sponsorship::sponsor`).
+         */
+        put: operations["vertical.attach"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/verticales/{vertical}/nacimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /api/desarrollador/verticales/{vertical}/nacimiento — qué nace
+         *     encendido y qué apagado en un cliente nuevo de esta vertical (13.18)
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Se manda el paquete ENTERO, como el catálogo: es un puñado de claves y
+         *     así el panel no lleva diffs. `{"crm": false, "agenda": true}` declara
+         *     exactamente dos cosas; lo que no aparece sigue la regla general de Pimia,
+         *     que es lo que 13.18 manda para lo no declarado.
+         *
+         *     Solo módulos COMPONIBLES (13.17): el core no se apaga y el cumplimiento
+         *     por país no lo elige nadie. Un slug que no sea componible responde 422.
+         *
+         *     ⚠️ Cambia el nacimiento de los clientes NUEVOS. A los que ya entraron no
+         *     les toca nada: su fila ya está escrita, y recomponerla sería la migración
+         *     que 13.18 deja sin diseñar.
+         */
+        put: operations["vertical.birthPackage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/desarrollador/verticales/{vertical}/sustituciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /api/desarrollador/verticales/{vertical}/sustituciones — qué módulos
+         *     de Pimia sustituye esta vertical (13.19)
+         * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     Sustituir no es apagar: el módulo desaparece para el cliente. Nace
+         *     apagado, no se ofrece en su lista de módulos ni en su tienda, él no puede
+         *     encenderlo —la composición de una vertical es del integrador— y
+         *     `/bootstrap` lo publica en `substituted_modules` para que la web apague
+         *     también su vocabulario en las vistas que no son del módulo.
+         *
+         *     Se manda la lista entera. Solo módulos componibles (13.17).
+         *
+         *     ⚠️ Afecta a los clientes NUEVOS en el nacimiento; a los que ya entraron
+         *     les desaparece de la vista, pero su fila no se toca — recomponerla sería
+         *     la migración que 13.18 deja sin diseñar.
+         */
+        put: operations["vertical.substitutions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -605,14 +1276,12 @@ export interface components {
          *     precio de Pimia: es del integrador (regla 4 del punto 12).
          */
         IntegradorCatalogoRequest: {
-            nombre_comercial: string;
-            /** Format: uri */
-            soporte_url?: string | null;
-            /** Format: email */
-            soporte_email?: string | null;
+            /**
+             * @description Solo la moneda. El nombre comercial, el soporte y dónde se contrata
+             *     son de cada VERTICAL desde el 2026-09-11 (`PATCH /verticales/{v}`):
+             *     un integrador con dos productos tiene dos marcas, no una.
+             */
             currency: string;
-            /** Format: uri */
-            contract_url?: string | null;
             items: {
                 /** @enum {string} */
                 kind: "base" | "module" | "app";
@@ -622,6 +1291,173 @@ export interface components {
                 contract_url?: string | null;
                 enabled?: boolean;
             }[];
+        };
+        /**
+         * IntegradorCorreoRequest
+         * @description Cuerpo de `PUT /api/desarrollador/correo` (#831, parte A): la cuenta de correo
+         *     del integrador, entera.
+         *
+         *     Las reglas son las de `MailEnvironmentRequest` —el correo de la instancia—
+         *     más `reply_to`, y por la misma razón van en UNA lista plana con
+         *     `required_if` y no en un `match` por driver: el generador del contrato
+         *     ejecuta `rules()` sin petición, y con un `match` el cuerpo publicado se
+         *     quedaba en tres campos (ver la cabecera de aquella clase).
+         *
+         *     El driver se valida contra `MailSettings::DRIVERS` con `Rule::in`, y eso es
+         *     lo que publica los drivers como `enum` en el contrato. Es la razón de que no
+         *     haya `GET /correo/drivers` (a diferencia de `/mail/drivers` en la instancia):
+         *     la lista es una propiedad de la IMAGEN —qué transportes trae el
+         *     `composer.json`—, así que solo cambia con un despliegue, y ese mismo
+         *     despliegue regenera el contrato y el SDK. Una ruta más para leer una
+         *     constante sería una ruta más que guardar tras la habilidad `desarrollador`.
+         *
+         *     Los comentarios de dentro de `rules()` se PUBLICAN como `description` del
+         *     campo: van escritos para el integrador. Las notas de mantenimiento, aquí.
+         */
+        IntegradorCorreoRequest: {
+            /** @enum {string} */
+            mail_driver: "smtp" | "ses";
+            from_name: string;
+            /** Format: email */
+            from_mail: string;
+            /**
+             * Format: email
+             * @description A dónde llegan las respuestas de tus clientes, si no es el remitente.
+             */
+            reply_to?: string | null;
+            mail_host?: string;
+            /**
+             * @description 25, 465, 587 o 2525.
+             * @enum {integer}
+             */
+            mail_port?: "25" | "465" | "587" | "2525";
+            mail_username?: string | null;
+            /** @description Omítela para conservar la guardada: nunca se devuelve. */
+            mail_password?: string | null;
+            /** @enum {string|null} */
+            mail_encryption?: "smtp" | "smtps" | "none" | "tls" | "ssl" | "" | null;
+            /** @enum {string|null} */
+            mail_scheme?: "smtp" | "smtps" | "" | null;
+            mail_timeout?: number | null;
+            mail_local_domain?: string | null;
+            mail_ses_key?: string;
+            /** @description Omítelo para conservar el guardado: nunca se devuelve. */
+            mail_ses_secret?: string | null;
+            /** @description Una región de AWS, como `eu-west-1`. */
+            mail_ses_region?: string | null;
+        };
+        /**
+         * IntegradorModuloRequest
+         * @description Alta y edición de un módulo propio del integrador (13.29g.5).
+         *
+         *     La `key` es única POR DUEÑO, como el slug de una vertical: dos integradores
+         *     pueden llamar «crm» al suyo sin enterarse el uno del otro.
+         *
+         *     ⛔ **`en_lugar_de` se valida contra el REGISTRO de módulos de Pimia**
+         *     (`config/modules.php`), y sólo admite los que se pueden sustituir: un módulo
+         *     CORE no se sustituye —es lo que Pimia siempre sirve— y una app tampoco, que
+         *     la sustitución está delimitada a módulos (corrección de Atlas, 13.29c).
+         *
+         *     ⛔ `rules()` se evalúa en frío al generar el contrato: nada de tocar la base
+         *     fuera de las reglas.
+         */
+        IntegradorModuloRequest: {
+            key: string;
+            name: string;
+            description?: string | null;
+            /** @enum {string|null} */
+            en_lugar_de?: "compliance-es" | "compliance-fr" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | null;
+            /**
+             * @description Lo que DECLARA que sabe distinguir. Frases en producto, no slugs:
+             *     Pimia no las concede ni las aplica (13.29j).
+             */
+            control_de_usuarios?: string[] | null;
+            /**
+             * @description Lo que necesita de Pimia, que Pimia sí autoriza. El scope lleva la
+             *     forma del núcleo, `dominio:acción`, o no se puede contrastar.
+             */
+            necesita_de_pimia?: {
+                operacion: string;
+                scope: string;
+            }[] | null;
+        };
+        /**
+         * IntegradorPlanRequest
+         * @description Alta y edición de un plan del integrador (13.29 a 13.29m).
+         *
+         *     ⛔ **`price_cents` mínimo 1** (13.29m): un integrador no puede ofrecer planes
+         *     free porque Pimia no se los ofrece. No es una regla que haya que razonar, es
+         *     una consecuencia.
+         *
+         *     ⛔ **`componentes_pimia` sólo admite módulos COMPONIBLES**: el CORE va en
+         *     todos los planes por definición y no se elige, y ponerlo en la lista haría
+         *     creer que un plan puede no llevarlo.
+         *
+         *     ⚠️ Lo que NO se valida aquí y va en el controlador: que los módulos propios
+         *     sean suyos, y que no haya dos proveedores para la misma función en la vertical
+         *     (13.29k). Las dos necesitan la base y `rules()` se evalúa en frío al generar
+         *     el contrato.
+         */
+        IntegradorPlanRequest: {
+            key: string;
+            name: string;
+            /** @description Mínimo 1: 13.29m. El máximo es el del `unsignedInteger`. */
+            price_cents: number;
+            /** @description Las dos dimensiones de 13.29b. `-1` = sin tope, como en `plans`. */
+            usuarios_incluidos?: number;
+            empresas_incluidas?: number;
+            componentes_pimia?: ("compliance-es" | "compliance-fr" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock")[] | null;
+            modulos_propios?: string[] | null;
+        };
+        /**
+         * VerticalRequest
+         * @description Alta y edición de una vertical del integrador (pieza 1 de la fase 0).
+         *
+         *     El `slug` es único POR DUEÑO, no en toda la tabla: dos integradores pueden
+         *     llamar «talleres» a la suya sin enterarse el uno del otro. Por eso la regla
+         *     de unicidad se compone aquí con el usuario autenticado y no se declara en el
+         *     modelo.
+         *
+         *     ⛔ `rules()` se evalúa en frío al generar el contrato (Scramble), así que
+         *     nada de tocar la base de datos fuera de las reglas: `Rule::unique` se
+         *     construye, no se ejecuta.
+         */
+        VerticalRequest: {
+            slug: string;
+            name: string;
+            sector?: string | null;
+            enabled?: boolean;
+            /**
+             * @description La MARCA (👤 2026-09-09, «bájalo también a la vertical»): lo que
+             *     su cliente lee en el login, en el correo y en la pantalla de plan.
+             */
+            nombre_comercial?: string | null;
+            color?: string | null;
+            /** Format: email */
+            soporte_email?: string | null;
+            /** Format: uri */
+            soporte_url?: string | null;
+            /** Format: uri */
+            contract_url?: string | null;
+            /**
+             * @description Las dos caras del dominio que Pimia no sirve: nombres, no URLs.
+             *     La de login se declara aparte (`POST /dominios`), porque lleva
+             *     secreto y etiqueta interna.
+             */
+            web_host?: string | null;
+            app_host?: string | null;
+            /**
+             * @description Su ENTORNO DE PRUEBAS (👤 2026-09-11): el origen donde arranca su
+             *     fork en su equipo. Una URL, no un nombre: en local hay esquema y
+             *     puerto y no hay TLS. Solo el origen (sin ruta), `http` solo en
+             *     localhost; fuera de ahí, `https`, que por ese origen viaja el
+             *     código de autorización.
+             *     Su FASE (13.30): solo se pasa de desarrollo a producción, y con
+             *     comprobaciones que hace el controlador (planes, canal con pago).
+             * @enum {string}
+             */
+            fase?: "desarrollo" | "produccion";
+            dev_url?: string | null;
         };
     };
     responses: {
@@ -814,6 +1650,22 @@ export interface operations {
                                     name: string;
                                     atribuido: boolean;
                                 } | null;
+                                vertical: {
+                                    slug: string;
+                                    name: string;
+                                    fase: string;
+                                    fase_de_entrada: string;
+                                } | null;
+                                contratacion: {
+                                    id: number;
+                                    plan_id: number | null;
+                                    plan: string;
+                                    price_cents: number;
+                                    currency: string;
+                                    price: string;
+                                    desde: string | null;
+                                    hasta: string | null;
+                                } | null;
                             }[];
                             resumen: {
                                 total: number;
@@ -905,6 +1757,11 @@ export interface operations {
                                 descuadre: boolean;
                                 termina_en: string | null;
                             } | null;
+                            metodo_de_pago: {
+                                tipo: string;
+                                ultimos4: string;
+                            } | null;
+                            canal_puede_cobrar: boolean;
                             asientos: {
                                 tenant_id: string;
                                 rol: string;
@@ -928,6 +1785,73 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "desarrollador.iniciarMetodoDePago": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    return_url?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            checkout_url: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "desarrollador.confirmarMetodoDePago": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sesion: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            metodo_de_pago: {
+                                tipo: string;
+                                ultimos4: string;
+                            } | null;
+                            canal_puede_cobrar: boolean;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "desarrolladorLink.index": {
@@ -1151,16 +2075,64 @@ export interface operations {
                         data: {
                             client_id: string;
                             name: string;
+                            vertical: string | null;
                             confidential: boolean;
-                            scope: string;
-                            registration_tenant_id: string;
-                            revoked_at: string;
-                            created_at: string;
+                            scope: string | null;
+                            redirect_uris: string[];
+                            registration_tenant_id: string | null;
+                            revoked_at: string | null;
+                            created_at: string | null;
                         }[];
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorClient.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    vertical: string;
+                    redirect_uris: string[];
+                    scope?: string | null;
+                    confidential?: boolean;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        message: "Client creado. Guarda el secreto ahora: no se vuelve a enseñar." | "Client público creado: sin secreto, con PKCE.";
+                        client_secret: string | null;
+                        data: {
+                            client_id: string;
+                            name: string;
+                            vertical: string;
+                            confidential: boolean;
+                            scope: string;
+                            redirect_uris: unknown[];
+                            registration_tenant_id: string;
+                            revoked_at: string | null;
+                            created_at: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "desarrolladorLink.claimClient": {
@@ -1377,11 +2349,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            perfil: {
-                                nombre_comercial: string;
-                                soporte_url: string | null;
-                                soporte_email: string | null;
-                            } | null;
+                            perfil: null;
                             currency: string | null;
                             contract_url: string | null;
                             items: {
@@ -1444,11 +2412,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            perfil: {
-                                nombre_comercial: string;
-                                soporte_url: string | null;
-                                soporte_email: string | null;
-                            } | null;
+                            perfil: null;
                             currency: string | null;
                             contract_url: string | null;
                             items: {
@@ -1492,6 +2456,399 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "integradorClient.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    vertical?: string;
+                    redirect_uris?: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Client actualizado.";
+                        data: {
+                            client_id: string;
+                            name: string;
+                            vertical: string;
+                            confidential: boolean;
+                            scope: string;
+                            redirect_uris: unknown[];
+                            registration_tenant_id: string;
+                            revoked_at: string | null;
+                            created_at: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Ese client no es tuyo o está revocado.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorClient.rotarSecreto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Secreto rotado. El anterior ya no vale: cambia el .env de tu app antes de redesplegar.";
+                        client_secret: string;
+                        data: {
+                            client_id: string;
+                            name: string;
+                            vertical: string;
+                            confidential: boolean;
+                            scope: string;
+                            redirect_uris: unknown[];
+                            registration_tenant_id: string;
+                            revoked_at: string | null;
+                            created_at: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Ese client no es tuyo o está revocado.";
+                    };
+                };
+            };
+        };
+    };
+    "integradorContratacion.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            hoy: {
+                                [key: string]: unknown;
+                            } | null;
+                            prevista: {
+                                [key: string]: unknown;
+                            } | null;
+                            historial: {
+                                [key: string]: unknown;
+                            }[];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorContratacion.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan: string;
+                    /**
+                     * @description 2147483647 y no 4294967295: `unsignedInteger` es un `integer` en
+                     *     Postgres y no tiene el rango de un unsigned de MySQL. Con el tope
+                     *     de más, un precio entre los dos pasaba la validación y reventaba
+                     *     en el INSERT — un 500 donde tocaba un 422.
+                     */
+                    price_cents?: number;
+                    /** Format: date-time */
+                    desde?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Contratación guardada.";
+                        data: {
+                            hoy: {
+                                id: number;
+                                plan_id: number | null;
+                                /** @description El nombre va aunque el plan se haya retirado: es lo que se vendió. */
+                                plan: string;
+                                price_cents: number;
+                                currency: string;
+                                /**
+                                 * @description Y el importe ya ESCRITO, porque el panel no formatea dinero: copia
+                                 *     lo que el servidor escribe. ⛔ La moneda sale de la FILA, no de `modules.addon.currency`: esa
+                                 *     es la moneda en la que Pimia cobra al integrador (mayorista, y
+                                 *     `ActivacionMayorista::escribir()` lo dice así). Esto es precio
+                                 *     MINORISTA —lo que el cliente le paga a él— y va en la suya.
+                                 */
+                                price: string;
+                                desde: string;
+                                hasta: string | null;
+                            } | null;
+                            prevista: {
+                                id: number;
+                                plan_id: number | null;
+                                /** @description El nombre va aunque el plan se haya retirado: es lo que se vendió. */
+                                plan: string;
+                                price_cents: number;
+                                currency: string;
+                                /**
+                                 * @description Y el importe ya ESCRITO, porque el panel no formatea dinero: copia
+                                 *     lo que el servidor escribe. ⛔ La moneda sale de la FILA, no de `modules.addon.currency`: esa
+                                 *     es la moneda en la que Pimia cobra al integrador (mayorista, y
+                                 *     `ActivacionMayorista::escribir()` lo dice así). Esto es precio
+                                 *     MINORISTA —lo que el cliente le paga a él— y va en la suya.
+                                 */
+                                price: string;
+                                desde: string;
+                                hasta: string | null;
+                            } | null;
+                            historial: {
+                                id: number;
+                                plan_id: number | null;
+                                /** @description El nombre va aunque el plan se haya retirado: es lo que se vendió. */
+                                plan: string;
+                                price_cents: number;
+                                currency: string;
+                                /**
+                                 * @description Y el importe ya ESCRITO, porque el panel no formatea dinero: copia
+                                 *     lo que el servidor escribe. ⛔ La moneda sale de la FILA, no de `modules.addon.currency`: esa
+                                 *     es la moneda en la que Pimia cobra al integrador (mayorista, y
+                                 *     `ActivacionMayorista::escribir()` lo dice así). Esto es precio
+                                 *     MINORISTA —lo que el cliente le paga a él— y va en la suya.
+                                 */
+                                price: string;
+                                desde: string;
+                                hasta: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorCorreo.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            configured: boolean;
+                            mail_driver: string;
+                            from_name: string | null;
+                            from_mail: string | null;
+                            reply_to: string | null;
+                            mail_host?: string;
+                            mail_port?: string;
+                            mail_username?: string;
+                            mail_password_set?: boolean;
+                            mail_encryption?: string;
+                            mail_scheme?: string;
+                            mail_timeout?: string | number;
+                            mail_local_domain?: string;
+                            mail_ses_key?: string;
+                            mail_ses_secret_set?: boolean;
+                            mail_ses_region?: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorCorreo.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorCorreoRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            configured: boolean;
+                            mail_driver: string;
+                            from_name: string | null;
+                            from_mail: string | null;
+                            reply_to: string | null;
+                            mail_host?: string;
+                            mail_port?: string;
+                            mail_username?: string;
+                            mail_password_set?: boolean;
+                            mail_encryption?: string;
+                            mail_scheme?: string;
+                            mail_timeout?: string | number;
+                            mail_local_domain?: string;
+                            mail_ses_key?: string;
+                            mail_ses_secret_set?: boolean;
+                            mail_ses_region?: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorCorreo.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            configured: boolean;
+                            mail_driver: string;
+                            from_name: string | null;
+                            from_mail: string | null;
+                            reply_to: string | null;
+                            mail_host?: string;
+                            mail_port?: string;
+                            mail_username?: string;
+                            mail_password_set?: boolean;
+                            mail_encryption?: string;
+                            mail_scheme?: string;
+                            mail_timeout?: string | number;
+                            mail_local_domain?: string;
+                            mail_ses_key?: string;
+                            mail_ses_secret_set?: boolean;
+                            mail_ses_region?: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorCorreo.prueba": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    to: string;
+                    subject?: string | null;
+                    message?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        error?: string;
+                        reason?: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "integradorDominio.index": {
         parameters: {
             query?: never;
@@ -1510,6 +2867,7 @@ export interface operations {
                         data: {
                             slug: string;
                             host: string;
+                            vertical: string | null;
                             enabled: boolean;
                             login_url: string;
                             upstream: string;
@@ -1535,6 +2893,12 @@ export interface operations {
                 "application/json": {
                     slug: string;
                     host: string;
+                    /**
+                     * @description DE QUÉ VERTICAL es este login (👤 2026-09-09). Obligatorio: un
+                     *     nombre sin vertical vuelve a colgar del integrador, que es el
+                     *     nivel que el debate declaró equivocado.
+                     */
+                    vertical: string;
                 };
             };
         };
@@ -1550,6 +2914,8 @@ export interface operations {
                         data: {
                             slug: string;
                             host: string;
+                            /** @description De qué vertical es. Nulo en los que la migración no pudo atribuir. */
+                            vertical: string | null;
                             enabled: boolean;
                             login_url: string;
                             upstream: string;
@@ -1586,6 +2952,579 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorInstancia.produccion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            slug: string;
+                            fase_de_entrada: string;
+                            contratacion: {
+                                id: number;
+                                plan_id: number | null;
+                                plan: string;
+                                price_cents: number;
+                                currency: string;
+                                price: string;
+                                desde: string | null;
+                                hasta: string | null;
+                            };
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorInstancia.pruebas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            slug: string;
+                            fase_de_entrada: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorInstancia.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorModulo.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            key: string;
+                            name: string;
+                            description: string | null;
+                            en_lugar_de: string | null;
+                            control_de_usuarios: string[];
+                            necesita_de_pimia: {
+                                [key: string]: unknown;
+                            }[];
+                            en_planes: {
+                                vertical: string;
+                                plan: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorModulo.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorModuloRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Módulo creado.";
+                        data: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorModulo.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modulo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Módulo borrado.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "modulo_en_uso";
+                        message: string;
+                        en_planes: {
+                            vertical: string;
+                            plan: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "integradorModulo.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modulo: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorModuloRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Módulo guardado.";
+                        data: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorPlan.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            key: string;
+                            name: string;
+                            price_cents: number;
+                            usuarios_incluidos: number;
+                            empresas_incluidas: number;
+                            componentes_pimia: string[];
+                            modulos_propios: string[];
+                        }[];
+                        sustituye: string[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorPlan.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorPlan.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+                plan: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Plan retirado.";
+                        sustituye: unknown[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorPlan.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+                plan: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegradorPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "integradorStripe.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            linked: boolean;
+                            publishable_key: string | null;
+                            secret_key_set: boolean;
+                            webhook_secret_set: boolean;
+                            /** @enum {string|null} */
+                            mode: "test" | "live" | null;
+                            account_id: string | null;
+                            account_name: string | null;
+                            verified_at: string | null;
+                            webhook_url: string | null;
+                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed")[];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "integradorStripe.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    publishable_key: string;
+                    secret_key?: string;
+                    webhook_secret?: string | null;
+                    /** @enum {string} */
+                    mode: "test" | "live";
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            linked: boolean;
+                            publishable_key: string;
+                            secret_key_set: boolean;
+                            webhook_secret_set: boolean;
+                            /** @enum {string} */
+                            mode: "test" | "live";
+                            account_id: string;
+                            account_name: string | null;
+                            verified_at: string;
+                            /** @description El host viene de configuración, nunca del Host que mande un cliente. */
+                            webhook_url: string | null;
+                            webhook_events: [
+                                "payment_intent.succeeded",
+                                "payment_intent.payment_failed"
+                            ];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            /** @description No guarda cambios. Corte de Stripe o validación de campos. stripe_key_permissions, con missing_permissions, solo puede darse si se usa una clave restringida sin los permisos de lectura. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_key_invalid" | "stripe_key_permissions" | "stripe_mode_mismatch";
+                        missing_permissions?: ("account:read" | "balance:read")[];
+                    } | {
+                        message: string;
+                        errors: {
+                            [key: string]: string[];
+                        };
+                    };
+                };
+            };
+            /** @description 10 PUT/minuto; tras 5 fallos/hora por usuario, stripe_too_many_attempts incluso con una clave buena. Retry-After indica segundos de espera. Los éxitos y los errores 503 no consumen fallos. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_too_many_attempts";
+                        retry_after: number;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+            /** @description No devolvemos mensajes de Stripe: pueden contener datos de la petición. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stripe_unavailable";
+                    };
+                };
+            };
+        };
+    };
+    "integradorStripe.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            linked: boolean;
+                            publishable_key: string | null;
+                            secret_key_set: boolean;
+                            webhook_secret_set: boolean;
+                            /** @enum {string|null} */
+                            mode: "test" | "live" | null;
+                            account_id: string | null;
+                            account_name: string | null;
+                            verified_at: string | null;
+                            webhook_url: string | null;
+                            webhook_events: ("payment_intent.succeeded" | "payment_intent.payment_failed")[];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    integradorStripeWebhook: {
+        parameters: {
+            query?: never;
+            header: {
+                "Stripe-Signature": string;
+            };
+            path: {
+                opaco: string;
+            };
+            cookie?: never;
+        };
+        /** @description Evento snapshot de Stripe. La firma se verifica contra estos bytes, sin recodificar el JSON. */
+        requestBody: {
+            content: {
+                "application/json": {
+                    id: string;
+                    type: string;
+                    livemode: boolean;
+                    account?: string;
+                    data: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        received: boolean;
+                        ignored: boolean;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stripe_webhook_invalid";
+                    } | {
+                        /** @constant */
+                        code: "stripe_webhook_account_mismatch";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stripe_webhook_unknown";
+                    };
+                };
+            };
         };
     };
     "integradorToken.index": {
@@ -1822,6 +3761,11 @@ export interface operations {
                     email: string;
                     company_name?: string | null;
                     /**
+                     * @description Por qué VERTICAL entra el cliente (13.16). Solo un desarrollador
+                     *     tiene verticales; se comprueba contra las suyas más abajo.
+                     */
+                    vertical?: string | null;
+                    /**
                      * @description `despacho|cliente` es el vocabulario de la gestoría; `sponsor|self`
                      *     el general del modelo de facturación (Tenant::BILLING_*). Se
                      *     aceptan los dos y se guarda el de siempre, para no partir la
@@ -1883,6 +3827,13 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "No se pudo enviar el email de invitación. Revisa la configuración de correo e inténtalo de nuevo.";
+                    } | {
+                        /** @constant */
+                        error: "integrator_mail_failed";
+                        /** @constant */
+                        code: "integrator_mail_failed";
+                        /** @constant */
+                        message: "No se pudo enviar la invitación desde tu cuenta de correo. Revisa la configuración de tu correo e inténtalo de nuevo; no se ha enviado desde Pimia.";
                     };
                 };
             };
@@ -1924,6 +3875,384 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "vertical.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                maximo: number;
+                            };
+                            instancia_de_pruebas: string | null;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "vertical.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerticalRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Vertical abierta.";
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            birth_modules: {
+                                [key: string]: boolean;
+                            };
+                            substituted_modules: unknown[];
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            /**
+                             * @description 13.30: en desarrollo, hasta cinco instancias de cortesía; en
+                             *     producción, cada alta contrata un plan y cuesta un asiento.
+                             */
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                /** @constant */
+                                maximo: 5;
+                            };
+                            /**
+                             * @description 13.30: en producción, la única instancia gratuita, o `null` si
+                             *     todavía no se señaló ninguna (o no se quiere).
+                             */
+                            instancia_de_pruebas: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "vertical.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "vertical.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerticalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                maximo: number;
+                            };
+                            instancia_de_pruebas: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "vertical.attach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    vertical: string;
+                    plan?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                maximo: number;
+                            };
+                            instancia_de_pruebas: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "vertical.birthPackage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    birth_modules: boolean[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            birth_modules: {
+                                [key: string]: boolean;
+                            };
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                maximo: number;
+                            };
+                            instancia_de_pruebas: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "vertical.substitutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vertical: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    substituted_modules: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        data: {
+                            id: number;
+                            slug: string;
+                            name: string;
+                            sector: string | null;
+                            birth_modules: {
+                                [key: string]: boolean;
+                            };
+                            substituted_modules: string[];
+                            enabled: boolean;
+                            tenants: number;
+                            marca: {
+                                nombre: string;
+                                color: string | null;
+                                soporte_email: string | null;
+                                soporte_url: string | null;
+                                contract_url: string | null;
+                            };
+                            dominios: {
+                                web: string | null;
+                                login: string | null;
+                                app: string | null;
+                            };
+                            dev_url: string | null;
+                            fase: string;
+                            licencias_de_desarrollo: {
+                                usadas: number;
+                                maximo: number;
+                            };
+                            instancia_de_pruebas: string | null;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
 }

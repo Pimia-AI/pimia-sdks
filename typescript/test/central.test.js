@@ -12,6 +12,7 @@ import {
   ForbiddenError,
   MissingAbilityError,
   NotAuthenticatedError,
+  PimiaApiError,
   PimiaCentralClient,
   RateLimitError,
   UnauthorizedError,
@@ -104,8 +105,8 @@ test('el catálogo del integrador: leerlo y reemplazarlo entero por la ruta del 
   const leido = await client.catalogo.get()
   assert.equal(leido.data.perfil, null)
 
+  // Desde el contrato 1.9.0, sin cabecera de marca: eso es de cada vertical.
   await client.catalogo.replace({
-    nombre_comercial: 'Zoomo Estudio',
     currency: 'EUR',
     contract_url: 'https://app.erpstudio.es/contratar',
     items: [
@@ -233,7 +234,7 @@ test('declara y retira sus nombres de login, y acuña y revoca tokens de máquin
     return json({ message: 'ok' })
   })
 
-  const declarado = await client.dominios.declare({ slug: 'zoomo', host: 'login.erpstudio.es' })
+  const declarado = await client.dominios.declare({ slug: 'zoomo', host: 'login.erpstudio.es', vertical: 'talleres' })
   assert.equal(declarado.data.upstream, 'https://login-zoomo.pimia.es')
   assert.match(declarado.data.proxy, /reverse_proxy/)
 
@@ -279,4 +280,115 @@ test('1.4.0: quién pertenece a la instancia y el portal del canal', async () =>
   // Sin cuerpo también vale: el núcleo vuelve al panel Vue.
   await client.billing.portal()
   assert.deepEqual(JSON.parse(calls[2].init.body), {})
+})
+
+test('1.15.0: la cuenta de correo del integrador, por la ruta del contrato', async () => {
+  const cuenta = { configured: true, mail_driver: 'smtp', from_name: 'Zoomo', from_mail: 'hola@erpstudio.es', reply_to: null, mail_password_set: true }
+  const { client, calls } = clientWith((url, init) => {
+    if (url.endsWith('/prueba')) return json({ success: false, error: 'mail_send_failed', reason: 'auth_failed' })
+    return json(init.method === 'GET' ? { data: cuenta } : { message: 'ok', data: cuenta })
+  })
+
+  const leida = await client.correo.get()
+  assert.equal(leida.data.mail_password_set, true)
+  await client.correo.update({ mail_driver: 'smtp', from_name: 'Zoomo', from_mail: 'hola@erpstudio.es', mail_host: 'smtp.erpstudio.es', mail_port: '587' })
+  const prueba = await client.correo.test({ to: 'yo@erpstudio.es' })
+  await client.correo.delete()
+
+  // La prueba contesta 200 aunque falle: no lanza, se mira `success`.
+  assert.deepEqual(prueba, { success: false, error: 'mail_send_failed', reason: 'auth_failed' })
+  assert.deepEqual(
+    calls.map((c) => `${c.init.method} ${c.url.slice(BASE.length)}`),
+    [
+      'GET /api/desarrollador/correo',
+      'PUT /api/desarrollador/correo',
+      'POST /api/desarrollador/correo/prueba',
+      'DELETE /api/desarrollador/correo',
+    ],
+  )
+  assert.equal(JSON.parse(calls[1].init.body).mail_host, 'smtp.erpstudio.es')
+  assert.deepEqual(JSON.parse(calls[2].init.body), { to: 'yo@erpstudio.es' })
+  assert.equal(calls[3].init.body, undefined)
+})
+
+test('1.15.0: un servidor de correo no público es ValidationError con code mail_host_not_allowed', async () => {
+  const { client } = clientWith(() =>
+    json({ message: 'El servidor de correo tiene que ser público.', code: 'mail_host_not_allowed', errors: { mail_host: ['no público'] } }, 422),
+  )
+  await assert.rejects(
+    () => client.correo.update({ mail_driver: 'smtp', from_name: 'x', from_mail: 'x@example.com', mail_host: '10.0.0.1' }),
+    (error) => error instanceof ValidationError && error.code === 'mail_host_not_allowed' && error.errors.mail_host[0] === 'no público',
+  )
+})
+
+test('1.15.0: el Stripe propio del integrador, por la ruta del contrato', async () => {
+  const estado = {
+    linked: true,
+    publishable_key: 'pk_test_x',
+    secret_key_set: true,
+    webhook_secret_set: false,
+    mode: 'test',
+    account_id: 'acct_1',
+    account_name: 'Zoomo',
+    verified_at: '2026-09-14T10:00:00Z',
+    webhook_url: 'https://pimia.es/api/stripe/integrador/abc',
+    webhook_events: ['payment_intent.succeeded', 'payment_intent.payment_failed'],
+  }
+  const { client, calls } = clientWith(() => json({ data: estado }))
+
+  const leido = await client.stripe.get()
+  assert.equal(leido.data.webhook_url, 'https://pimia.es/api/stripe/integrador/abc')
+  await client.stripe.update({ publishable_key: 'pk_test_x', secret_key: 'sk_test_y', webhook_secret: null, mode: 'test' })
+  await client.stripe.delete()
+
+  assert.deepEqual(
+    calls.map((c) => `${c.init.method} ${c.url.slice(BASE.length)}`),
+    ['GET /api/desarrollador/stripe', 'PUT /api/desarrollador/stripe', 'DELETE /api/desarrollador/stripe'],
+  )
+  // `null` viaja: es lo que borra el whsec_ y apaga la recepción.
+  assert.deepEqual(JSON.parse(calls[1].init.body), { publishable_key: 'pk_test_x', secret_key: 'sk_test_y', webhook_secret: null, mode: 'test' })
+  assert.equal('webhook' in client.stripe, false, 'el receptor es de Stripe, no un método del cliente')
+})
+
+test('1.15.0: los cortes de Stripe llegan tipados por status y con su code', async () => {
+  const permisos = clientWith(() => json({ code: 'stripe_key_permissions', missing_permissions: ['balance:read'] }, 422))
+  await assert.rejects(
+    () => permisos.client.stripe.update({ publishable_key: 'pk_live_x', secret_key: 'rk_live_y', mode: 'live' }),
+    (error) =>
+      error instanceof ValidationError &&
+      error.code === 'stripe_key_permissions' &&
+      error.body.missing_permissions[0] === 'balance:read',
+  )
+
+  const invalida = clientWith(() => json({ code: 'stripe_key_invalid' }, 422))
+  await assert.rejects(() => invalida.client.stripe.update({ publishable_key: 'pk_test_x', mode: 'test' }), (e) => e.code === 'stripe_key_invalid')
+
+  const intentos = clientWith(() => json({ code: 'stripe_too_many_attempts', retry_after: 1800 }, 429, { 'retry-after': '1800' }))
+  await assert.rejects(
+    () => intentos.client.stripe.update({ publishable_key: 'pk_test_x', mode: 'test' }),
+    (error) => error instanceof RateLimitError && error.retryAfter === 1800 && error.code === 'stripe_too_many_attempts',
+  )
+  assert.equal(intentos.calls.length, 1, 'el cliente central no reintenta un 429')
+
+  const caida = clientWith(() => json({ code: 'stripe_unavailable' }, 503))
+  await assert.rejects(
+    () => caida.client.stripe.update({ publishable_key: 'pk_test_x', mode: 'test' }),
+    (error) => error instanceof PimiaApiError && error.status === 503 && error.code === 'stripe_unavailable',
+  )
+})
+
+test('code cae a `error` cuando no hay `code`, y es undefined sin cuerpo JSON', async () => {
+  const correo = clientWith(() =>
+    json({ error: 'integrator_mail_failed', code: 'integrator_mail_failed', message: 'No se pudo enviar.' }, 502),
+  )
+  await assert.rejects(
+    () => correo.client.invitations.create({ email: 'ana@example.com', company_name: 'Ana', billing: 'sponsor' }),
+    (error) => error.status === 502 && error.code === 'integrator_mail_failed',
+  )
+
+  const habilidad = clientWith(() => json({ error: 'token_sin_habilidad', required_ability: 'desarrollador' }, 403))
+  await assert.rejects(() => habilidad.client.stripe.get(), (e) => e instanceof MissingAbilityError && e.code === 'token_sin_habilidad')
+
+  const texto = clientWith(() => new Response('Bad Gateway', { status: 502 }))
+  await assert.rejects(() => texto.client.correo.get(), (e) => e instanceof PimiaApiError && e.code === undefined)
 })

@@ -127,24 +127,21 @@ que es lo único que se puede comprobar hoy.
 | 0.19.0 | 2026-09-03 | Contratar tras bajar a Free reanuda la suscripción en vez de abrir otra. | ✅ |
 | 0.20.0 | 2026-09-03 | ⚠️ **Incompatible**: proyectos, tareas y partes de horas dejan `crm:*` por `work:*`. | ✅ |
 | 0.21.0 | 2026-09-03 | ⚠️ **Incompatible**: la campana pasa a `notifications:*`. Spec en `factSaas@5985313a`, **428 operaciones**. | ✅ |
-| 0.22.0 | *sin publicar* | El **plano central** entra en el SDK: `PimiaCentralClient` y el segundo contrato, `spec/pimia-central-v1.json`. `/api/v1` sube a **438 operaciones**. | — |
-| 0.23.0 | *sin publicar* | El catálogo del integrador entra en el plano central (central 1.1.0). | — |
-| 0.24.0 | *sin publicar* | La activación mayorista entra en el plano central (central 1.2.0). | — |
-| 0.25.0 | *sin publicar* | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
-| 0.26.0 | *sin publicar* | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
-| 0.27.0 | *sin publicar* | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. | — |
+| 0.22.0 | *sin tag propio* (dentro de la 0.27.0) | El **plano central** entra en el SDK: `PimiaCentralClient` y el segundo contrato, `spec/pimia-central-v1.json`. `/api/v1` sube a **438 operaciones**. | — |
+| 0.23.0 | *sin tag propio* (dentro de la 0.27.0) | El catálogo del integrador entra en el plano central (central 1.1.0). | — |
+| 0.24.0 | *sin tag propio* (dentro de la 0.27.0) | La activación mayorista entra en el plano central (central 1.2.0). | — |
+| 0.25.0 | *sin tag propio* (dentro de la 0.27.0) | El login del integrador: dominios, tokens de máquina y `TokenSet.tenantId` (central 1.3.0). | — |
+| 0.26.0 | *sin tag propio* (dentro de la 0.27.0) | El contrato del plano central **1.4.0, 28 operaciones**, para `pimia-central-web`. | — |
+| 0.27.0 | 2026-09-08 | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. Arrastra las 0.22.0–0.26.0. | ✅ |
+| 0.28.0 | *sin publicar* | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | — |
 
-⛔ **De la 0.22.0 en adelante hay versiones mergeadas y sin tag** —el plano
-central entero, y con esta rama también la 0.27.0—: entrada en el CHANGELOG y
-versión en los manifiestos, pero **ningún tag en el remoto por encima de
-`v0.21.0`**, así que el workflow de release no ha corrido y ni npm ni Packagist
-las tienen. El paso 4 lo confirma por el otro lado: el starter sigue declarando
-`^0.21.0`. No es un fallo del runbook —el paso 2 sencillamente no se ha dado
-todavía— pero conviene saberlo antes de decirle a nadie que el plano central
-«ya está en el SDK»: está en `main`, que no es lo mismo.
+⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
+salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,
+y el starter pide `^0.27.0`). Quien busque «la 0.24.0» en npm no la encontrará:
+lo que llevaba está en la 0.27.0. Una fila *sin publicar* de la tabla es una
+versión en `main` sin tag todavía.
 
-⚠️ La cuenta se deja SIN escribir a propósito («de la 0.22.0 en adelante», no
-«cinco»): un número aquí caduca en cuanto entre la siguiente, y este fichero ya
+⚠️ Aquí no se escribe cuántas van sin publicar, a propósito: un número caduca en cuanto entre la siguiente, y este fichero ya
 ha tenido esa clase de deriva. Para saber cuántas van, la comprobación de un
 vistazo:
 
