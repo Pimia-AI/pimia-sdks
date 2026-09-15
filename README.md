@@ -1,5 +1,13 @@
 # SDKs de Pimia
 
+`baseUrl` es el **origen**, sin `/api` ni barra final: `https://pimia.es`
+para el cliente central o `https://acme.pimia.es` para el de instancia.
+El cliente añade `/api/…` (central, TypeScript) o `/api/v1/…` (instancia).
+Desde 0.30.1, un valor terminado en `/api` o `/api/v1` se rechaza al construir
+el cliente (en PHP, al crear `Config`), antes de hacer peticiones. Quita ese
+sufijo; no se elimina automáticamente. Una barra final sigue admitiéndose.
+
+
 Clientes oficiales de la API de Pimia para **apps de partner**: TypeScript
 (`@pimia/sdk`) y PHP (`pimia/pimia-php`). Licencia MIT.
 

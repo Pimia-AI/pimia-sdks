@@ -8,6 +8,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.30.1] — 2026-09-15 (preparada, sin publicar)
+
+- Documentación de `baseUrl`: es el origen sin `/api`, no la ruta de las llamadas.
+- TS (central e instancia) lanza `TypeError` y PHP (`Config`, también con token
+  prestado) lanza `InvalidArgumentException` si termina en `/api` o `/api/v1`,
+  incluso con barra final, query o fragmento. Antes se construían llamadas
+  incorrectas como `/api/api/…` que acababan en 404. No se corrige en silencio.
+- Los orígenes correctos conservan su comportamiento, incluida la barra final.
+  No se amplía la guarda a otras rutas ni se cambia el contrato OpenAPI.
+- `@pimia/design-tokens` acompaña 0.30.1 sin cambios de código; el starter
+  conserva las dependencias publicadas hasta la publicación.
+
 ## [0.30.0] — 2026-09-15 (preparada, sin publicar)
 
 El SDK distingue acciones pendientes de acciones ejecutadas: confirmación del

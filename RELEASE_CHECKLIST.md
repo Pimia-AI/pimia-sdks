@@ -136,6 +136,7 @@ que es lo único que se puede comprobar hoy.
 | 0.28.0 | 2026-09-14 | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | ✅ |
 | 0.29.0 | *sin publicar* | El cobro del cliente del integrador (#835): «Facturo con Pimia» en `PimiaCentralClient` (central **1.16.0, 65 operaciones**) y `billing.integrador` en los dos SDKs (`/api/v1` **1.1.0, 441 operaciones**, primera sincronización desde la 0.22.0). `factSaas@808976ba`. | — |
 | 0.30.0 | *preparada, sin publicar; versión aprobada por el fundador* | Specs `factSaas@229840ee`: central 1.16.1 (65), instancia 1.1.0 (441). Primer periodo, cobro en cartera, retry 202 y confirmación del dueño TS/PHP. Cambios incompatibles documentados en Cómo migrar. | Pendiente de publicación |
+| 0.30.1 | *preparada, sin publicar* | Documentación del origen baseUrl y rechazo temprano de /api y /api/v1 en TS/PHP. Sin cambios de spec. | Pendiente de publicación |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,

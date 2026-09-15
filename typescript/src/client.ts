@@ -14,6 +14,7 @@
  *  - **errores tipados**: MissingScopeError trae el scope exacto que falta.
  */
 
+import { normalizeBaseUrl } from './base-url.js'
 import type { components, operations } from './api.js'
 import {
   NotAuthenticatedError,
@@ -167,6 +168,8 @@ export interface ResourceEnvelope<T> {
 }
 
 export interface PimiaClientOptions extends OAuthConfig {
+  /** Origen de la API, sin `/api` ni barra final (p. ej. `https://acme.pimia.es`): el cliente añade `/api/v1/…`. La barra final se tolera por compatibilidad. */
+  baseUrl: string
   tokens: TokenStore
   /** Segundos de margen para refrescar antes de que caduque (default 60). */
   expirySkewSeconds?: number
@@ -186,7 +189,7 @@ export interface PimiaClientOptions extends OAuthConfig {
  * tuyo. Ver {@link PimiaClient.withBorrowedToken}.
  */
 export interface BorrowedTokenOptions {
-  /** Base del tenant, con o sin barra final: `https://acme.pimia.es`. */
+  /** Origen de la API, sin `/api` ni barra final (p. ej. `https://acme.pimia.es`): el cliente añade `/api/v1/…`. La barra final se tolera por compatibilidad. */
   baseUrl: string
   /** El bearer que te llegó, tal cual. */
   accessToken: string
@@ -338,7 +341,7 @@ export class PimiaClient {
     /* Sin `clientId` no hay a quién identificar ante el Authorization Server:
        este cliente no tiene grant propio y no puede tener ceremonia. */
     this.oauth = options.clientId ? new OAuth(options) : null
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
+    this.baseUrl = normalizeBaseUrl(options.baseUrl)
     this.doFetch = options.fetch ?? globalThis.fetch
     this.store = options.tokens
     this.skew = options.expirySkewSeconds ?? 60

@@ -4,8 +4,9 @@
  * clients OAuth, las invitaciones, el patrocinio y el traspaso de propiedad.
  *
  * No es el cliente de un tenant ({@link PimiaClient}, que habla con
- * `https://{tenant}.pimia.es/api/v1` con un token OAuth por instancia): este
- * habla con el ÁPICE (`https://pimia.es/api`) con el **token personal de
+ * rutas `/api/v1/…` con `baseUrl: https://{tenant}.pimia.es` y un token OAuth
+ * por instancia): este habla con el ÁPICE (`baseUrl: https://pimia.es`,
+ * llamadas bajo `/api/…`) con el **token personal de
  * Sanctum** de la cuenta de desarrollador, acotado por plano
  * (galeote/factSaas#731): `desarrollador` abre `/desarrollador/*` y `central`
  * abre invitaciones, patrocinio y traspaso. Cada operación del contrato dice
@@ -19,6 +20,7 @@
  *
  * Los tipos salen de `spec/pimia-central-v1.json` (`./central-api`).
  */
+import { normalizeBaseUrl } from './base-url.js'
 import type { operations } from './central-api.js'
 import type { CentralSuccess, ResponseBody } from './confirmation.js'
 import { NotAuthenticatedError, PimiaApiError, RateLimitError } from './errors.js'
@@ -235,7 +237,7 @@ export type PrimerPeriodoResult =
   | { estado: 'completado' }
 
 export interface PimiaCentralClientOptions {
-  /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
+  /** Origen de la API, sin `/api` ni barra final (p. ej. `https://pimia.es`): el cliente añade `/api/…`. La barra final se tolera por compatibilidad. */
   baseUrl: string
   /**
    * El token personal de la cuenta de desarrollador, o una función que lo
@@ -274,7 +276,7 @@ export class PimiaCentralClient {
   private readonly extraHeaders: Record<string, string>
 
   constructor(options: PimiaCentralClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
+    this.baseUrl = normalizeBaseUrl(options.baseUrl)
     this.token = options.token
     this.doFetch = options.fetch ?? globalThis.fetch
     this.extraHeaders = options.headers ?? {}
