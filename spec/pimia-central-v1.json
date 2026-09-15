@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.16.0",
+        "version": "1.16.1",
         "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), la tarjeta de su canal guardada antes del primer cliente (13.30a), el traspaso de propiedad, sus verticales (el sector para el que arma su producto, por cu\u00e1l entr\u00f3 cada instancia qu\u00e9 m\u00f3dulos nacen encendidos en sus clientes nuevos y qu\u00e9 m\u00f3dulos de Pimia sustituye por software suyo), su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice), sus tokens de m\u00e1quina, qui\u00e9n pertenece a cada instancia (para traspasarla) y el portal de Stripe de su canal. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
@@ -282,6 +282,106 @@
                                                     "items": {
                                                         "type": "object",
                                                         "properties": {
+                                                            "cobro": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "primer_periodo": {
+                                                                        "type": [
+                                                                            "object",
+                                                                            "null"
+                                                                        ],
+                                                                        "properties": {
+                                                                            "estado": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "checkout_url": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "expires_at": {
+                                                                                "type": [
+                                                                                    "integer",
+                                                                                    "null"
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "estado",
+                                                                            "checkout_url",
+                                                                            "expires_at"
+                                                                        ]
+                                                                    },
+                                                                    "suscripcion": {
+                                                                        "type": [
+                                                                            "object",
+                                                                            "null"
+                                                                        ],
+                                                                        "properties": {
+                                                                            "stripe_status": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "al_dia": {
+                                                                                "type": "boolean"
+                                                                            },
+                                                                            "debe_desde": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "suspende_el": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "cancel_at_period_end": {
+                                                                                "type": "boolean"
+                                                                            },
+                                                                            "current_period_end": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "baja_en": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            },
+                                                                            "suspendida_por_impago_en": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "stripe_status",
+                                                                            "al_dia",
+                                                                            "debe_desde",
+                                                                            "suspende_el",
+                                                                            "cancel_at_period_end",
+                                                                            "current_period_end",
+                                                                            "baja_en",
+                                                                            "suspendida_por_impago_en"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "primer_periodo",
+                                                                    "suscripcion"
+                                                                ]
+                                                            },
                                                             "id": {
                                                                 "type": "string"
                                                             },
@@ -425,6 +525,7 @@
                                                             }
                                                         },
                                                         "required": [
+                                                            "cobro",
                                                             "id",
                                                             "name",
                                                             "status",
@@ -1406,7 +1507,7 @@
                         }
                     },
                     "422": {
-                        "description": "An error\n\nAn error",
+                        "description": "An error\n\nAn error\n\nAn error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1434,6 +1535,21 @@
                                                     "description": "Error overview.",
                                                     "examples": [
                                                         "La solicitud no tiene instancia asociada."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "examples": [
+                                                        "El due\u00f1o debe renovar la solicitud desde su instancia antes de aceptar el v\u00ednculo."
                                                     ]
                                                 }
                                             },
@@ -4372,8 +4488,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "",
+                    "202": {
+                        "description": "Encolada de nuevo; la emisi\u00f3n sigue en segundo plano y el estado vuelve a pendiente.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4404,6 +4520,48 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "404": {
+                        "description": "El cobro no existe o es de otro integrador; no se distingue.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "factura_no_encontrada"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Solo se reintentan cobros con error o pendientes de NIF.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "factura_no_reintentable"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "x-pimia-required-ability": "desarrollador",
@@ -4413,7 +4571,7 @@
         "/desarrollador/tenants/{slug}/produccion": {
             "post": {
                 "operationId": "integradorInstancia.produccion",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nEl primer periodo requiere el pago del cliente: 202 con Checkout; sigue en desarrollo hasta pagarlo.",
                 "summary": "POST /api/desarrollador/tenants/{slug}/produccion",
                 "tags": [
                     "IntegradorInstancia"
@@ -4449,83 +4607,32 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Cambio ya completado, o atribuci\u00f3n ordinaria en desarrollo.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "object"
                                         },
-                                        "data": {
+                                        {
                                             "type": "object",
                                             "properties": {
-                                                "slug": {
-                                                    "type": "string"
-                                                },
-                                                "fase_de_entrada": {
-                                                    "type": "string"
-                                                },
-                                                "contratacion": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": "integer"
-                                                        },
-                                                        "plan_id": {
-                                                            "type": [
-                                                                "integer",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "plan": {
-                                                            "type": "string"
-                                                        },
-                                                        "price_cents": {
-                                                            "type": "integer"
-                                                        },
-                                                        "currency": {
-                                                            "type": "string"
-                                                        },
-                                                        "price": {
-                                                            "type": "string"
-                                                        },
-                                                        "desde": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "hasta": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "id",
-                                                        "plan_id",
-                                                        "plan",
-                                                        "price_cents",
-                                                        "currency",
-                                                        "price",
-                                                        "desde",
-                                                        "hasta"
+                                                "code": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "primer_periodo_completado"
                                                     ]
+                                                },
+                                                "message": {
+                                                    "type": "string"
                                                 }
                                             },
                                             "required": [
-                                                "slug",
-                                                "fase_de_entrada",
-                                                "contratacion"
+                                                "code",
+                                                "message"
                                             ]
                                         }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
                                     ]
                                 }
                             }
@@ -4536,6 +4643,123 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "202": {
+                        "description": "El cliente debe pagar este Checkout. Comparte el enlace: la instancia conserva su estado anterior hasta que pague y se complete el asiento.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "primer_periodo_pendiente"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "checkout_url": {
+                                                    "type": "string"
+                                                },
+                                                "checkout_session": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "estado": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "checkout_url",
+                                                "checkout_session",
+                                                "expires_at",
+                                                "estado"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Hay otra intenci\u00f3n, el pago no se puede aplicar o ya existe una suscripci\u00f3n: gestiona el plan desde el perfil.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "instancia_no_activable",
+                                                "atribucion_incompatible",
+                                                "dueno_sin_correo",
+                                                "suscripcion_existente",
+                                                "primer_periodo_incompatible",
+                                                "pago_pendiente_de_activacion",
+                                                "checkout_no_expirado",
+                                                "identidad_del_pago_modificada",
+                                                "vertical_ya_atribuida",
+                                                "fase_de_instancia_modificada",
+                                                "pago_no_adoptable",
+                                                "suscripcion_cancelada"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Stripe, el asiento o la exclusi\u00f3n temporal no se pudieron completar; el pago y la intenci\u00f3n se conservan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "stripe_unavailable"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "x-pimia-required-ability": "desarrollador",
@@ -5728,6 +5952,27 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "409": {
+                        "description": "No desvincula: hay suscripciones de clientes cobrando con esta cuenta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "stripe_account_in_use"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "x-pimia-required-ability": "desarrollador",
@@ -6185,51 +6430,6 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "tenant_id": {
-                                                    "type": "string"
-                                                },
-                                                "owner_id": {
-                                                    "type": "integer"
-                                                },
-                                                "billing_mode": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "sponsor",
-                                                        "self"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "tenant_id",
-                                                "owner_id",
-                                                "billing_mode"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
                     "403": {
                         "description": "An error",
                         "content": {
@@ -6252,8 +6452,73 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "x-pimia-required-ability": "central",
@@ -7352,156 +7617,178 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Cambio ya completado, o atribuci\u00f3n ordinaria en desarrollo.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
+                                    "anyOf": [
+                                        {
                                             "type": "object",
                                             "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "slug": {
+                                                "message": {
                                                     "type": "string"
                                                 },
-                                                "name": {
-                                                    "type": "string"
-                                                },
-                                                "sector": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "enabled": {
-                                                    "type": "boolean"
-                                                },
-                                                "tenants": {
-                                                    "type": "integer"
-                                                },
-                                                "marca": {
+                                                "data": {
                                                     "type": "object",
                                                     "properties": {
-                                                        "nombre": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "slug": {
                                                             "type": "string"
                                                         },
-                                                        "color": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "sector": {
                                                             "type": [
                                                                 "string",
                                                                 "null"
                                                             ]
                                                         },
-                                                        "soporte_email": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                        "enabled": {
+                                                            "type": "boolean"
                                                         },
-                                                        "soporte_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "contract_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "nombre",
-                                                        "color",
-                                                        "soporte_email",
-                                                        "soporte_url",
-                                                        "contract_url"
-                                                    ]
-                                                },
-                                                "dominios": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "web": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "login": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "app": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "web",
-                                                        "login",
-                                                        "app"
-                                                    ]
-                                                },
-                                                "dev_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "fase": {
-                                                    "type": "string"
-                                                },
-                                                "licencias_de_desarrollo": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "usadas": {
+                                                        "tenants": {
                                                             "type": "integer"
                                                         },
-                                                        "maximo": {
-                                                            "type": "integer"
+                                                        "marca": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "nombre": {
+                                                                    "type": "string"
+                                                                },
+                                                                "color": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "soporte_email": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "soporte_url": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "contract_url": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "nombre",
+                                                                "color",
+                                                                "soporte_email",
+                                                                "soporte_url",
+                                                                "contract_url"
+                                                            ]
+                                                        },
+                                                        "dominios": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "web": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "login": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "app": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "web",
+                                                                "login",
+                                                                "app"
+                                                            ]
+                                                        },
+                                                        "dev_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "fase": {
+                                                            "type": "string"
+                                                        },
+                                                        "licencias_de_desarrollo": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "usadas": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "maximo": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "usadas",
+                                                                "maximo"
+                                                            ]
+                                                        },
+                                                        "instancia_de_pruebas": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
-                                                        "usadas",
-                                                        "maximo"
-                                                    ]
-                                                },
-                                                "instancia_de_pruebas": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
+                                                        "id",
+                                                        "slug",
+                                                        "name",
+                                                        "sector",
+                                                        "enabled",
+                                                        "tenants",
+                                                        "marca",
+                                                        "dominios",
+                                                        "dev_url",
+                                                        "fase",
+                                                        "licencias_de_desarrollo",
+                                                        "instancia_de_pruebas"
                                                     ]
                                                 }
                                             },
                                             "required": [
-                                                "id",
-                                                "slug",
-                                                "name",
-                                                "sector",
-                                                "enabled",
-                                                "tenants",
-                                                "marca",
-                                                "dominios",
-                                                "dev_url",
-                                                "fase",
-                                                "licencias_de_desarrollo",
-                                                "instancia_de_pruebas"
+                                                "message",
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "code": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "primer_periodo_completado"
+                                                    ]
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "code",
+                                                "message"
                                             ]
                                         }
-                                    },
-                                    "required": [
-                                        "message",
-                                        "data"
                                     ]
                                 }
                             }
@@ -7512,6 +7799,123 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "202": {
+                        "description": "El cliente debe pagar este Checkout. Comparte el enlace: la instancia conserva su estado anterior hasta que pague y se complete el asiento.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "primer_periodo_pendiente"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "checkout_url": {
+                                                    "type": "string"
+                                                },
+                                                "checkout_session": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "estado": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "checkout_url",
+                                                "checkout_session",
+                                                "expires_at",
+                                                "estado"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Hay otra intenci\u00f3n, el pago no se puede aplicar o ya existe una suscripci\u00f3n: gestiona el plan desde el perfil.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "instancia_no_activable",
+                                                "atribucion_incompatible",
+                                                "dueno_sin_correo",
+                                                "suscripcion_existente",
+                                                "primer_periodo_incompatible",
+                                                "pago_pendiente_de_activacion",
+                                                "checkout_no_expirado",
+                                                "identidad_del_pago_modificada",
+                                                "vertical_ya_atribuida",
+                                                "fase_de_instancia_modificada",
+                                                "pago_no_adoptable",
+                                                "suscripcion_cancelada"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Stripe, el asiento o la exclusi\u00f3n temporal no se pudieron completar; el pago y la intenci\u00f3n se conservan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "stripe_unavailable"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "x-pimia-required-ability": "desarrollador",

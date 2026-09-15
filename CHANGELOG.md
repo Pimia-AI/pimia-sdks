@@ -8,6 +8,100 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.29.1] — 2026-09-15 (preparada, sin publicar)
+
+El SDK distingue acciones pendientes de acciones ejecutadas: confirmación del
+dueño y Checkout del primer periodo. **Hay cambios de firmas/tipos**; se propone
+publicarlos como **0.30.0**, pendiente de decisión de coordinación/fundador.
+Los manifiestos conservan la versión encargada, 0.29.1; no se ha creado tag.
+
+Specs de **factSaas@59b4a0f8** (2026-09-15): central **1.16.1, 65 operaciones**
+y `/api/v1` **1.1.0, 441 operaciones**. No se retira ninguna operación.
+
+### Añadido y corregido — central (TypeScript)
+
+- `central.facturasAClientes.retry(id: number | string): Promise<FacturaAClienteReintento>`
+  deriva ahora del **202** real: `{data:{id:number, estado:string}}`.
+  `FacturaAClienteRetryCode` deriva los cortes 404 `factura_no_encontrada` y
+  409 `factura_no_reintentable`. El 202 solo acredita el encolado.
+- `central.tenants.production(slug: string, body: ProduccionRequest)` y
+  `central.tenants.attachVertical(slug: string, body: AtribuirVerticalRequest)`
+  devuelven `Promise<PrimerPeriodoResult>`. Cuerpos `{plan}` y `{vertical, plan?}`
+  del spec. Resultado discriminado:
+  `{estado:"primer_periodo_pendiente", message, slug, checkoutUrl, checkoutSession, expiresAt}`
+  o `{estado:"completado"}`. `expiresAt` son segundos Unix o null. Un 202
+  malformado se rechaza como `PimiaApiError` con status 202; nunca se transforma
+  en completado. El 200 cubre el primer periodo ya aplicado y la atribución
+  gratuita en desarrollo. No se abre ningún enlace automáticamente.
+- `PrimerPeriodoConflictCode`: los doce códigos de los 409 del núcleo,
+  derivados del enum. Los fallos 409/503 se conservan como `PimiaApiError.code`.
+- `CobroDeInstancia`: alias de `overview.cartera[].cobro`, incluido null.
+  Expone primer periodo pendiente y suscripción (al día, mora, cancelación,
+  baja y suspensión por impago), sin importes nuevos. Es una foto local del
+  núcleo; el webhook/barrido puede tardar en reflejar un pago en Stripe.
+- `tenants.transferOwnership()` devuelve ahora `Promise<OwnerConfirmationRequired>`:
+  el contrato **retira su 200 y publica solo 202 como aceptación**. No devuelve
+  la instancia ni acredita un traspaso consumado.
+- El spec publica también el 409 `stripe_account_in_use` en DELETE Stripe
+  (el tipo `StripeCorteCode` ya lo incluía), y añade al 422 de aceptar un vínculo
+  el caso de consentimiento antiguo que el dueño debe renovar.
+
+### Confirmación del dueño — ambos SDKs
+
+- TypeScript exporta `OwnerConfirmationRequired` (`{code:"owner_confirmation_required",
+  message:string, data:{id:number}}`), `OwnerConfirmationMailFailedCode`,
+  `OwnerConfirmationResult<T>` e `isOwnerConfirmationRequired(value: unknown)`.
+- `ApiSuccess<operationId>` y `CentralSuccess<operationId>` extraen del spec los
+  cuerpos 200/201/202/204 para peticiones genéricas. Los métodos genéricos
+  conservan el cuerpo, sin normalizar `data.id` como id del recurso ni lanzar
+  por un 202. Una anotación genérica del consumidor debe incluir el pendiente.
+- PHP: `Pimia\OwnerConfirmationRequired::fromResponse(mixed): ?self` reconoce
+  el cuerpo sin modificarlo; expone `id` y `message`, con constantes `CODE` y
+  `MAIL_FAILED_CODE`. `post/put/delete/request` conservan el array crudo;
+  `requestWithMeta` conserva también status 202. Un 503 sigue siendo
+  `ApiException`, con el código en `$e->body['code']`, sin reintentar la acción.
+- No existían helpers de usuarios, roles ni vínculos de instancia en ninguno
+  de los dos SDKs; se usan los métodos genéricos. El plano central sigue solo
+  en TypeScript. No se inventan rutas de archivar o borrar instancia fuera
+  de estos specs ni se confirma por correo desde el SDK.
+
+### Qué más cambia en `/api/v1`
+
+Diez operaciones publican 202/503 de confirmación: POST `/users`, PUT y DELETE
+`/users/{user}`, POST `/users/delete`, PUT `/roles/{role}` y
+`/roles/{role}/abilities`, POST `/{gestoria,desarrollador}-link/request` y DELETE
+`/{gestoria,desarrollador}-link/revoke`. Las cuatro de vínculos **retiran sus
+201/200 anteriores**. Usuarios/roles conservan el éxito ordinario para las
+acciones que el núcleo no reserve. Esto no concede permisos nuevos.
+
+Además: 403 en PUT `/me`; ajustes de 403 en vínculos; `abilities` en PUT
+`/roles/{role}/abilities` se estrecha de `unknown[]` a `string[]`;
+`User.central_user_id` es **obligatorio y nullable**; `UserRequest` añade
+`central_user_id`, `is_super_admin` y `role` como strings opcionales según el
+spec (no implica que el servidor permita editarlos). Se actualizan comentarios
+sobre `isOwnerOrAdministrator` en los recursos de empresa; sin cambio de datos.
+
+### Cómo migrar
+
+- Tras `transferOwnership`, muestra `result.message` y espera confirmación:
+  `result.data.id` es el id de la solicitud. Ya no hay resultado con instancia
+  traspasada. En tipos crudos, sustituye acceso a `responses[200]` por `[202]`.
+- En usuarios/roles/vínculos usa `ApiSuccess<'users.update'>` (la operación que
+  corresponda), o `OwnerConfirmationResult<T>`, y comprueba
+  `isOwnerConfirmationRequired(result)` antes de cerrar el flujo como ejecutado.
+- En los cuatro vínculos y en retry, los tipos crudos de éxito cambian de
+  200/201 a 202. `FacturaAClienteReintento.data.estado` pasa del enum manual a
+  `string`, como el contrato: valida si necesitas una lista cerrada.
+- Los objetos `User` construidos a mano necesitan `central_user_id: null` si
+  no está vinculado; las abilities de roles deben ser strings.
+- La cartera incluye ahora `cobro` obligatorio y nullable: los fixtures deben
+  añadirlo. El enlace del primer periodo puede ser null al recargar; no lo
+  reconstruyas ni presupongas que sigue vigente.
+
+`@pimia/design-tokens` acompaña 0.29.1 sin cambios de código. El starter mantiene
+sus dependencias publicadas 0.29.0; su actualización corresponde al paso posterior
+al tag. **Propuesta: 0.30.0 por los cambios incompatibles anteriores.**
+
 ## [0.29.0] — 2026-09-14
 
 **El cobro del cliente del integrador (galeote/factSaas#835) entra en los dos

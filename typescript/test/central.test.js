@@ -476,3 +476,38 @@ test('1.16.0: stripe_account_in_use y contratacion_gestionada_por_stripe llegan 
     (e) => e.status === 409 && e.code === 'contratacion_gestionada_por_stripe',
   )
 })
+
+for (const method of ['production', 'attachVertical']) {
+  test(`${method}: distingue 202 de 200 y conserva slug y cuerpo`, async () => {
+    const pendiente = { code: 'primer_periodo_pendiente', message: 'Comparte', data: {
+      slug: 'a/b', checkout_url: 'https://checkout.stripe.com/c/pay/example', checkout_session: 'cs_example', expires_at: 1234567890, estado: 'pendiente',
+    } }
+    const { client, calls } = clientWith(() => json(pendiente, 202))
+    const body = method === 'production' ? { plan: 'pro' } : { vertical: 'erp', plan: 'pro' }
+    const result = await client.tenants[method]('a/b', body)
+    assert.equal(result.estado, 'primer_periodo_pendiente')
+    assert.equal(result.checkoutSession, 'cs_example')
+    assert.equal(result.checkoutUrl, pendiente.data.checkout_url)
+    assert.equal(result.expiresAt, 1234567890)
+    assert.equal(calls[0].url, `${BASE}/api/desarrollador/tenants/a%2Fb/${method === 'production' ? 'produccion' : 'vertical'}`)
+    assert.equal(calls[0].init.method, method === 'production' ? 'POST' : 'PUT')
+    assert.deepEqual(JSON.parse(calls[0].init.body), body)
+    const done = clientWith(() => json({ code: 'primer_periodo_completado', message: 'Hecho' }, 200))
+    assert.deepEqual(await done.client.tenants[method]('acme', body), { estado: 'completado' })
+    const broken = clientWith(() => json({ data: {} }, 202))
+    await assert.rejects(broken.client.tenants[method]('acme', body), e => e instanceof PimiaApiError && e.status === 202)
+    for (const [status, code] of [[409, 'primer_periodo_incompatible'], [503, 'stripe_unavailable']]) {
+      const failed = clientWith(() => json({ code, message: 'Error' }, status))
+      await assert.rejects(failed.client.tenants[method]('acme', body), e => e.status === status && e.code === code)
+      assert.equal(failed.calls.length, 1)
+    }
+  })
+}
+
+test('retry conserva el cuerpo 202 y los códigos 404/409 del contrato', async () => {
+  const body = { data: { id: 8, estado: 'pendiente' } }
+  assert.deepEqual(await clientWith(() => json(body, 202)).client.facturasAClientes.retry(8), body)
+  for (const [status, code] of [[404, 'factura_no_encontrada'], [409, 'factura_no_reintentable']]) {
+    await assert.rejects(clientWith(() => json({ code }, status)).client.facturasAClientes.retry(8), e => e.status === status && e.code === code)
+  }
+})

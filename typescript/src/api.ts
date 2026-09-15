@@ -7169,7 +7169,7 @@ export interface components {
             tax_regime: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
-             *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+             *     publicaban a null (#377). Del dueño responde `User::isOwnerOrAdministrator()`.
              */
             logo: string | null;
             logo_path: string;
@@ -7373,7 +7373,7 @@ export interface components {
             tax_regime: string | null;
             /**
              * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
-             *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+             *     publicaban a null (#377). Del dueño responde `User::isOwnerOrAdministrator()`.
              */
             logo: string | null;
             logo_path: string;
@@ -10896,9 +10896,13 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
             pos_pin_set_at: string | null;
+            central_user_id: number | null;
         };
         /** UserRequest */
         UserRequest: {
+            central_user_id?: string;
+            is_super_admin?: string;
+            role?: string;
             name: string;
             /** Format: email */
             email: string;
@@ -10934,7 +10938,7 @@ export interface components {
                 tax_regime: string | null;
                 /**
                  * @description Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se
-                 *     publicaban a null (#377). Del dueño responde `User::isOwner()`.
+                 *     publicaban a null (#377). Del dueño responde `User::isOwnerOrAdministrator()`.
                  */
                 logo: string | null;
                 logo_path: string;
@@ -12855,6 +12859,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -15184,38 +15189,52 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Solicitud enviada al desarrollador.";
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
                         data: {
                             id: number;
-                            status: string;
-                            link_code: string;
-                            /** Format: date-time */
-                            requested_at: string | null;
-                            /** Format: date-time */
-                            accepted_at: string | null;
-                            desarrollador: {
-                                id: string | null;
-                                name: string | null;
-                                email: string | null;
-                            };
-                            /**
-                             * @description Lo que el dueño de la instancia debe tener claro al vincular.
-                             * @constant
-                             */
-                            alcance: "Este vínculo es administrativo y de facturación. No da acceso a tus datos: eso lo autorizas tú desde «Apps conectadas», permiso a permiso.";
                         };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
                     };
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "desarrolladorLink.revoke": {
@@ -15230,18 +15249,51 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Vinculación revocada.";
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
                     };
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "eInvoice.download": {
@@ -16887,42 +16939,52 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Solicitud enviada a la asesoría.";
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
                         data: {
                             id: number;
-                            status: string;
-                            link_code: string;
-                            /** Format: date-time */
-                            requested_at: string | null;
-                            /** Format: date-time */
-                            accepted_at: string | null;
-                            permissions: unknown[] | null | {
-                                read_invoices: boolean;
-                                read_customers: boolean;
-                                read_suppliers: boolean;
-                                export_accounting: boolean;
-                                delete_data: boolean;
-                            };
-                            gestoria: {
-                                id: string | null;
-                                name: string | null;
-                                nif: string | null;
-                                email: string | null;
-                                phone: string | null;
-                            };
                         };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
                     };
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "gestoriaLink.revoke": {
@@ -16937,18 +16999,51 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Vinculación revocada.";
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
+            /** @description An error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
                     };
                 };
             };
             404: components["responses"]["ModelNotFoundException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "general.getAllUsedCurrencies": {
@@ -22019,12 +22114,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        abilities: unknown[];
+                        abilities: string[];
+                    };
+                };
+            };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
                     };
                 };
             };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "roles.index": {
@@ -22144,9 +22268,38 @@ export interface operations {
                     };
                 };
             };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "roles.destroy": {
@@ -28682,8 +28835,37 @@ export interface operations {
                     };
                 };
             };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "users.index": {
@@ -28752,8 +28934,37 @@ export interface operations {
                     };
                 };
             };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "users.show": {
@@ -28816,9 +29027,38 @@ export interface operations {
                     };
                 };
             };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "users.destroy": {
@@ -28846,8 +29086,37 @@ export interface operations {
                     };
                 };
             };
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
+                        message: string;
+                        data: {
+                            id: number;
+                        };
+                    };
+                };
+            };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "veriFactu.index": {

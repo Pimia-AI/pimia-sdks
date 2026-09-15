@@ -4816,6 +4816,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -10920,8 +10923,8 @@
                     }
                 },
                 "responses": {
-                    "201": {
-                        "description": "",
+                    "403": {
+                        "description": "An error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10929,82 +10932,14 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "const": "Solicitud enviada al desarrollador."
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "status": {
-                                                    "type": "string"
-                                                },
-                                                "link_code": {
-                                                    "type": "string"
-                                                },
-                                                "requested_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "date-time"
-                                                },
-                                                "accepted_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "date-time"
-                                                },
-                                                "desarrollador": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "name": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "email": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "id",
-                                                        "name",
-                                                        "email"
-                                                    ]
-                                                },
-                                                "alcance": {
-                                                    "type": "string",
-                                                    "description": "Lo que el due\u00f1o de la instancia debe tener claro al vincular.",
-                                                    "const": "Este v\u00ednculo es administrativo y de facturaci\u00f3n. No da acceso a tus datos: eso lo autorizas t\u00fa desde \u00abApps conectadas\u00bb, permiso a permiso."
-                                                }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "status",
-                                                "link_code",
-                                                "requested_at",
-                                                "accepted_at",
-                                                "desarrollador",
-                                                "alcance"
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                ""
                                             ]
                                         }
                                     },
                                     "required": [
-                                        "message",
-                                        "data"
+                                        "message"
                                     ]
                                 }
                             }
@@ -11015,6 +10950,68 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -11049,8 +11046,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "",
+                    "403": {
+                        "description": "An error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11058,7 +11055,10 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "const": "Vinculaci\u00f3n revocada."
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                ""
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -11070,6 +11070,68 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -15297,8 +15359,8 @@
                     }
                 },
                 "responses": {
-                    "201": {
-                        "description": "",
+                    "403": {
+                        "description": "An error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15306,129 +15368,14 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "const": "Solicitud enviada a la asesor\u00eda."
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "status": {
-                                                    "type": "string"
-                                                },
-                                                "link_code": {
-                                                    "type": "string"
-                                                },
-                                                "requested_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "date-time"
-                                                },
-                                                "accepted_at": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "date-time"
-                                                },
-                                                "permissions": {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "array",
-                                                            "items": {}
-                                                        },
-                                                        {
-                                                            "type": "null"
-                                                        },
-                                                        {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "read_invoices": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "read_customers": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "read_suppliers": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "export_accounting": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "delete_data": {
-                                                                    "type": "boolean"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "read_invoices",
-                                                                "read_customers",
-                                                                "read_suppliers",
-                                                                "export_accounting",
-                                                                "delete_data"
-                                                            ]
-                                                        }
-                                                    ]
-                                                },
-                                                "gestoria": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "name": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "nif": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "email": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "phone": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "id",
-                                                        "name",
-                                                        "nif",
-                                                        "email",
-                                                        "phone"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "status",
-                                                "link_code",
-                                                "requested_at",
-                                                "accepted_at",
-                                                "permissions",
-                                                "gestoria"
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                ""
                                             ]
                                         }
                                     },
                                     "required": [
-                                        "message",
-                                        "data"
+                                        "message"
                                     ]
                                 }
                             }
@@ -15439,6 +15386,68 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -15472,8 +15481,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "",
+                    "403": {
+                        "description": "An error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15481,7 +15490,10 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "const": "Vinculaci\u00f3n revocada."
+                                            "description": "Error overview.",
+                                            "examples": [
+                                                ""
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -15493,6 +15505,68 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -27068,7 +27142,9 @@
                                     "properties": {
                                         "abilities": {
                                             "type": "array",
-                                            "items": {}
+                                            "items": {
+                                                "type": "string"
+                                            }
                                         }
                                     },
                                     "required": [
@@ -27078,11 +27154,73 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -27348,6 +27486,68 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -44922,6 +45122,68 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -45057,6 +45319,68 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -45200,6 +45524,68 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -45264,6 +45650,68 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "202": {
+                        "description": "Pendiente de confirmaci\u00f3n por correo del due\u00f1o central; la acci\u00f3n no se ha ejecutado. Aplica a administradores cuando la operaci\u00f3n tambi\u00e9n admite usuarios ordinarios.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_required"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "No se pudo enviar la confirmaci\u00f3n al due\u00f1o; solicita otra acci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "owner_confirmation_mail_failed"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "code",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -49083,7 +49531,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
+                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwnerOrAdministrator()`."
                     },
                     "logo_path": {
                         "type": "string"
@@ -49764,7 +50212,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
+                        "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwnerOrAdministrator()`."
                     },
                     "logo_path": {
                         "type": "string"
@@ -62136,6 +62584,12 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "central_user_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -62149,13 +62603,23 @@
                     "email_verified_at",
                     "created_at",
                     "updated_at",
-                    "pos_pin_set_at"
+                    "pos_pin_set_at",
+                    "central_user_id"
                 ],
                 "title": "User"
             },
             "UserRequest": {
                 "type": "object",
                 "properties": {
+                    "central_user_id": {
+                        "type": "string"
+                    },
+                    "is_super_admin": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -62293,7 +62757,7 @@
                                         "string",
                                         "null"
                                     ],
-                                    "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwner()`."
+                                    "description": "Sin `tax_id` ni `owner_id`: no son columnas de `companies` y se\npublicaban a null (#377). Del due\u00f1o responde `User::isOwnerOrAdministrator()`."
                                 },
                                 "logo_path": {
                                     "type": "string"

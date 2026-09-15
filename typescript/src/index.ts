@@ -54,6 +54,12 @@ export type {
   FacturaAClienteEstado,
   FacturaAClienteReintentable,
   FacturaAClienteReintento,
+  FacturaAClienteRetryCode,
+  CobroDeInstancia,
+  PrimerPeriodoConflictCode,
+  PrimerPeriodoResult,
+  ProduccionRequest,
+  AtribuirVerticalRequest,
   FacturacionAClientesRequest,
   FacturasAClientesPage,
   FacturasAClientesQuery,
@@ -229,3 +235,6 @@ export const SCOPES = {
 } as const
 
 export type Scope = (typeof SCOPES)[keyof typeof SCOPES]
+
+export { isOwnerConfirmationRequired } from './confirmation.js'
+export type { ApiSuccess, CentralSuccess, OwnerConfirmationRequired, OwnerConfirmationMailFailedCode, OwnerConfirmationResult } from './confirmation.js'
