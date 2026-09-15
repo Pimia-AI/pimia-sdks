@@ -342,3 +342,31 @@ Los tipos salen de `spec/pimia-central-v1.json` (`@pimia/sdk/central-api`).
 Documentación completa, modelo mental (un tenant = una base URL = un token),
 tabla de errores tipados y el contrato OpenAPI, en el monorepo:
 [Pimia-AI/pimia-sdks](https://github.com/Pimia-AI/pimia-sdks).
+
+### Acciones pendientes (0.30.0 preparada)
+
+```ts
+import { isOwnerConfirmationRequired } from '@pimia/sdk'
+import type { ApiSuccess } from '@pimia/sdk'
+
+const result = await client.put<ApiSuccess<'users.update'>>('/users/42', { role: 'admin' })
+if (isOwnerConfirmationRequired(result)) {
+  mostrarPendiente(result.message) // data.id es la solicitud, no el usuario.
+} else {
+  mostrarUsuarioActualizado(result)
+}
+
+const cambio = await central.tenants.production('acme', { plan: 'pro' })
+if (cambio.estado === 'primer_periodo_pendiente') {
+  compartirConCliente(cambio.checkoutUrl) // Todavía no está en producción.
+}
+```
+
+`central.tenants.attachVertical(slug, {vertical, plan?})` devuelve la misma unión.
+`central.tenants.transferOwnership()` devuelve la confirmación pendiente del dueño,
+no el tenant traspasado. `owner_confirmation_mail_failed` (503) se conserva en
+`PimiaApiError.code`; no se reintenta automáticamente. El SDK no abre enlaces
+ni ejecuta la confirmación. La cartera/ficha obtiene `CobroDeInstancia` de
+`central.overview().data.cartera[].cobro`; puede ser null, igual que su enlace.
+
+Cambios incompatibles y versión propuesta: [Cómo migrar](../CHANGELOG.md#cómo-migrar).

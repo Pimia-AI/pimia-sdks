@@ -20,6 +20,7 @@
  * Los tipos salen de `spec/pimia-central-v1.json` (`./central-api`).
  */
 import type { operations } from './central-api.js'
+import type { CentralSuccess, ResponseBody } from './confirmation.js'
 import { NotAuthenticatedError, PimiaApiError, RateLimitError } from './errors.js'
 
 /** El cuerpo JSON de la respuesta de éxito (200 o 201) de una operación del contrato. */
@@ -220,11 +221,18 @@ export interface FacturasAClientesQuery {
   cursor?: number
 }
 /** La respuesta del reintento: la fila y su estado tras volver a encolarla. */
-export interface FacturaAClienteReintento {
-  data: Omit<Ok<'integradorFacturacionClientes.retry'>['data'], 'estado'> & {
-    estado: FacturaAClienteEstado
-  }
-}
+export type FacturaAClienteReintento = ResponseBody<operations['integradorFacturacionClientes.retry'], 202>
+export type FacturaAClienteRetryCode = ResponseBody<operations['integradorFacturacionClientes.retry'], 404 | 409>['code']
+
+/** Foto local del cobro; null fuera de una vertical con Stripe de este integrador. */
+export type CobroDeInstancia = Ok<'desarrollador.overview'>['data']['cartera'][number]['cobro']
+export type PrimerPeriodoConflictCode = ResponseBody<operations['integradorInstancia.produccion'], 409>['code']
+export type ProduccionRequest = Body<'integradorInstancia.produccion'>
+export type AtribuirVerticalRequest = Body<'vertical.attach'>
+type PrimerPeriodoPendiente = ResponseBody<operations['integradorInstancia.produccion'], 202>
+export type PrimerPeriodoResult =
+  | { estado: 'primer_periodo_pendiente'; message: string; slug: string; checkoutUrl: string; checkoutSession: string; expiresAt: number | null }
+  | { estado: 'completado' }
 
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
@@ -585,7 +593,7 @@ export class PimiaCentralClient {
        * documento ya existía, completa lo pendiente sin crear otra factura.
        * Cualquier otro estado es un 409 (`PimiaApiError` con `status: 409`);
        * una fila de otro integrador, 404 (`NotFoundError`).
-       * El núcleo contesta 202; el contrato lo publica como 200.
+       * Devuelve el cuerpo 202 tipado: encolada, todavía no emitida.
        */
       retry: (id: number | string) =>
         this.request<FacturaAClienteReintento>(
@@ -660,6 +668,12 @@ export class PimiaCentralClient {
 
   get tenants() {
     return {
+      /** El primer periodo lo paga el cliente: un 202 conserva la instancia como estaba. */
+      production: (slug: string, body: ProduccionRequest): Promise<PrimerPeriodoResult> =>
+        this.primerPeriodo(`/desarrollador/tenants/${encodeURIComponent(slug)}/produccion`, 'POST', body),
+      /** Atribución gratuita en desarrollo, o Checkout del primer periodo en producción. */
+      attachVertical: (slug: string, body: AtribuirVerticalRequest): Promise<PrimerPeriodoResult> =>
+        this.primerPeriodo(`/desarrollador/tenants/${encodeURIComponent(slug)}/vertical`, 'PUT', body),
       /**
        * `GET /tenants/{slug}/users` (1.4.0): quién pertenece a la instancia
        * —nombre, correo, rol, `is_owner`—. Es a quién se le puede traspasar:
@@ -667,13 +681,34 @@ export class PimiaCentralClient {
        */
       users: (slug: string) =>
         this.request<Ok<'tenant.users'>>(`/tenants/${encodeURIComponent(slug)}/users`),
-      /** Traspasar la propiedad de la instancia a un usuario de la misma, antes de entregarla. */
+      /** El 202 pide confirmación del dueño; todavía NO se ha traspasado la propiedad. */
       transferOwnership: (slug: string, body: TransferOwnershipRequest) =>
-        this.request<Ok<'tenant.transferOwnership'>>(
+        this.request<CentralSuccess<'tenant.transferOwnership'>>(
           `/tenants/${encodeURIComponent(slug)}/transfer-ownership`,
           { method: 'POST', body },
         ),
     }
+  }
+
+  private async primerPeriodo(path: string, method: 'POST' | 'PUT', body: unknown): Promise<PrimerPeriodoResult> {
+    const result = await this.requestWithMeta<PrimerPeriodoPendiente>(path, { method, body })
+    if (result.meta.status === 202) {
+      const pendiente = result.data
+      const datos = pendiente?.data
+      // Un 202 roto tampoco puede convertirse en «completado» ni perderse silenciosamente.
+      if (pendiente?.code !== 'primer_periodo_pendiente' || typeof pendiente.message !== 'string'
+        || !datos || typeof datos.slug !== 'string' || typeof datos.checkout_url !== 'string'
+        || typeof datos.checkout_session !== 'string' || typeof datos.estado !== 'string'
+        || !(datos.expires_at === null || (typeof datos.expires_at === 'number' && Number.isFinite(datos.expires_at)))) {
+        throw new PimiaApiError(202, 'Respuesta de primer periodo pendiente sin la forma del contrato.', pendiente, result.meta.requestId)
+      }
+      return { estado: 'primer_periodo_pendiente', message: pendiente.message, slug: datos.slug,
+        checkoutUrl: datos.checkout_url, checkoutSession: datos.checkout_session, expiresAt: datos.expires_at }
+    }
+    if (result.meta.status !== 200) {
+      throw new PimiaApiError(result.meta.status, 'Estado HTTP inesperado al solicitar el primer periodo.', result.data, result.meta.requestId)
+    }
+    return { estado: 'completado' }
   }
 
   // ── Transporte ──────────────────────────────────────────────────────────

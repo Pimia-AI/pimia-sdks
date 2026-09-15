@@ -744,6 +744,8 @@ export interface paths {
         /**
          * POST /api/desarrollador/tenants/{slug}/produccion
          * @description **Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.
+         *
+         *     El primer periodo requiere el pago del cliente: 202 con Checkout; sigue en desarrollo hasta pagarlo.
          */
         post: operations["integradorInstancia.produccion"];
         delete?: never;
@@ -1706,6 +1708,23 @@ export interface operations {
                     "application/json": {
                         data: {
                             cartera: {
+                                cobro: {
+                                    primer_periodo: {
+                                        estado: string;
+                                        checkout_url: string | null;
+                                        expires_at: number | null;
+                                    } | null;
+                                    suscripcion: {
+                                        stripe_status: string | null;
+                                        al_dia: boolean;
+                                        debe_desde: string | null;
+                                        suspende_el: string | null;
+                                        cancel_at_period_end: boolean;
+                                        current_period_end: string | null;
+                                        baja_en: string | null;
+                                        suspendida_por_impago_en: string | null;
+                                    } | null;
+                                } | null;
                                 id: string;
                                 name: string;
                                 status: string;
@@ -2065,6 +2084,8 @@ export interface operations {
              * @description An error
              *
              *     An error
+             *
+             *     An error
              */
             422: {
                 headers: {
@@ -2081,6 +2102,12 @@ export interface operations {
                         /**
                          * @description Error overview.
                          * @example La solicitud no tiene instancia asociada.
+                         */
+                        message: string;
+                    } | {
+                        /**
+                         * @description Error overview.
+                         * @example El dueño debe renovar la solicitud desde su instancia antes de aceptar el vínculo.
                          */
                         message: string;
                     };
@@ -3151,7 +3178,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            /** @description Encolada de nuevo; la emisión sigue en segundo plano y el estado vuelve a pendiente. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3165,6 +3193,30 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            /** @description El cobro no existe o es de otro integrador; no se distingue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "factura_no_encontrada";
+                    };
+                };
+            };
+            /** @description Solo se reintentan cobros con error o pendientes de NIF. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "factura_no_reintentable";
+                    };
+                };
+            };
         };
     };
     "integradorInstancia.produccion": {
@@ -3184,32 +3236,67 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Cambio ya completado, o atribución ordinaria en desarrollo. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": Record<string, never> | {
+                        /** @enum {string} */
+                        code: "primer_periodo_completado";
+                        message: string;
+                    };
+                };
+            };
+            /** @description El cliente debe pagar este Checkout. Comparte el enlace: la instancia conserva su estado anterior hasta que pague y se complete el asiento. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": {
+                        /** @enum {string} */
+                        code: "primer_periodo_pendiente";
                         message: string;
                         data: {
                             slug: string;
-                            fase_de_entrada: string;
-                            contratacion: {
-                                id: number;
-                                plan_id: number | null;
-                                plan: string;
-                                price_cents: number;
-                                currency: string;
-                                price: string;
-                                desde: string | null;
-                                hasta: string | null;
-                            };
+                            checkout_url: string;
+                            checkout_session: string;
+                            expires_at: number | null;
+                            estado: string;
                         };
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            /** @description Hay otra intención, el pago no se puede aplicar o ya existe una suscripción: gestiona el plan desde el perfil. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "instancia_no_activable" | "atribucion_incompatible" | "dueno_sin_correo" | "suscripcion_existente" | "primer_periodo_incompatible" | "pago_pendiente_de_activacion" | "checkout_no_expirado" | "identidad_del_pago_modificada" | "vertical_ya_atribuida" | "fase_de_instancia_modificada" | "pago_no_adoptable" | "suscripcion_cancelada";
+                        message: string;
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
+            /** @description Stripe, el asiento o la exclusión temporal no se pudieron completar; el pago y la intención se conservan. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_unavailable";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "integradorInstancia.pruebas": {
@@ -3692,6 +3779,18 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            /** @description No desvincula: hay suscripciones de clientes cobrando con esta cuenta. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_account_in_use";
+                    };
+                };
+            };
         };
     };
     integradorStripeWebhook: {
@@ -3890,18 +3989,18 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            /** @description Pendiente de confirmación por correo del dueño central; la acción no se ha ejecutado. Aplica a administradores cuando la operación también admite usuarios ordinarios. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_required";
                         message: string;
                         data: {
-                            tenant_id: string;
-                            owner_id: number;
-                            /** @enum {string} */
-                            billing_mode: "sponsor" | "self";
+                            id: number;
                         };
                     };
                 };
@@ -3923,6 +4022,19 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationException"];
+            /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "owner_confirmation_mail_failed";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "tenant.users": {
@@ -4332,6 +4444,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Cambio ya completado, o atribución ordinaria en desarrollo. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4366,11 +4479,61 @@ export interface operations {
                             };
                             instancia_de_pruebas: string | null;
                         };
+                    } | {
+                        /** @enum {string} */
+                        code: "primer_periodo_completado";
+                        message: string;
+                    };
+                };
+            };
+            /** @description El cliente debe pagar este Checkout. Comparte el enlace: la instancia conserva su estado anterior hasta que pague y se complete el asiento. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "primer_periodo_pendiente";
+                        message: string;
+                        data: {
+                            slug: string;
+                            checkout_url: string;
+                            checkout_session: string;
+                            expires_at: number | null;
+                            estado: string;
+                        };
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            /** @description Hay otra intención, el pago no se puede aplicar o ya existe una suscripción: gestiona el plan desde el perfil. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "instancia_no_activable" | "atribucion_incompatible" | "dueno_sin_correo" | "suscripcion_existente" | "primer_periodo_incompatible" | "pago_pendiente_de_activacion" | "checkout_no_expirado" | "identidad_del_pago_modificada" | "vertical_ya_atribuida" | "fase_de_instancia_modificada" | "pago_no_adoptable" | "suscripcion_cancelada";
+                        message: string;
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
+            /** @description Stripe, el asiento o la exclusión temporal no se pudieron completar; el pago y la intención se conservan. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "stripe_unavailable";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "vertical.birthPackage": {

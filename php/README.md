@@ -213,3 +213,26 @@ Detalles que ahorran un rato:
 Documentación completa, modelo mental (un tenant = una base URL = un token),
 tabla de excepciones tipadas y el contrato OpenAPI, en el monorepo:
 [Pimia-AI/pimia-sdks](https://github.com/Pimia-AI/pimia-sdks).
+
+### Confirmación del dueño (0.30.0 preparada)
+
+Usuarios administradores, roles admin y vínculos pueden quedar pendientes:
+
+```php
+use Pimia\OwnerConfirmationRequired;
+
+$result = $pimia->put('/users/42', ['role' => 'admin']);
+$pending = OwnerConfirmationRequired::fromResponse($result);
+if ($pending !== null) {
+    mostrarPendiente($pending->message); // $pending->id identifica la solicitud.
+} else {
+    mostrarUsuarioActualizado($result);
+}
+```
+
+`post`, `put`, `delete` y `request` conservan el cuerpo 202; no lo convierten
+al recurso creado. `requestWithMeta` permite leer además `$result->meta->status`.
+El 503 no se reintenta: llega como `ApiException`, cuyo `$e->body['code']`
+es `OwnerConfirmationRequired::MAIL_FAILED_CODE`. El SDK no ejecuta ni abre
+el enlace de confirmación. El plano central y los métodos de primer periodo
+siguen siendo exclusivos de TypeScript.
