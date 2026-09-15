@@ -14,27 +14,24 @@ final class OwnerConfirmationTest extends TestCase
     public function test_el_202_de_las_operaciones_reservadas_no_se_desenvuelve_ni_se_reintenta(): void
     {
         $body = ['code' => OwnerConfirmationRequired::CODE, 'message' => 'Confirma por correo.', 'data' => ['id' => 45]];
-        $spec = json_decode(file_get_contents(__DIR__.'/../../spec/pimia-api-v1.json'), true, 512, JSON_THROW_ON_ERROR);
-        $operaciones = 0;
-        foreach ($spec['paths'] as $path => $methods) {
-            foreach ($methods as $method => $operation) {
-                $codes = $operation['responses']['202']['content']['application/json']['schema']['properties']['code']['enum'] ?? [];
-                if (! in_array(OwnerConfirmationRequired::CODE, $codes, true)) {
-                    continue;
-                }
-                $operaciones++;
-                $transport = new FakeTransport(static fn () => FakeTransport::json($body, 202));
-                $client = PimiaClient::withBorrowedToken('https://example.test', 'test', $transport);
-                $response = $client->requestWithMeta(strtoupper($method), str_replace(['{user}', '{role}'], ['3', 'admin'], $path));
-                $this->assertSame(202, $response->meta->status);
-                $this->assertSame($body, $response->data);
-                $pending = OwnerConfirmationRequired::fromResponse($response->data);
-                $this->assertSame(45, $pending?->id);
-                $this->assertSame('Confirma por correo.', $pending?->message);
-                $this->assertCount(1, $transport->calls);
-            }
+        // El paquete PHP también se prueba fuera del monorepo, sin el directorio spec/.
+        $operaciones = [
+            ['POST', '/users'], ['PUT', '/users/3'], ['DELETE', '/users/3'], ['POST', '/users/delete'],
+            ['PUT', '/roles/admin'], ['PUT', '/roles/admin/abilities'],
+            ['POST', '/gestoria-link/request'], ['DELETE', '/gestoria-link/revoke'],
+            ['POST', '/desarrollador-link/request'], ['DELETE', '/desarrollador-link/revoke'],
+        ];
+        foreach ($operaciones as [$method, $path]) {
+            $transport = new FakeTransport(static fn () => FakeTransport::json($body, 202));
+            $client = PimiaClient::withBorrowedToken('https://example.test', 'test', $transport);
+            $response = $client->requestWithMeta($method, $path);
+            $this->assertSame(202, $response->meta->status);
+            $this->assertSame($body, $response->data);
+            $pending = OwnerConfirmationRequired::fromResponse($response->data);
+            $this->assertSame(45, $pending?->id);
+            $this->assertSame('Confirma por correo.', $pending?->message);
+            $this->assertCount(1, $transport->calls);
         }
-        $this->assertSame(10, $operaciones);
     }
 
     public function test_el_503_conserva_el_codigo_sin_reintentar_la_accion(): void

@@ -234,7 +234,6 @@ export type PrimerPeriodoResult =
   | { estado: 'primer_periodo_pendiente'; message: string; slug: string; checkoutUrl: string; checkoutSession: string; expiresAt: number | null }
   | { estado: 'completado' }
 
-
 export interface PimiaCentralClientOptions {
   /** El ápice, sin `/api`: `https://pimia.es` (o `https://taskai.work` en dev). */
   baseUrl: string
