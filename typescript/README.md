@@ -343,7 +343,7 @@ Documentación completa, modelo mental (un tenant = una base URL = un token),
 tabla de errores tipados y el contrato OpenAPI, en el monorepo:
 [Pimia-AI/pimia-sdks](https://github.com/Pimia-AI/pimia-sdks).
 
-### Acciones pendientes (0.29.1 preparada)
+### Acciones pendientes (0.30.0 preparada)
 
 ```ts
 import { isOwnerConfirmationRequired } from '@pimia/sdk'

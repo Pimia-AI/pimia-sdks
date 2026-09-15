@@ -8,15 +8,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [0.29.1] — 2026-09-15 (preparada, sin publicar)
+## [0.30.0] — 2026-09-15 (preparada, sin publicar)
 
 El SDK distingue acciones pendientes de acciones ejecutadas: confirmación del
-dueño y Checkout del primer periodo. **Hay cambios de firmas/tipos**; se propone
-publicarlos como **0.30.0**, pendiente de decisión de coordinación/fundador.
-Los manifiestos conservan la versión encargada, 0.29.1; no se ha creado tag.
+dueño y Checkout del primer periodo. **Hay cambios de firmas/tipos**; por
+decisión del fundador, esta versión se prepara como **0.30.0**. No se ha creado tag.
 
-Specs de **factSaas@59b4a0f8** (2026-09-15): central **1.16.1, 65 operaciones**
+Specs de **factSaas@229840ee** (2026-09-15): central **1.16.1, 65 operaciones**
 y `/api/v1` **1.1.0, 441 operaciones**. No se retira ninguna operación.
+Resincronizados desde `229840ee359f5c3823c3dc230bb98f02323a5754`: ambos specs
+y tipos generados son idénticos a los de `59b4a0f8`; #848 y #849 no cambian
+el contrato publicado.
 
 ### Añadido y corregido — central (TypeScript)
 
@@ -98,9 +100,9 @@ sobre `isOwnerOrAdministrator` en los recursos de empresa; sin cambio de datos.
   añadirlo. El enlace del primer periodo puede ser null al recargar; no lo
   reconstruyas ni presupongas que sigue vigente.
 
-`@pimia/design-tokens` acompaña 0.29.1 sin cambios de código. El starter mantiene
+`@pimia/design-tokens` acompaña 0.30.0 sin cambios de código. El starter mantiene
 sus dependencias publicadas 0.29.0; su actualización corresponde al paso posterior
-al tag. **Propuesta: 0.30.0 por los cambios incompatibles anteriores.**
+al tag.
 
 ## [0.29.0] — 2026-09-14
 

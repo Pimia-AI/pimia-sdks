@@ -214,7 +214,7 @@ Documentación completa, modelo mental (un tenant = una base URL = un token),
 tabla de excepciones tipadas y el contrato OpenAPI, en el monorepo:
 [Pimia-AI/pimia-sdks](https://github.com/Pimia-AI/pimia-sdks).
 
-### Confirmación del dueño (0.29.1 preparada)
+### Confirmación del dueño (0.30.0 preparada)
 
 Usuarios administradores, roles admin y vínculos pueden quedar pendientes:
 

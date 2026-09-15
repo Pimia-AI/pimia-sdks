@@ -135,7 +135,7 @@ que es lo único que se puede comprobar hoy.
 | 0.27.0 | 2026-09-08 | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. Arrastra las 0.22.0–0.26.0. | ✅ |
 | 0.28.0 | 2026-09-14 | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | ✅ |
 | 0.29.0 | *sin publicar* | El cobro del cliente del integrador (#835): «Facturo con Pimia» en `PimiaCentralClient` (central **1.16.0, 65 operaciones**) y `billing.integrador` en los dos SDKs (`/api/v1` **1.1.0, 441 operaciones**, primera sincronización desde la 0.22.0). `factSaas@808976ba`. | — |
-| 0.29.1 | *preparada, sin publicar; propuesta 0.30.0 pendiente* | Specs `factSaas@59b4a0f8`: central 1.16.1 (65), instancia 1.1.0 (441). Primer periodo, cobro en cartera, retry 202 y confirmación del dueño TS/PHP. Cambios incompatibles documentados en Cómo migrar. | Pendiente de publicación |
+| 0.30.0 | *preparada, sin publicar; versión aprobada por el fundador* | Specs `factSaas@229840ee`: central 1.16.1 (65), instancia 1.1.0 (441). Primer periodo, cobro en cartera, retry 202 y confirmación del dueño TS/PHP. Cambios incompatibles documentados en Cómo migrar. | Pendiente de publicación |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,
