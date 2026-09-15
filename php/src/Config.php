@@ -14,8 +14,10 @@ namespace Pimia;
  */
 final class Config
 {
+    /** Origen de la API, sin /api ni barra final (p. ej. https://acme.pimia.es): el cliente añade /api/v1/… La barra final se tolera por compatibilidad. */
     public readonly string $baseUrl;
 
+    /** @param string $baseUrl Origen sin /api ni barra final; el cliente añade /api/v1/… */
     public function __construct(
         string $baseUrl,
         /** Vacío = esta configuración no tiene grant propio ({@see self::ownsGrant()}). */
@@ -32,7 +34,13 @@ final class Config
         /** Cabeceras extra en cada petición (p. ej. un User-Agent propio). */
         public readonly array $headers = [],
     ) {
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $normalized = rtrim($baseUrl, '/');
+        // El error debe aparecer antes de enviar una petición a /api/api.
+        $path = rtrim((string) parse_url($normalized, PHP_URL_PATH), '/');
+        if (preg_match('~/api(?:/v1)?$~', $path)) {
+            throw new \InvalidArgumentException('baseUrl debe ser el origen de la API, sin /api ni /api/v1 (p. ej. https://acme.pimia.es); el cliente añade el prefijo de las llamadas.');
+        }
+        $this->baseUrl = $normalized;
     }
 
     /**

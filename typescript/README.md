@@ -1,5 +1,13 @@
 # @pimia/sdk
 
+`baseUrl` es el **origen**, sin `/api` ni barra final: `https://pimia.es`
+para el cliente central o `https://acme.pimia.es` para el de instancia.
+El cliente añade `/api/…` (central, TypeScript) o `/api/v1/…` (instancia).
+Desde 0.30.1, un valor terminado en `/api` o `/api/v1` se rechaza al construir
+el cliente (en PHP, al crear `Config`), antes de hacer peticiones. Quita ese
+sufijo; no se elimina automáticamente. Una barra final sigue admitiéndose.
+
+
 Cliente TypeScript oficial de la API de Pimia para **apps de partner**: OAuth
 con PKCE, **rotación del refresh token** persistida, reintentos de rate limit y
 tipos generados del OpenAPI. Licencia MIT.
@@ -250,7 +258,7 @@ Detalles que ahorran un rato:
 
 Si eres integrador (una cuenta de **desarrollador** en Pimia), tu cartera, tus
 clients OAuth, las invitaciones, el patrocinio y el traspaso viven en el
-**plano central** (`https://pimia.es/api`), no en la API de un tenant. Es otro
+**plano central** (`baseUrl: https://pimia.es`; llamadas bajo `/api/…`), no en la API de un tenant. Es otro
 cliente y otra credencial: el **token personal** de tu cuenta, no un token
 OAuth de instancia.
 

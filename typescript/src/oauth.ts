@@ -11,7 +11,7 @@ import { OAuthError } from './errors.js'
 import { type TokenSet, tokenSetFromResponse } from './tokens.js'
 
 export interface OAuthConfig {
-  /** Base del tenant, con o sin barra final: `https://acme.pimia.es`. */
+  /** Origen del tenant, sin `/api` (p. ej. `https://acme.pimia.es`): OAuth añade sus propias rutas. La barra final se tolera. */
   baseUrl: string
   clientId: string
   /** Solo clients confidenciales (app server-side). Nunca en el navegador. */

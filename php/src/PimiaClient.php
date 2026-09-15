@@ -142,6 +142,7 @@ final class PimiaClient
      * {@see \Pimia\Exception\UnauthorizedException} y quien tiene que
      * conseguir otro es quien te lo prestó.
      *
+     * @param string $baseUrl Origen sin /api ni barra final (https://acme.pimia.es); el cliente añade /api/v1/…
      * @param  array<string, string>  $headers  Cabeceras fijas de cada llamada.
      */
     public static function withBorrowedToken(
