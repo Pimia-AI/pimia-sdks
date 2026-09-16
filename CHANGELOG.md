@@ -8,6 +8,78 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.31.0] — 2026-09-16
+
+Contrato de instancia **1.4.0**: composición efectiva y resumen fiscal JSON.
+Sincronizado desde **factSaas@ae2a4088 (2026-09-15) — 442 operaciones**
+(`ae2a4088eb2dd3a8842b57e683edffc18de3e802`). Central **1.17.0, 65 operaciones**:
+no cambia hoy en el núcleo, pero aquí estaba todavía en 1.16.1.
+Ninguna operación retirada. Minor sobre la última publicada, 0.30.1.
+
+### Añadido
+
+- **GET `/reports/tax-summary`** (`report.taxSummary`): resumen JSON de IVA/IRPF
+  por devengo, con `from_date` y `to_date` obligatorios, cabecera `company` y
+  scope `reports:read`. Devuelve `data` con `repercutido`, `soportado`,
+  `soportado_motivo`, `saldo`, `irpf`, `currency` y `criterio`; cada bloque
+  incluye `desglose_cuadra` y `documentos_sin_desglose`. Importes en subunidades
+  enteras de la moneda de empresa. `soportado` y `saldo` pueden ser null:
+  no significa cero. Es cumplimiento del core, independiente del módulo
+  `reports`, sujeto a los permisos de las facturas que resume.
+- **GET `/bootstrap`**, **GET `/tenant-modules`**,
+  **POST `/tenant-modules/{slug}/install`** y
+  **POST `/tenant-modules/{slug}/disable`** incorporan `composition`.
+  Es **aditivo**: `installed_modules`/`substituted_modules` conservan su
+  semántica; también `modules`, `installed_slugs` y `substituted_slugs`.
+  Describe módulos (`slug`, `core`, estado efectivo installed/disabled/substituted),
+  proveedor (`key`, `name`, `control_de_usuarios`, `necesita_de_pimia`) y resolución
+  de la sustitución. Un sustituido sin proveedor resuelto no reactiva el nativo.
+- **GET `/tasks`** declara el 422 `taskable_not_served` con `error`, `message`,
+  `taskable_type` y `module`.
+
+### Cambiado
+
+Inventario operación a operación, incluidas referencias a schemas compartidos:
+
+- **GET `/tasks`**, **POST `/tasks`**, **GET `/tasks/{task}`**,
+  **PUT `/tasks/{task}`** y **PATCH `/tasks/{task}/status`**: el recurso
+  `TaskResource.taskable` añade `served_natively: boolean`.
+- **GET `/dashboard`**: añade `modules.purchases`; `total_net_income` admite null.
+- **GET `/exports/register-book/invoices/{hash}`**,
+  **GET `/exports/register-book/received-invoices/{hash}`** y
+  **GET `/reports/accounting-summary`**: describen la respuesta 403.
+- **GET `/reports/tax-summary/{hash}`**: documenta el PDF y su misma cuenta
+  fiscal que el JSON; exige `from_date`/`to_date` y declara 422.
+- Central: **POST `/desarrollador/modulos`** y
+  **PATCH `/desarrollador/modulos/{modulo}`** amplían el enum de sustitución
+  con `purchases`, `finance`, `reports`; **POST
+  `/desarrollador/verticales/{vertical}/planes`** y **PATCH
+  `/desarrollador/verticales/{vertical}/planes/{plan}`** añaden esos mismos
+  valores a los módulos del plan.
+- Tipos TS `api.ts` y `central-api.ts` regenerados sin correcciones manuales.
+  `@pimia/design-tokens` acompaña 0.31.0 sin cambios de código. PHP no se edita:
+  el workflow publica el espejo y sus métodos genéricos conservan los cuerpos.
+
+### Cómo migrar
+
+- No cambies los filtros basados en `installed_modules`/`substituted_modules`.
+  Adopta `composition` cuando necesites conocer quién sirve cada módulo.
+- Revisa fixtures de respuestas: los campos nuevos son obligatorios en los
+  tipos generados. Trata `total_net_income`, `soportado` y `saldo` como nullable;
+  envía ambas fechas al solicitar el PDF fiscal.
+- **Limitaciones del artefacto 1.4.0 del núcleo**: `/bootstrap` declara
+  `served_by: string | null` y `substitution.resolved/reason: string`, aunque
+  `/tenant-modules` describe proveedor objeto y resolved boolean/reason nullable.
+  En tenant-modules, `schema_version` es number y state/reason son strings sin
+  enum; bootstrap sí fija schema_version 1 y los tres estados. No se promete
+  aquí un tipo uniforme ni se altera el spec copiado para aparentarlo.
+- El núcleo contempla `taskable_not_served` también en **POST `/tasks`** y
+  **PUT `/tasks/{task}`**, pero su OpenAPI conserva allí el 422 genérico de
+  validación: solo GET lo discrimina. No dependas de un discriminante tipado
+  en esas escrituras. Estas limitaciones requieren corregir el export del núcleo.
+- Acceso al JSON sin helper nuevo: `client.get<ApiSuccess<'report.taxSummary'>>`
+  con `/reports/tax-summary` y sus fechas (`ApiSuccess` se exporta del SDK).
+
 ## [0.30.1] — 2026-09-15 (preparada, sin publicar)
 
 - Documentación de `baseUrl`: es el origen sin `/api`, no la ruta de las llamadas.

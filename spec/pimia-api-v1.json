@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia API v1 \u2014 contrato de partner",
-        "version": "1.1.0",
+        "version": "1.4.0",
         "description": "Contrato p\u00fablico de la API de Pimia para apps de partner (superficie curada por scopes: facturaci\u00f3n, presupuestos, clientes, gastos, pagos, art\u00edculos, banca, CRM, agenda, informes y cat\u00e1logos meta). Autenticaci\u00f3n: OAuth 2.0 del Authorization Server de Pimia (PKCE o client confidencial) \u2014 ver docs/guia-integradores.md."
     },
     "servers": [
@@ -1043,6 +1043,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -4173,6 +4176,73 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "composition": {
+                                            "type": "object",
+                                            "description": "Una sola respuesta: qu\u00e9 m\u00f3dulos hay y qui\u00e9n los sirve (13.32).\nTodos los del registro con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`: sustituido gana sobre la fila) y,\nsi est\u00e1n sustituidos, la IDENTIDAD del m\u00f3dulo propio del\nintegrador que los sirve \u2014sin URL: la direcci\u00f3n es del\ndespliegue del fork\u2014. `served_by` puede ser `null` con\n`substituted` (sin proveedor en los planes, o m\u00e1s de uno); el\nservicio nativo sigue cerrado igual. ADITIVO: `installed_modules` y `substituted_modules` conservan\nsu sem\u00e1ntica exacta para el cliente que no lea esto.",
+                                            "properties": {
+                                                "schema_version": {
+                                                    "type": "integer",
+                                                    "const": 1
+                                                },
+                                                "modules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "core": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "state": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "installed",
+                                                                    "disabled",
+                                                                    "substituted"
+                                                                ]
+                                                            },
+                                                            "served_by": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "substitution": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "resolved": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "resolved",
+                                                                    "reason"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "core",
+                                                            "state",
+                                                            "served_by",
+                                                            "substitution"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "schema_version",
+                                                "modules"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -4189,7 +4259,8 @@
                                         "setting_menu",
                                         "modules",
                                         "installed_modules",
-                                        "substituted_modules"
+                                        "substituted_modules",
+                                        "composition"
                                     ]
                                 }
                             }
@@ -7766,7 +7837,22 @@
                                         "total_receipts": {},
                                         "total_expenses": {},
                                         "total_net_income": {
-                                            "type": "string"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "modules": {
+                                            "type": "object",
+                                            "description": "Qu\u00e9 m\u00f3dulos ha mirado el panel: el cliente decide qu\u00e9 bloque\nesconde.",
+                                            "properties": {
+                                                "purchases": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "purchases"
+                                            ]
                                         },
                                         "crm": {
                                             "anyOf": [
@@ -8140,6 +8226,7 @@
                                         "total_receipts",
                                         "total_expenses",
                                         "total_net_income",
+                                        "modules",
                                         "crm"
                                     ]
                                 }
@@ -26879,6 +26966,9 @@
                             }
                         }
                     },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     }
@@ -26946,6 +27036,9 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -32587,6 +32680,37 @@
                             }
                         }
                     },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "taskable_not_served"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "taskable_type": {
+                                            "type": "string"
+                                        },
+                                        "module": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "message",
+                                        "taskable_type",
+                                        "module"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     }
@@ -32643,11 +32767,11 @@
                             }
                         }
                     },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     }
                 },
                 "security": [
@@ -32771,14 +32895,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -32848,10 +32972,264 @@
                 ]
             }
         },
+        "/reports/tax-summary": {
+            "get": {
+                "operationId": "report.taxSummary",
+                "description": "Es CUMPLIMIENTO y del core (13.31 c): no cuelga del m\u00f3dulo `reports`\n\u2014el resumen contable de gesti\u00f3n, `/reports/accounting-summary`, s\u00ed\u2014 y\nautoriza por las facturas que resume (`view-invoice`) y por la empresa\nde la cabecera `company`. Es la misma cuenta que el PDF\n`reports/tax-summary/{hash}`, hecha una sola vez en\n`App\\Support\\ResumenFiscal`; all\u00ed est\u00e1 escrito qu\u00e9 cuenta: devengo (lo\nnumerado en el rango, cobrado o no), rectificativas con su signo, base\nreal del documento, moneda de la empresa.\n\nHasta el 2026-09-15 el agente le\u00eda el \u00abresumen de IVA\u00bb del resumen\ncontable: con Informes apagado se quedaba sin IVA, y las cifras eran de\ngesti\u00f3n (sin rectificativas, base derivada del impuesto).\n\n`repercutido` son las emitidas. `soportado` son las recibidas, y sale\n**`null`** \u2014nunca 0\u2014 cuando no se puede contar: Compras apagadas\n(`soportado_motivo: compras_apagadas`) o sin `view-received-invoice`\n(`sin_permiso_recibidas`). Sin soportado no hay `saldo`\n(`repercutido.iva \u2212 soportado.iva`): tambi\u00e9n `null`. En cada bloque,\n`iva` y `total_impuestos` son la suma de `document.tax`, convertida a\nmoneda de empresa (incluye retenciones con signo). `irpf_retenido` se\ninforma aparte, en positivo, sin descontarlo otra vez del total.\n`desglose`, bases e IRPF son best-effort desde `taxes.amount`;\n`desglose_cuadra` compara la suma de cuotas con cada documento, con una\nsubunidad de tolerancia por documento, y `documentos_sin_desglose`\ncuenta documentos sin filas de impuestos. Importes en subunidades\nenteras de `currency`, la moneda de la empresa.",
+                "summary": "Resumen de IVA/IRPF del periodo (JSON)",
+                "tags": [
+                    "TaxSummary"
+                ],
+                "parameters": [
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "from_date": {
+                                                    "type": "string"
+                                                },
+                                                "to_date": {
+                                                    "type": "string"
+                                                },
+                                                "currency": {
+                                                    "type": "string"
+                                                },
+                                                "criterio": {
+                                                    "type": "string"
+                                                },
+                                                "repercutido": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "iva": {
+                                                            "type": "integer"
+                                                        },
+                                                        "base": {
+                                                            "type": "integer"
+                                                        },
+                                                        "irpf_retenido": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total_impuestos": {
+                                                            "type": "integer"
+                                                        },
+                                                        "documentos": {
+                                                            "type": "integer"
+                                                        },
+                                                        "desglose_cuadra": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "documentos_sin_desglose": {
+                                                            "type": "integer"
+                                                        },
+                                                        "desglose": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "percent": {
+                                                                        "type": "number"
+                                                                    },
+                                                                    "base": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "tax_amount": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "name",
+                                                                    "percent",
+                                                                    "base",
+                                                                    "tax_amount"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "iva",
+                                                        "base",
+                                                        "irpf_retenido",
+                                                        "total_impuestos",
+                                                        "documentos",
+                                                        "desglose_cuadra",
+                                                        "documentos_sin_desglose",
+                                                        "desglose"
+                                                    ]
+                                                },
+                                                "soportado": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "iva": {
+                                                            "type": "integer"
+                                                        },
+                                                        "base": {
+                                                            "type": "integer"
+                                                        },
+                                                        "irpf_retenido": {
+                                                            "type": "integer"
+                                                        },
+                                                        "total_impuestos": {
+                                                            "type": "integer"
+                                                        },
+                                                        "documentos": {
+                                                            "type": "integer"
+                                                        },
+                                                        "desglose_cuadra": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "documentos_sin_desglose": {
+                                                            "type": "integer"
+                                                        },
+                                                        "desglose": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "percent": {
+                                                                        "type": "number"
+                                                                    },
+                                                                    "base": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "tax_amount": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "name",
+                                                                    "percent",
+                                                                    "base",
+                                                                    "tax_amount"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "iva",
+                                                        "base",
+                                                        "irpf_retenido",
+                                                        "total_impuestos",
+                                                        "documentos",
+                                                        "desglose_cuadra",
+                                                        "documentos_sin_desglose",
+                                                        "desglose"
+                                                    ]
+                                                },
+                                                "soportado_motivo": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "saldo": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "irpf": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "retenido_por_clientes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "retenido_a_proveedores": {
+                                                            "type": [
+                                                                "integer",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "retenido_por_clientes",
+                                                        "retenido_a_proveedores"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "from_date",
+                                                "to_date",
+                                                "currency",
+                                                "criterio",
+                                                "repercutido",
+                                                "soportado",
+                                                "soportado_motivo",
+                                                "saldo",
+                                                "irpf"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "reports:read"
+                        ]
+                    }
+                ]
+            }
+        },
         "/reports/tax-summary/{hash}": {
             "get": {
                 "operationId": "report.taxSummaryReport",
-                "summary": "Handle the incoming request",
+                "description": "`preview` devuelve el HTML; `download` fuerza la descarga. Las cifras\nson las de `GET /reports/tax-summary` (JSON): la cuenta es una sola,\n`App\\Support\\ResumenFiscal`.",
+                "summary": "Resumen de IVA/IRPF del periodo, en PDF (por `unique_hash` de la empresa)",
                 "tags": [
                     "TaxSummaryReport"
                 ],
@@ -32862,6 +33240,24 @@
                         "required": true,
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from_date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to_date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
                         }
                     },
                     {
@@ -32887,6 +33283,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -35360,7 +35759,7 @@
         "/tenant-modules": {
             "get": {
                 "operationId": "tenantModules.index",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no\nse compran a Pimia: los activa el integrador y los cobra \u00e9l. Cada\nopcional ofrecido lleva entonces `billing: channel`, `price` es el\nprecio MINORISTA de su cat\u00e1logo (`null` si no lo revende), `purchasable`\nes falso y `contract_url` es su enlace de contrataci\u00f3n, con `tenant` e\n`item` puestos.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no\nse compran a Pimia: los activa el integrador y los cobra \u00e9l. Cada\nopcional ofrecido lleva entonces `billing: channel`, `price` es el\nprecio MINORISTA de su cat\u00e1logo (`null` si no lo revende), `purchasable`\nes falso y `contract_url` es su enlace de contrataci\u00f3n, con `tenant` e\n`item` puestos.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.\n\n**`composition` (2026-09-15, 13.32): una sola respuesta de qu\u00e9 m\u00f3dulos\nhay y qui\u00e9n los sirve.** Todos los del registro \u2014tambi\u00e9n los que\n`modules` omite por sustituidos\u2014 con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`; sustituido gana sobre la fila) y, si est\u00e1n\nsustituidos, la IDENTIDAD del m\u00f3dulo propio del integrador que los\nsirve (`served_by`: `key`, `name`, `control_de_usuarios`,\n`necesita_de_pimia`; sin URL, que es del despliegue del fork) y\n`substitution` (`resolved`; `reason` `no_provider` o `ambiguous` cuando\n`served_by` es `null`). ADITIVO: `modules`, `installed_slugs` y\n`substituted_slugs` conservan su sem\u00e1ntica exacta.",
                 "summary": "Los m\u00f3dulos del registro y en qu\u00e9 estado est\u00e1 cada uno EN ESTA INSTANCIA",
                 "tags": [
                     "TenantModules"
@@ -35548,13 +35947,115 @@
                                                 "quantity",
                                                 "purchasable"
                                             ]
+                                        },
+                                        "composition": {
+                                            "type": "object",
+                                            "properties": {
+                                                "schema_version": {
+                                                    "type": "integer"
+                                                },
+                                                "modules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "core": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "state": {
+                                                                "type": "string"
+                                                            },
+                                                            "served_by": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "control_de_usuarios": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "necesita_de_pimia": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "operacion": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "scope": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "required": [
+                                                                                "operacion",
+                                                                                "scope"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "name",
+                                                                    "control_de_usuarios",
+                                                                    "necesita_de_pimia"
+                                                                ]
+                                                            },
+                                                            "substitution": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "resolved": {
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "resolved",
+                                                                    "reason"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "core",
+                                                            "state",
+                                                            "served_by",
+                                                            "substitution"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "schema_version",
+                                                "modules"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "modules",
                                         "installed_slugs",
                                         "substituted_slugs",
-                                        "addons"
+                                        "addons",
+                                        "composition"
                                     ]
                                 }
                             }
@@ -35577,7 +36078,7 @@
         "/tenant-modules/{slug}/install": {
             "post": {
                 "operationId": "tenantModules.install",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn m\u00f3dulo que no existe, uno que el plan de la instancia no incluye y no\nse puede comprar, o una dependencia que no se puede satisfacer, salen\ncomo `422` con el motivo en `message`.\n\n**Si el plan no lo incluye pero se vende** (`billing: addon`), instalarlo\nes COMPRARLO: se cobra HOY el mes entero (una factura aparte al pagador)\ny se suma a la suscripci\u00f3n de Stripe de la instancia para la\nrenovaci\u00f3n, antes de activarlo; la fila queda marcada como a\u00f1adido. Sin\nplan de pago la respuesta es `402 subscription_required` con\n`plan_url`; los dem\u00e1s cortes, con su c\u00f3digo en `error`: `white_label`\n(403), `not_the_payer` (403), `channel_seat` (422),\n`stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_payment_failed` (402: la tarjeta no pas\u00f3; no se activa nada). Un\na\u00f1adido que ya se est\u00e1 pagando no se cobra dos veces, y uno **pendiente\nde baja** (`addon_ends_at`) se MANTIENE sin cobrar: vuelve a renovar\n(`kept: true`, `charged: false`).\n\nSi el cobro entra pero el encendido revienta, la respuesta es `202` con\n`status: pending` y `message`: el m\u00f3dulo se activa solo en unos minutos\n(cola) y volver a pulsar no cobra otra vez. Otros cortes del cobro, con\nsu c\u00f3digo: `addon_payment_requires_action` (402, el banco pide\nconfirmar y el panel a\u00fan no puede), `addon_payment_method_unsupported`\n(402, sin tarjeta), `subscription_ending` (402, cancelada o en mora),\n`addon_busy` (409), `addon_expired` (409).",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn m\u00f3dulo que no existe, uno que el plan de la instancia no incluye y no\nse puede comprar, o una dependencia que no se puede satisfacer, salen\ncomo `422` con el motivo en `message`.\n\n**Si el plan no lo incluye pero se vende** (`billing: addon`), instalarlo\nes COMPRARLO: se cobra HOY el mes entero (una factura aparte al pagador)\ny se suma a la suscripci\u00f3n de Stripe de la instancia para la\nrenovaci\u00f3n, antes de activarlo; la fila queda marcada como a\u00f1adido. Sin\nplan de pago la respuesta es `402 subscription_required` con\n`plan_url`; los dem\u00e1s cortes, con su c\u00f3digo en `error`: `white_label`\n(403), `not_the_payer` (403), `channel_seat` (422),\n`stripe_price_missing` (503), `stripe_addon_failed` (502),\n`addon_payment_failed` (402: la tarjeta no pas\u00f3; no se activa nada). Un\na\u00f1adido que ya se est\u00e1 pagando no se cobra dos veces, y uno **pendiente\nde baja** (`addon_ends_at`) se MANTIENE sin cobrar: vuelve a renovar\n(`kept: true`, `charged: false`).\n\nSi el cobro entra pero el encendido revienta, la respuesta es `202` con\n`status: pending` y `message`: el m\u00f3dulo se activa solo en unos minutos\n(cola) y volver a pulsar no cobra otra vez. Otros cortes del cobro, con\nsu c\u00f3digo: `addon_payment_requires_action` (402, el banco pide\nconfirmar y el panel a\u00fan no puede), `addon_payment_method_unsupported`\n(402, sin tarjeta), `subscription_ending` (402, cancelada o en mora),\n`addon_busy` (409), `addon_expired` (409).\n\n`composition` viaja con cada respuesta que publica `installed_slugs`\n(13.32), con la misma forma que en el \u00edndice.",
                 "summary": "Instala un m\u00f3dulo en la instancia, y con \u00e9l sus dependencias",
                 "tags": [
                     "TenantModules"
@@ -35643,6 +36144,107 @@
                                         },
                                         "kept": {
                                             "type": "boolean"
+                                        },
+                                        "composition": {
+                                            "type": "object",
+                                            "properties": {
+                                                "schema_version": {
+                                                    "type": "integer"
+                                                },
+                                                "modules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "core": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "state": {
+                                                                "type": "string"
+                                                            },
+                                                            "served_by": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "control_de_usuarios": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "necesita_de_pimia": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "operacion": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "scope": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "required": [
+                                                                                "operacion",
+                                                                                "scope"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "name",
+                                                                    "control_de_usuarios",
+                                                                    "necesita_de_pimia"
+                                                                ]
+                                                            },
+                                                            "substitution": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "resolved": {
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "resolved",
+                                                                    "reason"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "core",
+                                                            "state",
+                                                            "served_by",
+                                                            "substitution"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "schema_version",
+                                                "modules"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -35652,7 +36254,8 @@
                                         "installed_slugs",
                                         "addon",
                                         "charged",
-                                        "kept"
+                                        "kept",
+                                        "composition"
                                     ]
                                 }
                             }
@@ -35681,7 +36284,7 @@
         "/tenant-modules/{slug}/disable": {
             "post": {
                 "operationId": "tenantModules.disable",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn b\u00e1sico, o un m\u00f3dulo del que dependa otro instalado, sale como `422`\ncon el motivo en `message`.\n\n**Si se estaba pagando como a\u00f1adido** (fila `installed` con `meta.addon`\ny una suscripci\u00f3n con partida), desactivarlo es **dejar de RENOVARLO**:\nse resta de la partida de Stripe sin abono \u2014el mes est\u00e1 pagado\u2014 y el\nm\u00f3dulo SIGUE encendido hasta el fin del periodo (`addon_ends_at`); ah\u00ed\nlo apaga `billing:apagar-anadidos-vencidos` (o la factura de\nrenovaci\u00f3n). La respuesta lo dice: `status: installed`, `addon_released:\ntrue`, `addon_ends_at`. Uno ya pendiente no cambia. Si Stripe no\ncontesta, el m\u00f3dulo sigue encendido y renovando: `502\nstripe_addon_release_failed` o `stripe_period_unknown`.\n\nUn heredado (encendido sin marca) o un a\u00f1adido sin partida se apaga en\nel acto, como siempre: no hay nada pagado que respetar.\n\n**Un m\u00f3dulo activado por el integrador** (`meta.channel`, lo paga su\ncanal) no lo apaga el cliente: `403 channel_module`, con el nombre del\nintegrador en `message`.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nUn b\u00e1sico, o un m\u00f3dulo del que dependa otro instalado, sale como `422`\ncon el motivo en `message`.\n\n**Si se estaba pagando como a\u00f1adido** (fila `installed` con `meta.addon`\ny una suscripci\u00f3n con partida), desactivarlo es **dejar de RENOVARLO**:\nse resta de la partida de Stripe sin abono \u2014el mes est\u00e1 pagado\u2014 y el\nm\u00f3dulo SIGUE encendido hasta el fin del periodo (`addon_ends_at`); ah\u00ed\nlo apaga `billing:apagar-anadidos-vencidos` (o la factura de\nrenovaci\u00f3n). La respuesta lo dice: `status: installed`, `addon_released:\ntrue`, `addon_ends_at`. Uno ya pendiente no cambia. Si Stripe no\ncontesta, el m\u00f3dulo sigue encendido y renovando: `502\nstripe_addon_release_failed` o `stripe_period_unknown`.\n\nUn heredado (encendido sin marca) o un a\u00f1adido sin partida se apaga en\nel acto, como siempre: no hay nada pagado que respetar.\n\n**Un m\u00f3dulo activado por el integrador** (`meta.channel`, lo paga su\ncanal) no lo apaga el cliente: `403 channel_module`, con el nombre del\nintegrador en `message`.\n\n`composition` viaja con cada respuesta que publica `installed_slugs`\n(13.32), con la misma forma que en el \u00edndice.",
                 "summary": "Desactiva un m\u00f3dulo opcional de la instancia",
                 "tags": [
                     "TenantModules"
@@ -35738,6 +36341,107 @@
                                                 "string",
                                                 "null"
                                             ]
+                                        },
+                                        "composition": {
+                                            "type": "object",
+                                            "properties": {
+                                                "schema_version": {
+                                                    "type": "integer"
+                                                },
+                                                "modules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "core": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "state": {
+                                                                "type": "string"
+                                                            },
+                                                            "served_by": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "control_de_usuarios": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "necesita_de_pimia": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "operacion": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "scope": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "required": [
+                                                                                "operacion",
+                                                                                "scope"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "name",
+                                                                    "control_de_usuarios",
+                                                                    "necesita_de_pimia"
+                                                                ]
+                                                            },
+                                                            "substitution": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "resolved": {
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "resolved",
+                                                                    "reason"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "core",
+                                                            "state",
+                                                            "served_by",
+                                                            "substitution"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "schema_version",
+                                                "modules"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -35746,7 +36450,8 @@
                                         "disabled_at",
                                         "installed_slugs",
                                         "addon_released",
-                                        "addon_ends_at"
+                                        "addon_ends_at",
+                                        "composition"
                                     ]
                                 }
                             }
@@ -61199,12 +61904,16 @@
                             },
                             "label": {
                                 "type": "string"
+                            },
+                            "served_natively": {
+                                "type": "boolean"
                             }
                         },
                         "required": [
                             "id",
                             "type",
-                            "label"
+                            "label",
+                            "served_natively"
                         ]
                     },
                     "delegation": {

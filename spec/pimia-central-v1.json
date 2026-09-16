@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.16.1",
+        "version": "1.17.0",
         "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), la tarjeta de su canal guardada antes del primer cliente (13.30a), el traspaso de propiedad, sus verticales (el sector para el que arma su producto, por cu\u00e1l entr\u00f3 cada instancia qu\u00e9 m\u00f3dulos nacen encendidos en sus clientes nuevos y qu\u00e9 m\u00f3dulos de Pimia sustituye por software suyo), su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice), sus tokens de m\u00e1quina, qui\u00e9n pertenece a cada instancia (para traspasarla) y el portal de Stripe de su canal. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
@@ -8578,6 +8578,9 @@
                             "null"
                         ],
                         "enum": [
+                            "purchases",
+                            "finance",
+                            "reports",
                             "compliance-es",
                             "compliance-fr",
                             "pos",
@@ -8670,6 +8673,9 @@
                         "items": {
                             "type": "string",
                             "enum": [
+                                "purchases",
+                                "finance",
+                                "reports",
                                 "compliance-es",
                                 "compliance-fr",
                                 "pos",

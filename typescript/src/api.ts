@@ -5462,6 +5462,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/tax-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resumen de IVA/IRPF del periodo (JSON)
+         * @description Es CUMPLIMIENTO y del core (13.31 c): no cuelga del módulo `reports`
+         *     —el resumen contable de gestión, `/reports/accounting-summary`, sí— y
+         *     autoriza por las facturas que resume (`view-invoice`) y por la empresa
+         *     de la cabecera `company`. Es la misma cuenta que el PDF
+         *     `reports/tax-summary/{hash}`, hecha una sola vez en
+         *     `App\Support\ResumenFiscal`; allí está escrito qué cuenta: devengo (lo
+         *     numerado en el rango, cobrado o no), rectificativas con su signo, base
+         *     real del documento, moneda de la empresa.
+         *
+         *     Hasta el 2026-09-15 el agente leía el «resumen de IVA» del resumen
+         *     contable: con Informes apagado se quedaba sin IVA, y las cifras eran de
+         *     gestión (sin rectificativas, base derivada del impuesto).
+         *
+         *     `repercutido` son las emitidas. `soportado` son las recibidas, y sale
+         *     **`null`** —nunca 0— cuando no se puede contar: Compras apagadas
+         *     (`soportado_motivo: compras_apagadas`) o sin `view-received-invoice`
+         *     (`sin_permiso_recibidas`). Sin soportado no hay `saldo`
+         *     (`repercutido.iva − soportado.iva`): también `null`. En cada bloque,
+         *     `iva` y `total_impuestos` son la suma de `document.tax`, convertida a
+         *     moneda de empresa (incluye retenciones con signo). `irpf_retenido` se
+         *     informa aparte, en positivo, sin descontarlo otra vez del total.
+         *     `desglose`, bases e IRPF son best-effort desde `taxes.amount`;
+         *     `desglose_cuadra` compara la suma de cuotas con cada documento, con una
+         *     subunidad de tolerancia por documento, y `documentos_sin_desglose`
+         *     cuenta documentos sin filas de impuestos. Importes en subunidades
+         *     enteras de `currency`, la moneda de la empresa.
+         */
+        get: operations["report.taxSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/tax-summary/{hash}": {
         parameters: {
             query?: never;
@@ -5469,7 +5514,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Handle the incoming request */
+        /**
+         * Resumen de IVA/IRPF del periodo, en PDF (por `unique_hash` de la empresa)
+         * @description `preview` devuelve el HTML; `download` fuerza la descarga. Las cifras
+         *     son las de `GET /reports/tax-summary` (JSON): la cuenta es una sola,
+         *     `App\Support\ResumenFiscal`.
+         */
         get: operations["report.taxSummaryReport"];
         put?: never;
         post?: never;
@@ -5926,6 +5976,17 @@ export interface paths {
          *     (el fin del periodo ya pagado) y ahí se apaga. Mientras tanto
          *     `addon_active` sigue en `true` (este periodo está pagado) y volver a
          *     activarlo no cobra: lo «mantiene». `null` en todo lo demás.
+         *
+         *     **`composition` (2026-09-15, 13.32): una sola respuesta de qué módulos
+         *     hay y quién los sirve.** Todos los del registro —también los que
+         *     `modules` omite por sustituidos— con su estado EFECTIVO (`installed`,
+         *     `disabled` o `substituted`; sustituido gana sobre la fila) y, si están
+         *     sustituidos, la IDENTIDAD del módulo propio del integrador que los
+         *     sirve (`served_by`: `key`, `name`, `control_de_usuarios`,
+         *     `necesita_de_pimia`; sin URL, que es del despliegue del fork) y
+         *     `substitution` (`resolved`; `reason` `no_provider` o `ambiguous` cuando
+         *     `served_by` es `null`). ADITIVO: `modules`, `installed_slugs` y
+         *     `substituted_slugs` conservan su semántica exacta.
          */
         get: operations["tenantModules.index"];
         put?: never;
@@ -5973,6 +6034,9 @@ export interface paths {
          *     confirmar y el panel aún no puede), `addon_payment_method_unsupported`
          *     (402, sin tarjeta), `subscription_ending` (402, cancelada o en mora),
          *     `addon_busy` (409), `addon_expired` (409).
+         *
+         *     `composition` viaja con cada respuesta que publica `installed_slugs`
+         *     (13.32), con la misma forma que en el índice.
          */
         post: operations["tenantModules.install"];
         delete?: never;
@@ -6013,6 +6077,9 @@ export interface paths {
          *     **Un módulo activado por el integrador** (`meta.channel`, lo paga su
          *     canal) no lo apaga el cliente: `403 channel_module`, con el nombre del
          *     integrador en `message`.
+         *
+         *     `composition` viaja con cada respuesta que publica `installed_slugs`
+         *     (13.32), con la misma forma que en el índice.
          */
         post: operations["tenantModules.disable"];
         delete?: never;
@@ -10519,6 +10586,7 @@ export interface components {
                 id: number;
                 type: string | number | Record<string, never> | null;
                 label: string;
+                served_natively: boolean;
             } | null;
             /**
              * @description Delegación a Pim (capa 3 async) enlazada a la tarea, si la hay. Misma
@@ -11451,6 +11519,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -12558,6 +12627,32 @@ export interface operations {
                          *     casi todo.
                          */
                         substituted_modules: string[];
+                        /**
+                         * @description Una sola respuesta: qué módulos hay y quién los sirve (13.32).
+                         *     Todos los del registro con su estado EFECTIVO (`installed`,
+                         *     `disabled` o `substituted`: sustituido gana sobre la fila) y,
+                         *     si están sustituidos, la IDENTIDAD del módulo propio del
+                         *     integrador que los sirve —sin URL: la dirección es del
+                         *     despliegue del fork—. `served_by` puede ser `null` con
+                         *     `substituted` (sin proveedor en los planes, o más de uno); el
+                         *     servicio nativo sigue cerrado igual. ADITIVO: `installed_modules` y `substituted_modules` conservan
+                         *     su semántica exacta para el cliente que no lea esto.
+                         */
+                        composition: {
+                            /** @constant */
+                            schema_version: 1;
+                            modules: {
+                                slug: string;
+                                core: boolean;
+                                /** @enum {string} */
+                                state: "installed" | "disabled" | "substituted";
+                                served_by: string | null;
+                                substitution: {
+                                    resolved: string;
+                                    reason: string;
+                                } | null;
+                            }[];
+                        };
                     };
                 };
             };
@@ -14190,7 +14285,14 @@ export interface operations {
                         total_sales: unknown;
                         total_receipts: unknown;
                         total_expenses: unknown;
-                        total_net_income: string;
+                        total_net_income: string | null;
+                        /**
+                         * @description Qué módulos ha mirado el panel: el cliente decide qué bloque
+                         *     esconde.
+                         */
+                        modules: {
+                            purchases: boolean;
+                        };
                         crm: {
                             won_revenue_cents: number;
                             lost_revenue_cents: number;
@@ -21997,6 +22099,7 @@ export interface operations {
                     "text/csv": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -22025,6 +22128,7 @@ export interface operations {
                     "text/csv": Blob;
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -24337,6 +24441,20 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "taskable_not_served";
+                        message: string;
+                        taskable_type: string;
+                        module: string;
+                    };
+                };
+            };
         };
     };
     "tasks.store": {
@@ -24464,9 +24582,82 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
+    "report.taxSummary": {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from_date: string;
+                            to_date: string;
+                            currency: string;
+                            criterio: string;
+                            repercutido: {
+                                iva: number;
+                                base: number;
+                                irpf_retenido: number;
+                                total_impuestos: number;
+                                documentos: number;
+                                desglose_cuadra: boolean;
+                                documentos_sin_desglose: number;
+                                desglose: {
+                                    name: string;
+                                    percent: number;
+                                    base: number;
+                                    tax_amount: number;
+                                }[];
+                            };
+                            soportado: {
+                                iva: number;
+                                base: number;
+                                irpf_retenido: number;
+                                total_impuestos: number;
+                                documentos: number;
+                                desglose_cuadra: boolean;
+                                documentos_sin_desglose: number;
+                                desglose: {
+                                    name: string;
+                                    percent: number;
+                                    base: number;
+                                    tax_amount: number;
+                                }[];
+                            } | null;
+                            soportado_motivo: string | null;
+                            saldo: number | null;
+                            irpf: {
+                                retenido_por_clientes: number;
+                                retenido_a_proveedores: number | null;
+                            };
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "report.taxSummaryReport": {
         parameters: {
-            query?: never;
+            query: {
+                from_date: string;
+                to_date: string;
+            };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
                 company?: string;
@@ -24487,6 +24678,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "tax-types.index": {
@@ -25314,6 +25506,27 @@ export interface operations {
                             quantity: number;
                             purchasable: boolean;
                         };
+                        composition: {
+                            schema_version: number;
+                            modules: {
+                                slug: string;
+                                core: boolean;
+                                state: string;
+                                served_by: {
+                                    key: string;
+                                    name: string;
+                                    control_de_usuarios: string[];
+                                    necesita_de_pimia: {
+                                        operacion: string;
+                                        scope: string;
+                                    }[];
+                                } | null;
+                                substitution: {
+                                    resolved: boolean;
+                                    reason: string | null;
+                                } | null;
+                            }[];
+                        };
                     };
                 };
             };
@@ -25350,6 +25563,27 @@ export interface operations {
                         addon: boolean;
                         charged: boolean;
                         kept: boolean;
+                        composition: {
+                            schema_version: number;
+                            modules: {
+                                slug: string;
+                                core: boolean;
+                                state: string;
+                                served_by: {
+                                    key: string;
+                                    name: string;
+                                    control_de_usuarios: string[];
+                                    necesita_de_pimia: {
+                                        operacion: string;
+                                        scope: string;
+                                    }[];
+                                } | null;
+                                substitution: {
+                                    resolved: boolean;
+                                    reason: string | null;
+                                } | null;
+                            }[];
+                        };
                     };
                 };
             };
@@ -25383,6 +25617,27 @@ export interface operations {
                         installed_slugs: string[];
                         addon_released: boolean;
                         addon_ends_at: string | null;
+                        composition: {
+                            schema_version: number;
+                            modules: {
+                                slug: string;
+                                core: boolean;
+                                state: string;
+                                served_by: {
+                                    key: string;
+                                    name: string;
+                                    control_de_usuarios: string[];
+                                    necesita_de_pimia: {
+                                        operacion: string;
+                                        scope: string;
+                                    }[];
+                                } | null;
+                                substitution: {
+                                    resolved: boolean;
+                                    reason: string | null;
+                                } | null;
+                            }[];
+                        };
                     };
                 };
             };
