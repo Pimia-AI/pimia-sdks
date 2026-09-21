@@ -1485,6 +1485,20 @@ obtiene en el registro de Pimia o en el panel de integrador).
     sus permisos en los tenants que no sustituyen nada y los pierde solo donde la
     vertical lo dice. Un client, varias verticales, sin re-registrar.
 
+    **Ampliación (👤 2026-09-12, medido en el circuito desde cero):** «quita el
+    CRM del consentimiento cuando la vertical lo sustituye; bueno, en realidad
+    no solo el CRM, **cualquier módulo que la vertical no incluya**». Un módulo
+    que la vertical no incluye es, en su instancia, un módulo que no está: o lo
+    sustituye (13.19) o no nace encendido en ella (13.18). Así que la poda
+    pregunta a la INSTANCIA (`ModuleManager::isInstalled`), no a la vertical: es
+    la misma verdad, ya aplicada. Y cubre por fin el Authorization Server
+    CENTRAL —el camino real del cliente de una vertical, que resuelve el scope
+    antes de saber la instancia—: recorta dentro de la instancia al emitir y, en
+    la pantalla, cuando la petición trae la pista `tenant` (el fork siempre la
+    trae). Sin pista, la pantalla enseña lo resuelto y el recorte llega al
+    emitir. Los tenants sin vertical no se tocan: un cliente directo de Pimia
+    decide él sus módulos.
+
     **Lo que queda abierto y hay que decidir al construirlo:** qué pasa con los
     grants **ya concedidos** que hoy llevan los permisos del módulo sustituido.
     Podarlos al vuelo cambia lo que un token podía hacer sin avisar a nadie;
@@ -1603,6 +1617,389 @@ obtiene en el registro de Pimia o en el panel de integrador).
     **Lo que este punto NO decide:** si los módulos sencillos —los que sólo
     declaran nombre, precio, permisos y menú— merecen además la forma
     declarativa de C1. Se decide cuando haya uno, no antes.
+
+13. **Los planes del integrador y su maestro de módulos propios** (13.29 a
+    13.29m; 👤 2026-09-09 y 2026-09-10). El modelo que el debate del panel dejó
+    cerrado, ya con tablas:
+
+    **El plan de la vertical es lo que el integrador VENDE; los componentes de
+    Pimia son lo que Pimia le FACTURA.** No se pueden fundir — fundirlos fue el
+    error que hubo que corregir tres veces—, y por eso `integrador_planes` lleva
+    dos listas: `componentes_pimia`, que genera coste, y `modulos_propios`, que
+    no, porque los sirve él.
+
+    | tabla | de quién cuelga | por qué |
+    |---|---|---|
+    | `integrador_modulos` | del **integrador** (`user_id`) | es la fábrica, y la fábrica es una: un módulo se hace una vez y se mete en los planes que haga falta, de la vertical que haga falta |
+    | `integrador_planes` | de la **vertical** (`vertical_id`) | un plan es la cara comercial de UN producto, con su nombre y su dominio |
+
+    **Lo que sustituye una vertical deja de declararse: se DERIVA** (13.29g.4).
+    `verticals.substituted_modules` no desaparece —ocho superficies del núcleo lo
+    leen, de `/bootstrap` al cortafuegos del Gate— pero cambia **quién lo
+    escribe**: deja de ser un `PUT` a mano y se recalcula desde los planes en
+    cada cambio. El dato sigue donde estaba; su verdad, no.
+
+    **Dos reglas no caben en el esquema y las hace cumplir el modelo:**
+
+    - **13.29k, una función un proveedor en toda la vertical.** Los planes SÍ
+      pueden llevar cosas distintas —uno sin CRM y otro con el propio es
+      correcto—; lo que esa libertad no permite es **recuperar el nativo** que la
+      vertical sustituye. Se comprueba **en los dos sentidos y sobre la
+      composición propuesta**, no sobre la guardada: si no, bastaría con guardar
+      en el orden adecuado. ⚠️ La razón es la definición del producto, no que el
+      núcleo no sepa ejecutarlo: un cliente que pasara entre esos planes pasaría
+      de un CRM a otro, con sus datos dentro.
+    - **13.29m, ninguno gratis**, porque Pimia no ofrece planes free. Es lo único
+      de esto que la base sostiene sola, con un CHECK.
+
+    **Y lo que el maestro de módulos INFORMA y no administra** (13.29j): un
+    módulo propio corre en el servidor del integrador y guarda en su base
+    (13.29i), así que `control_de_usuarios` es lo que **dice** que sabe
+    distinguir —Pimia lo enseña, no lo concede ni lo aplica— y
+    `necesita_de_pimia` es lo que sí autoriza Pimia, con los scopes de
+    `config/oauth.php`. Un módulo propio **no aporta abilities** al catálogo de
+    roles de una instancia: ese mapa vive en `config/abilities.php` y no admite
+    fusión desde ningún sitio.
+
+    **Lo que este punto NO decide:** qué pasa con los clientes que ya tienen un
+    plan cuya composición cambia —y con sus datos si pierden una funcionalidad—.
+    La API guarda lo publicado y no toca ninguna contratación; el precio
+    contratado sigue viviendo en la contratación (13.29e).
+
+13. **La vertical tiene dos fases, y el cliente de una vertical solo contrata
+    sus planes** (13.30; 👤 2026-09-11, mirando en el panel la ficha de una
+    instancia que había entrado por su vertical y estaba «Sin contratar · No la
+    pagas tú»: «esta circunstancia no se puede dar»). Tres reglas y dos fases:
+
+    **Las tres reglas.**
+
+    1. **No hay verticales a 0 €.** Los planes de una vertical llevan precio
+       (13.29m ya lo sostiene con un CHECK) y una vertical **sin ningún plan no
+       admite altas**: quien entra por un producto lo contrata.
+    2. **Sus clientes se suscriben a sus verticales, y solo a ellas.** Un
+       tenant que entra por una vertical no tiene otra opción de suscripción
+       que los planes de esa vertical: no ve los de Pimia ni puede contratarlos.
+       De ahí se siguen tres cosas que hoy no eran así: **entrar por la
+       vertical ES el asiento del integrador** (el alta crea el patrocinio
+       sola; «Asumir la licencia» deja de existir para esos tenants); **la marca
+       blanca se decide por la vertical**, no por el asiento (`isWhiteLabel()`
+       deja de depender de `subscription_tenants` para un tenant con
+       `origin_vertical_id`); y **el plan se elige en el registro** de la app
+       del integrador (la ruta pública publica los planes de la vertical y
+       `/registro` los enseña), así que «Sin contratar» deja de ser un estado
+       posible en producción.
+    3. **Un cliente de Pimia solo puede irse con un integrador a una de sus
+       verticales.** El traspaso es un solo acto —el dueño acepta el vínculo y
+       el integrador lo atribuye a una vertical (`vertical.attach`)— y en ese
+       acto se cancela su suscripción con Pimia, nace el asiento del integrador
+       y contrata uno de los planes de la vertical. Fuera de una vertical no hay
+       traspaso.
+
+    **Las dos fases de la vertical.**
+
+    - **Desarrollo.** Mientras el integrador construye su vertical, Pimia le
+      **presta 5 licencias** de cortesía: hasta cinco instancias con las que
+      probar, sin cobro, **sin Stripe** —ni el suyo ni el de Pimia— y sin plan
+      contratado (el registro de una vertical en desarrollo no cobra a nadie).
+    - **Producción.** Para pasar, el integrador configura Stripe en los DOS
+      lados, que son dos cosas distintas y no se mezclan:
+      **(a)** su **método de pago en el Stripe de Pimia**, para que Pimia le
+      cobre los asientos de su canal (49 €/instancia/mes en el plan
+      «Desarrollador», más los añadidos); es lo que ya existe (patrocinio de
+      canal, factura consolidada) y **sin él la vertical en producción no
+      admite altas**; y **(b)** **las claves de su propia cuenta de Stripe**,
+      para cobrar a sus clientes el plan que eligen en `/registro`.
+      ⚠️ **Corregido el 2026-09-14 (👤, galeote/factSaas#835):** estas claves
+      ya **no** viven en el `.env` del fork. Las guarda **el núcleo**
+      (`integrador_stripe_accounts`, cifradas, nunca se devuelven: #831) y
+      **el núcleo cobra con ellas**: crea el Checkout del alta, comprueba el
+      pago antes del alta firmada y lleva la suscripción entera —renovación,
+      mora con la cortesía de 13.9a, baja y cambio de plan por el propio
+      cliente— y, si el integrador factura con Pimia, la factura de cada
+      cobro. Sigue sin ser Stripe Connect ni marketplace (regla 2 del punto
+      12): la cuenta es del integrador y Pimia no cobra comisión. Motivo del
+      cambio: con el cobro en el fork, un integrador **sin fork** no podía
+      cobrar, Pimia no veía si sus clientes estaban al día y cada fork tenía
+      que operar y mantener su propio cobro. Se sopesó y se descartó retirar
+      las claves del núcleo (#834, pimia-web-shadcn#460): la custodia pasa a
+      ser de Pimia a cambio de un cobro que es producto suyo. Al pasar a producción, las instancias de
+      desarrollo **o pasan a producción (y cuestan asiento) o se eliminan**; y
+      la vertical en producción cuenta con **una sola licencia completa
+      gratuita, para pruebas**, que no cuesta asiento.
+
+    **Lo que cambia respecto a lo construido hasta el 2026-09-11:** la ficha de
+    instancia del panel pierde «Asumir la licencia» y «Sin contratar» para
+    tenants de vertical; la vertical gana su fase y, en producción, el
+    recuento de asientos y la licencia de pruebas; el alta firmada exige plan
+    en producción y lo rechaza si la vertical no está abierta (sin planes, sin
+    método de pago en el canal, o más de 5 en desarrollo); la ruta pública
+    publica los planes; `vertical.attach` mueve también el dinero; y
+    `pimia-web-shadcn` gana el `/registro` con planes y cobro por Stripe del
+    integrador (desde #835, pidiéndole el Checkout al núcleo). **Lo que este
+    punto NO decide:** el precio del asiento por vertical (sigue siendo el del
+    canal «Desarrollador») y qué pasa con los datos de una instancia de
+    desarrollo que se elimina. **Cambiar de plan sí prorratea** (👤
+    2026-09-14, tras la revisión de #838, que corrige el «de momento no se
+    prorratea» de ese mismo día en #835): **subir de plan es inmediato** y se
+    cobra la diferencia proporcional; **bajar de plan o cancelar se aplica al
+    final del periodo**. Todo lo hace el cliente desde el portal de Stripe de
+    su perfil —el dueño **y los administradores** de la empresa, como la
+    facturación de Pimia dentro de la instancia—, sobre los Products y Prices
+    estables de los planes de la vertical, los mismos del Checkout del alta.
+    Pimia se entera por el webhook. La partida de canal del integrador (13.29)
+    sigue sin prorrateo: esto es lo que el cliente paga al integrador.
+
+13. **El registro dice la verdad: el core son cinco, y compras, finanzas e
+    informes son opcionales como los demás** (13.31; 👤 2026-09-15). Al
+    arrancar la capa de modularización se midió el registro
+    (`config/modules.php`) contra 13.17 y salió lo que 13.17 ya decía sin que
+    nadie lo hubiera aplicado: nueve módulos `core: true` cuando «lo mínimo
+    para emitir una factura válida» son menos; compras, finanzas e informes se
+    comportaban como core sin serlo; `notes` estaba en el registro describiendo
+    «notas internas sobre clientes» y son las **plantillas de texto por tipo de
+    documento** (`App\Models\Note`) que usan factura, presupuesto, recurrente
+    y cobro; las recurrentes vivían en `billing` sin ser fiscales; y el menú
+    arrastraba desde la épica #677 etiquetas que ya no eran verdad (proyectos,
+    tareas y tiempos como `crm`; compras y finanzas como `billing`), inocuas
+    sólo porque todo aquello era core. Decidido, con las palabras del encargo y
+    corregido el mismo día tras la revisión adversarial del corte:
+
+    **(a) CORE = `dashboard`, `billing`, `customers`, `inventory`, `settings`.**
+    `settings` se queda core **entero**: la identidad y los ajustes del oficio
+    de facturar (impuestos, series, formas de pago) no se parten hoy. Y **el
+    panel es la portada y se queda en el core** (👤, tras ver que la portada no
+    puede depender de un módulo): lo que sí mira el panel son los módulos de lo
+    que pinta —sin `purchases` no pinta gastos ni resultado (`null`, no «0»),
+    como ya no pintaba el embudo sin `crm`—. `ElCoreSonCincoTest` enumera el
+    core completo, para que añadir uno exija tocar el test.
+
+    **(b) `purchases`, `finance` y `reports` pasan a `core: false`, `listed:
+    true`, opcionales como los demás.** Nacen apagados donde `plans.modules =
+    []` (Free, Pimia, PYME esencial, Desarrollador); en un plan con `modules`
+    NULL, instalados por defecto —la caída final de `defaultStatus`—;
+    comprables como añadido; y el integrador puede apagarlos o sustituirlos en
+    su vertical (13.18, 13.19). Se eligió «opcional como los demás» y no
+    «componible incluido» (la clase que el inventario del corte 0 proponía):
+    un módulo incluido en todo plan pero apagable por la vertical habría sido
+    una **tercera clase** que ninguna puerta del núcleo sabe distinguir
+    —`isAllowedByPlan`, `isAddOn`, la tienda, el Checkout, el canal— y que
+    exigía inventar una etiqueta más en un registro que ya tenía demasiadas.
+    Consecuencia asumida: un tenant nuevo de Pimia nace sin compras, sin
+    finanzas y sin informes, y los compra a 1 € como el CRM. **Excepción por
+    cumplimiento: en Francia las compras son cumplimiento** —la recepción
+    desde la plateforme agréée crea recibidas y proveedores—, así que
+    `compliance-fr` declara `depends_on: purchases` y un tenant FR nace con
+    `purchases` instalado aunque su plan diga `[]`.
+
+    **(c) Lo fiscal no cuelga de `reports`.** IVA/IRPF, libros registro y
+    trimestres son cumplimiento y del core: `/fiscal-quarters`, el resumen de
+    impuestos (`reports/tax-summary`) y los libros registro
+    (`exports/register-book/*`) no llevan puerta de módulo y autorizan por el
+    documento que resumen o listan (facturas; recibidas para el libro de
+    recibidas, que por tanto cuelga de `purchases`). Los informes de gestión,
+    `AccountingSummaryController` y `ExportController` son `reports`; los dos
+    últimos no autorizaban nada (hueco preexistente) y piden
+    `view-financial-reports`. El fichero contable de la gestoría queda como
+    **informe componible** a falta de decisión de 👤. **El agente lee el
+    resumen fiscal por JSON** (`GET /reports/tax-summary`, del core, la misma
+    cuenta que el PDF por hash: `App\Support\ResumenFiscal`, por **devengo**,
+    con rectificativas y base real); hasta el 2026-09-15 su tool «resumen de
+    IVA» leía el resumen contable y con Informes apagado se quedaba sin IVA.
+    **El PDF contaba por caja** (`paid_status = PAID`, heredado de
+    InvoiceShelf): **era un defecto, no una elección** (👤 2026-09-15); el
+    resumen publica devengo (régimen general) y el PDF cambia de cifras en
+    una instancia con emitidas pendientes de cobro. Caja (RECC) no está
+    soportado; entraría por un solo sitio (`ResumenFiscal::CRITERIO`). El
+    resumen contable sigue siendo un informe (`get_accounting_summary`,
+    módulo `reports`). Sin Compras, o sin poder ver recibidas, el IVA soportado
+    sale como **no disponible** (`null` con motivo), nunca como cero.
+    Los totales salen del documento (`tax`); el desglose es best-effort desde
+    `taxes.amount` y declara si cuadra mediante `desglose_cuadra`.
+
+    **(d) Las recurrentes son del módulo `contracts`, que sigue naciendo
+    apagado.** «Contratos y recurrentes»: las cuatro abilities
+    `*-recurring-invoice`, sus tres rutas (`module.enabled:contracts` +
+    `check.feature:recurring_invoices`, y **no** `check.feature:contracts`: el
+    superadmin da features sueltas y no se añade una exigencia que no tenían)
+    y el barrido `recurring-invoices:issue`, que mira el módulo **por cada
+    recurrente** —apagarlo a mitad del barrido para lo que quede—. ⚠️
+    Comportamiento conocido: apagar Contratos SUSPENDE y reactivarlo **no
+    recupera los ciclos saltados** (`updateNextInvoiceDate()` se pone al día);
+    fijado por test. El MCP lista las tools de recurrentes bajo `contracts`.
+
+    **(e) `notes` NO es un módulo.** Sale del registro y de
+    `abilities.modules`; sus dos abilities pasan a `billing`.
+    `modules:backfill --prune-orphans` borra su fila huérfana.
+
+    **(f) Pimia mantiene su CRM.** Nada de esto toca `crm`, que sigue
+    opcional y sustituible como hasta ahora.
+
+    **(g) Dev se resiembra; prod necesita la migración, y lo heredado es
+    INCLUIDO.** «Dev es de pruebas y se resiembra, sin migraciones»: los 18
+    tenants de dev no se cuidan. Los 13 de prod sí: la migración de instancia
+    `2026_09_15_100000_los_que_dejan_de_ser_core_conservan_su_estado` escribe
+    la fila `installed` de los tres donde no la haya (los tenían encendidos por
+    ser core), reconcilia la fila `disabled` que una petición colada antes de
+    migrar hubiera materializado, y enciende `contracts` donde haya
+    recurrentes; todo marcado `meta.grandfathered`, que el núcleo trata como
+    **incluido** (no es añadido, no se compra ni se recompra, y apagar y
+    encender no pasa por caja). No toca una instancia en alta ni ninguna fila
+    que alguien apagó a mano. ⚠️ El orden del deploy —parar workers, scheduler
+    y tráfico → pull → `migrate` + `tenants:migrate` → verificar la cohorte →
+    arrancar— está en `docs/deploy-prod-ventana-dos-repos.md` § 2 bis; el
+    `Makefile` no se toca.
+
+    **Lo que esto NO decide:** si `settings` se parte en identidad y oficio;
+    si presupuestos y albaranes salen de `billing`; qué pasa con los dominios
+    de scope `expenses` y `reports`, que no pueden entrar en la poda de 13.27
+    (`module_domains`) sin mover de dominio lo fiscal, el panel,
+    `/reports/time` y las acciones de la plateforme francesa —un cambio de
+    contrato que no se decide aquí; sólo `banking` → `finance` entra—; el
+    IBAN fiscal (`sepa_creditor_iban`), que hoy sólo se edita en la pantalla
+    de SEPA (de `finance`); y el corte 2 (`composition`,
+    quién sirve cada módulo) y el corte 3 (`defaultStatus` declarativo), que
+    vienen detrás.
+
+    **Decisión sobre recibidas:** sin Compras no hay facturas recibidas ni
+    evento `invoice.received` (👤, 2026-09-16: son gasto en la cuenta de
+    resultados); en FR Compras no se apaga mientras el cumplimiento esté
+    instalado (dependencia declarada).
+
+13. **Una sola respuesta: qué módulos hay y quién los sirve** (13.32; 👤
+    2026-09-15). El corte 2 de la capa de modularización, medido antes de
+    escribirlo: el núcleo sabía QUÉ sustituía una vertical (`["crm"]`) y
+    ningún lector de dentro de la instancia sabía QUIÉN lo servía; y
+    `ModuleManager::isInstalled()` leía la FILA sin restar la sustitución,
+    así que el tenant que entró antes de que su vertical sustituyera el CRM
+    —fila `installed`, que 13.19 deja sin tocar— seguía sirviendo `/leads`
+    de Pimia, pintando el embudo de Pimia en el panel, enseñando la entrada
+    en el menú del núcleo y avisando de tareas de Pimia desde los barridos,
+    mientras cuatro superficies restaban la sustitución cada una por su
+    cuenta. Decidido, con la revisión adversarial del corte aplicada:
+
+    **(a) Tres preguntas, tres lecturas.** `isInstalled()` se queda como
+    lectura HISTÓRICA de la fila —la instalación y las dependencias la
+    necesitan tal cual—. `stateOf($slug)` es el estado EFECTIVO:
+    `installed`, `disabled` o `substituted`, y **sustituido gana sobre la
+    fila**. `servesNatively($slug)` es «¿sirve Pimia esto aquí?» (=
+    `stateOf === installed`) y es la pregunta de las rutas nativas
+    (`module.enabled`), el menú del núcleo, el panel de inicio, el catálogo
+    del integrador y los barridos, que se migran explícitamente. Un slug
+    desconocido LANZA, no contesta `disabled`; el core y el cumplimiento
+    nunca están sustituidos. **No se tocan** `Gate::before`,
+    `module.available` ni `ScopeRegistry`, que ya tratan la sustitución como
+    «la instancia lo tiene, lo sirve otro», ni `install()`/`dependentsOf()`.
+
+    **(b) El núcleo publica quién sirve por IDENTIDAD, sin URL.** `served_by`
+    es el módulo propio del integrador que ocupa el sitio según los planes
+    de la vertical del tenant —`key`, `name`, `control_de_usuarios`,
+    `necesita_de_pimia`—, resuelto por `TenantVertical::of()` (que exige
+    dueño) → planes → `integrador_modulos` del dueño con `en_lugar_de`. La
+    dirección a la que llamarlo es del DESPLIEGUE del fork (identidad
+    conocida → su `CRM_BASE_URL` y su adaptador), no del núcleo: un slug
+    sustituido por cualquiera no autoriza a mandarlo a ese CRM. `key` solo
+    es única dentro de un integrador.
+
+    **(c) `served_by` tiene tres cardinalidades y las tres son estados.**
+    Uno ⇒ el objeto. Cero ⇒ `null` con `substitution.reason = no_provider`,
+    que es LEGÍTIMO: declarado a mano por `PUT /sustituciones` o el último
+    módulo propio retirado de los planes (lo derivado no vacía, #813); no se
+    busca otro módulo «parecido». Más de uno ⇒ `null` con `ambiguous` y
+    aviso en el log: 13.29k impide recuperar el nativo, no que dos módulos
+    propios sustituyan el mismo slug. **En los tres el servicio nativo sigue
+    cerrado; nunca se cae al módulo de Pimia.**
+
+    **(d) El contrato es `composition` en `/bootstrap` y en `/tenant-modules`
+    (y sus respuestas de install/disable), ADITIVO y con la semántica de las
+    claves viejas CONSERVADA y fijada por test**: `installed_modules` e
+    `installed_slugs` siguen sin los sustituidos aunque su fila diga
+    `installed`; `substituted_*` siguen publicando el slug aunque la
+    identidad no se resuelva; `modules` sigue omitiendo lo sustituido. El
+    tenant anterior a la sustitución publica `substituted` y **su fila no se
+    toca**. ⚠️ Cerrar `/leads`, el menú, el panel y los barridos para esa
+    instancia es un CAMBIO DE COMPORTAMIENTO real —un 200 que pasa a 403—,
+    no información aditiva; se dice como efecto del despliegue.
+
+    **(e) `available` NO es una regla universal del contrato.** «Estado
+    distinto de apagado» prometería un derecho contratado que la unión de
+    planes no demuestra (una vertical puede tener un plan sin CRM y otro con
+    el propio). Cada lector decide: una pantalla NATIVA de Pimia con `state
+    === installed`; el fork que sustituye con `state === substituted &&
+    substitution.resolved && served_by.key === <la suya>` y su adaptador y
+    su URL, que son suyos. Contrato ausente, versión desconocida, cargando y
+    error se distinguen de «apagado».
+
+    **(f) Las tareas y el CRM sustituido.** Con `stateOf('crm') ===
+    substituted`, `TaskController` contesta `422 taskable_not_served` a toda
+    referencia NUEVA a `lead` —el índice con el filtro completo y con solo
+    `taskable_type`, el alta y la modificación, incluida la que cambia solo
+    el id de una tarea ya enlazada—: un `lead` de Pimia con el mismo número
+    que una oportunidad del CRM del integrador es OTRO registro.
+    `TASKABLE_MAP['lead']` se queda (describe datos históricos) y
+    `TaskResource` publica el vínculo histórico con `served_natively: false`
+    para que nadie lo pinte como enlace al proveedor.
+
+    **Lo que este punto NO decide:** migrar filas, datos ni contrataciones
+    (la recomposición del tenant anterior sigue sin diseñar, 13.18); las
+    URLs de los módulos propios (del despliegue); el descubrimiento de
+    capacidades u operaciones del sustituto y sus agregados para el panel
+    (P15: identificar al proveedor no implementa nada de eso; las piezas del
+    panel se quedan a cero hasta que el proveedor las dé); fundir
+    `control_de_usuarios` con los roles de Pimia (13.29j: se enseña, no se
+    concede); los presupuestos, las notas y el traslado de tareas al CRM
+    (siguen donde estaban; `billing` sigue siendo el dueño del
+    presupuesto); y `defaultStatus` declarativo (corte 3).
+
+13. **El nacimiento se declara** (13.33; 👤 2026-09-16). El registro declara
+    `born`: `installed`, `disabled`, `inherits_row_of` o `country: compliance`.
+    `BirthResolver::bornStateOf()` contesta **qué nacería aquí**, nunca qué está
+    instalado. No cachea resultados ni reconcilia filas existentes.
+
+    **Precedencia conservada:** inclusión por `isAllowedByPlan` → sustituido
+    por la vertical → paquete de nacimiento (clave ausente no es `false`) →
+    `born`. FR para Compras y `meta.grandfathered` siguen siendo reglas de
+    INCLUSIÓN, también para añadidos e instalación, no reglas de nacimiento.
+    El orden de la cadena anterior —TPV/Agenda, fiscal, Trabajo,
+    Contratos/Almacén, instalado— queda representado por las declaraciones de
+    los 17 slugs; un test fija la correspondencia del registro con el mapa
+    fiscal. Sin tabla el cumplimiento nace instalado; con tabla, manda la
+    primera empresa por id y el fallback de configuración; fuera del mapa
+    fiscal continúa hasta instalado.
+
+    **Trabajo pasa sus propias tres puertas antes de heredar CRM.** Hereda
+    el estado PERSISTIDO de su fila y, si falta, el default completo del padre
+    sin materializarlo. Nunca `stateOf`: 13.19/13.29k prohíben recuperar el CRM
+    nativo, no conservar Trabajo independiente. Una fila instalada de Trabajo
+    no se recalcula cuando cambia el nacimiento de CRM.
+
+    **Sombra antes de delegar, en commits separados del mismo PR.**
+    `modules:audit-birth` compara la cadena anterior (`legacyDefaultStatus`,
+    conservada como oráculo independiente) con el candidato para cada tenant
+    y slug, sobre la misma foto de BD y con contextos y cachés limpios entre
+    lados y tenants. Publica aparte el inventario persistido (presencia,
+    estado, versión, fechas y meta). PostgreSQL rechaza las escrituras con
+    una transacción READ ONLY; no basta revertirlas después. Umbral:
+    **0 diferencias, 0 escrituras, cobertura completa de los tenants evaluables**.
+    Las altas en `pending_verification` o `provisioning` sin esquema o sin
+    `tenant_modules` son **no aplicables**, se listan por slug y motivo y se
+    cuentan aparte de los evaluados y los errores. No acreditan igualdad ni
+    impiden la salida cero si no hay diferencias ni errores. Un tenant evaluable
+    omitido o una excepción real siguen siendo errores y dan salida no cero. La matriz y una auditoría sobre
+    al menos seis tenants sembrados preceden a la delegación de `defaultStatus`.
+
+    **Fuera de este corte:** cambiar `isInstalled`, materialización, backfill,
+    conservación antes de cerrar un plan, instalación o servicio efectivo;
+    reconciliar filas; retirar `legacyDefaultStatus`.
+
+    - **Corrección observable de StockCommitments (seguimiento separado):**
+      pregunta por su fila y, si falta, por el nacimiento mediante
+      `ModuleManager::defaultStatusFor('stock')`, sin materializar ni escribir.
+      Con paquete `stock: true` permitido por el plan y sin fila, antes decía
+      no; ahora dice sí. Una instalación manual o un apagado persistido mandan;
+      sin tabla conserva el no, y `StockCycle` conserva su puerta y el `null`.
+      Es lectura de NACIMIENTO + FILA; el servicio es otra pregunta:
+      `servesNatively('stock')` devuelve false si está sustituido, incluso con
+      fila `installed`.
 
 ## Referencias (repos privados)
 
