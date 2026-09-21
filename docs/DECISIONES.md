@@ -441,6 +441,21 @@ obtiene en el registro de Pimia o en el panel de integrador).
        atribución** «este tenant entró por este integrador»
        (galeote/factSaas#722, diseñada junto con #720).
 
+    **Actualización del 2026-09-21 — el registro de integradores se abre, con
+    guardián.** Hasta hoy `account_type=desarrollador` se rechazaba con un 422
+    en el registro público y solo lo daba de alta el superadmin: el programa
+    estaba cerrado y la cuenta trae **cuota de 50 instancias**, así que
+    ofrecerla en el signup era regalarla a quien la escribiera en el payload.
+    Lo que cambia no es la cuota: es dónde se guarda. **Cualquiera puede PEDIR
+    la cuenta; nadie la estrena.** El alta nace `professional_activation_pending`
+    y hasta que un superadmin la activa no devuelve token, el login responde
+    403, el middleware del plano central corta igual, y `isDesarrollador()`
+    dice que no —así que su plano tampoco se pisa—. Lo mismo vale para las
+    asesorías, que además reciben su alta en el servicio VeriFactu en el
+    momento de la activación y no en el del registro. Decisión de 👤 al
+    revisar el PR #889; el circuito lo fija
+    `LasCuentasProfesionalesSeActivanTest`.
+
     **Lo que el fork midió sobre la línea del repo**, y que este punto da por
     cerrado: todo lo que un integrador toca cabe en `src/host/`, `src/app/` y
     `src/server/` (marca, menú, scopes, despliegue, y hasta su web comercial
