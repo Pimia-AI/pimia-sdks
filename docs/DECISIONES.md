@@ -1,10 +1,31 @@
 # Decisiones de arquitectura — 2026-08-22 (rev. 3, mismo día)
 
-Documento **idéntico en los cuatro repos** (factSaas, pimia-sdks,
-pimia-web-shadcn, pimia-workspace), para que cualquier agente o persona que
-trabaje en uno tenga las mismas decisiones delante. Si cambia una decisión, se
-cambia aquí en los cuatro el mismo día. El mapa gráfico que lo acompaña:
+Documento **idéntico en los cuatro repos que lo llevan** —`factSaas` (aquí
+vive el original), `pimia-web-shadcn`, `pimia-sdks` y `zoomo-pimia`—, para que
+cualquier agente o persona que trabaje en uno tenga las mismas decisiones
+delante. El mapa gráfico que lo acompaña:
 https://claude.ai/code/artifact/4f04896d-2bd4-4c9b-b3d8-f2018119c72c
+
+> ⛔ **Se edita SOLO en el núcleo; las otras tres son copias.** Un cambio hecho
+> en una copia lo pisa la siguiente réplica. Para propagarlo:
+>
+> ```bash
+> scripts/decisiones-sync.sh --check   # quién está desalineado y qué le falta
+> scripts/decisiones-sync.sh           # abre un PR por repo
+> ```
+>
+> Hasta el 2026-09-21 esta cabecera decía «los cuatro repos» nombrando a
+> `pimia-workspace` —que lleva una versión REDUCIDA, sin el punto 12— y
+> olvidando al fork, que sí lo lleva entero. Nadie sabía del todo qué replicar,
+> y no había con qué comprobarlo: al SDK le faltaban cinco decisiones (13.29 a
+> 13.33), a la web y al fork tres, la web arrastraba una versión vieja del
+> prorrateo que aquí ya estaba corregida, y el fork tenía el punto 13
+> **duplicado**, con una copia actual y otra antigua. Ninguna de las cuatro
+> cosas daba error. Ahora lo vigila `.github/workflows/decisiones-sync.yml`,
+> que abre un issue cuando alguna copia se separa.
+
+`pimia-central-web` no lleva este documento, y `pimia-workspace` lleva una
+versión reducida: ninguno de los dos entra en la réplica.
 
 ## El reparto: qué repo es qué
 
