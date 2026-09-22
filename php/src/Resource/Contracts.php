@@ -49,6 +49,39 @@ final class Contracts
     }
 
     /**
+     * Envía a firmar con `contracts:write`. Solo esta respuesta trae
+     * `signingUrl`: es una capacidad para firmar, no un campo para guardar
+     * en logs ni exponer en listados. Completar la firma no activa el contrato.
+     *
+     * @param array{name: string, email: string, send_email?: bool, subject?: string, body?: string} $data
+     */
+    public function sendForSignature(int|string $id, array $data, ?string $idempotencyKey = null): mixed
+    {
+        return $this->client->post("/contracts/{$id}/signature", $data, $idempotencyKey);
+    }
+
+    /** Lee el estado del núcleo con `contracts:read`; no devuelve el enlace. */
+    public function signatureStatus(int|string $id): mixed
+    {
+        return $this->client->get("/contracts/{$id}/signature");
+    }
+
+    /** Cancela la firma con `contracts:write`; no cancela el contrato. */
+    public function cancelSignature(int|string $id): mixed
+    {
+        return $this->client->delete("/contracts/{$id}/signature");
+    }
+
+    /**
+     * Recordatorio manual con `contracts:write`: el 202 acepta el correo,
+     * no acredita su entrega ni vuelve a crear el envío remoto de firma.
+     */
+    public function remindSignature(int|string $id, ?string $idempotencyKey = null): mixed
+    {
+        return $this->client->post("/contracts/{$id}/signature/remind", [], $idempotencyKey);
+    }
+
+    /**
      * Activa el contrato: DRAFT → ACTIVE, numera, y crea la recurrente
      * gobernada — o adopta la existente si pasas `$recurringInvoiceId` (misma
      * empresa y mismo cliente; sus líneas e impuestos no se tocan).

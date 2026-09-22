@@ -679,6 +679,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contracts/{contract}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["contract.contractSignatureStatus"];
+        put?: never;
+        post: operations["contract.sendContractForSignature"];
+        delete: operations["contract.cancelContractSignature"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/estimates/{estimate}/status": {
         parameters: {
             query?: never;
@@ -802,7 +818,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retrive the Admin account */
+        /**
+         * Retrive the Admin account
+         * @description **Catálogo `meta`.** Lectura libre: la alcanza cualquier token válido, sin scope y sin consentimiento adicional del dueño del tenant.
+         */
         get: operations["company.getUser"];
         /**
          * Update the Admin profile.
@@ -4550,6 +4569,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contracts/{contract}/signature/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reacuña el correo; no vuelve a crear ni distribuir el envío remoto */
+        post: operations["contract.remindContractSignature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/contracts/{contract}/renew": {
         parameters: {
             query?: never;
@@ -5439,6 +5475,10 @@ export interface paths {
         };
         get: operations["tasks.index"];
         put?: never;
+        /**
+         * El 422 puede ser de validación o de vínculo con un módulo sustituido.
+         *     Se declaran ambos porque el FormRequest oculta el segundo al exportar
+         */
         post: operations["tasks.store"];
         delete?: never;
         options?: never;
@@ -5454,6 +5494,10 @@ export interface paths {
             cookie?: never;
         };
         get: operations["tasks.show"];
+        /**
+         * El 422 puede ser de validación o de vínculo con un módulo sustituido.
+         *     Se declaran ambos porque el FormRequest oculta el segundo al exportar
+         */
         put: operations["tasks.update"];
         post?: never;
         delete: operations["tasks.destroy"];
@@ -5657,15 +5701,20 @@ export interface paths {
          *     un dato que no consta se dice como tal, no se inventa un cero.
          *
          *     **`addons` es lo que la suscripción paga en módulos añadidos** (desde
-         *     el 2026-09-04): cuántos, a cuánto, y la cuota mensual DE LISTA —plan
+         *     el 2026-09-04): cuántos, cuánto suman, y la cuota mensual DE LISTA —plan
          *     más añadidos **más integraciones**, sin prorrateos, cupones, impuestos
          *     ni prueba: no es el próximo cargo— ya formateada. Existe porque el panel
          *     enseñaba «Tu plan: Pimia, 12,00 € al mes» a una empresa que pagaba 14:
-         *     el precio del plan no es la cuota. La cantidad es la de la partida de
-         *     Stripe (copia local), no un recuento de filas —que contaría también los
-         *     heredados, que no se cobran—. `null` sin suscripción, y `null` en un
-         *     asiento PATROCINADO: su suscripción es la del canal, y la partida de ésa
-         *     la comparten todas sus instancias; la instancia no paga nada.
+         *     el precio del plan no es la cuota.
+         *
+         *     `quantity` es la cantidad de las PARTIDAS de Stripe (copia local), no un
+         *     recuento de filas —que contaría también los heredados, que no se cobran—.
+         *     ⚠️ Y `price_cents` es el precio de UN módulo: desde el #894 cada uno
+         *     tiene el suyo (13.14/13.15), así que cuando los de la instancia no
+         *     coinciden se publica el PROMEDIO y el número exacto de lo que se paga
+         *     está en `total_cents`. `null` sin suscripción, y `null` en un asiento
+         *     PATROCINADO: su suscripción es la del canal, y sus partidas las comparten
+         *     todas sus instancias; la instancia no paga nada.
          *
          *     **`apps` son las integraciones de pago, una a una** (desde el
          *     2026-09-05, #716), con su total propio. Salen de las partidas de la
@@ -5955,11 +6004,20 @@ export interface paths {
          *     puede añadir pagando, y la respuesta lo dice con cuatro campos:
          *     `billing` (`core` no se vende, `included` lo trae el plan, `addon` se
          *     paga aparte), `price_cents` y `price` (lo que costaría al mes; `null` si
-         *     no se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:
-         *     tiene plan de pago y quien mira es su dueño) y `addon_active` (si ya lo
-         *     está pagando). Con `billing: addon` y `purchasable: false` la pantalla
+         *     no se vende o si nadie le ha puesto precio), `purchasable` (si ESTA
+         *     instancia puede comprar ESE módulo ahora: tiene plan de pago, quien mira
+         *     es su dueño y el módulo tiene precio en Stripe) y `addon_active` (si ya
+         *     lo está pagando). Con `billing: addon` y `purchasable: false` la pantalla
          *     lleva a contratar un plan, que es lo que el `402 subscription_required`
          *     del alta también dice.
+         *
+         *     ⚠️ **El precio es de CADA módulo** desde el #894 (13.14/13.15): lo fija
+         *     el superadmin en `module_prices` y ya no hay uno universal. El agregado
+         *     `addons` conserva su forma —`quantity` es la cantidad de las partidas de
+         *     Stripe y `price_cents` el precio de UN módulo, que es lo que el panel
+         *     multiplica—, pero cuando los módulos de la instancia cuestan distinto ese
+         *     unitario es el PROMEDIO: la cifra exacta de lo que se paga está en
+         *     `addons.total_cents` de `GET /billing/subscription`.
          *
          *     `available_in_plan` se conserva y ahora es «incluido o añadible»: lo que
          *     la instancia puede llegar a tener.
@@ -7359,6 +7417,18 @@ export interface components {
              *     (config/contracts.php). La pantalla enseña este, no el crudo.
              */
             notice_days_effective: number;
+            /**
+             * @description Solo datos del core: el enlace es una capacidad y únicamente
+             *     lo recibe quien acaba de pedir el POST de envío.
+             */
+            signature: {
+                status: string;
+                version: number;
+                sent_at: string | null;
+                signed_at: string | null;
+                source_document_sha256: string | null;
+                signed_document_sha256: string | null;
+            };
             /**
              * @description ¿Hay firmado adjunto? El fichero se sube por su POST multiparte
              *     dedicado (#584) y se pisa al resubir.
@@ -12637,6 +12707,9 @@ export interface operations {
                          *     `substituted` (sin proveedor en los planes, o más de uno); el
                          *     servicio nativo sigue cerrado igual. ADITIVO: `installed_modules` y `substituted_modules` conservan
                          *     su semántica exacta para el cliente que no lea esto.
+                         *
+                         *     Declaramos la forma porque Scramble pierde los tipos anidados al
+                         *     inferir composition(); el SDK debe leer el mismo objeto que en /tenant-modules.
                          */
                         composition: {
                             /** @constant */
@@ -12646,10 +12719,19 @@ export interface operations {
                                 core: boolean;
                                 /** @enum {string} */
                                 state: "installed" | "disabled" | "substituted";
-                                served_by: string | null;
+                                served_by: {
+                                    key: string;
+                                    name: string;
+                                    control_de_usuarios: string[];
+                                    necesita_de_pimia: {
+                                        operacion: string;
+                                        scope: string;
+                                    }[];
+                                } | null;
                                 substitution: {
-                                    resolved: string;
-                                    reason: string;
+                                    resolved: boolean;
+                                    /** @enum {string|null} */
+                                    reason: "no_provider" | "ambiguous" | null;
                                 } | null;
                             }[];
                         };
@@ -12690,6 +12772,136 @@ export interface operations {
         };
     };
     "contract.cancelContract": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "contract.contractSignatureStatus": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contract.sendContractForSignature": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: email */
+                    email: string;
+                    send_email?: boolean;
+                    subject?: string;
+                    body?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description `ContractResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractResource"];
+                        signingUrl: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+            /** @description El transporte puede incluir URL y cabeceras; solo exponemos el motivo. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string | "El proveedor de firma no devolvió un recibo válido.";
+                    } | {
+                        success: boolean;
+                        /** @constant */
+                        message: "No se pudo confirmar el alta en el proveedor de firma.";
+                    };
+                };
+            };
+        };
+    };
+    "contract.cancelContractSignature": {
         parameters: {
             query?: never;
             header?: {
@@ -22132,6 +22344,43 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "contract.remindContractSignature": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    subject?: string;
+                    body?: string;
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "contract.renewContract": {
         parameters: {
             query?: never;
@@ -24485,7 +24734,26 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
-            422: components["responses"]["ValidationException"];
+            /** @description Error de validación o taskable servido por un proveedor externo. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            [key: string]: string[];
+                        };
+                    } | {
+                        /** @constant */
+                        error: "taskable_not_served";
+                        message: string;
+                        taskable_type: string;
+                        module: string;
+                    };
+                };
+            };
         };
     };
     "tasks.show": {
@@ -24550,7 +24818,26 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
-            422: components["responses"]["ValidationException"];
+            /** @description Error de validación o taskable servido por un proveedor externo. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            [key: string]: string[];
+                        };
+                    } | {
+                        /** @constant */
+                        error: "taskable_not_served";
+                        message: string;
+                        taskable_type: string;
+                        module: string;
+                    };
+                };
+            };
         };
     };
     "tasks.destroy": {
@@ -25507,11 +25794,13 @@ export interface operations {
                             purchasable: boolean;
                         };
                         composition: {
-                            schema_version: number;
+                            /** @constant */
+                            schema_version: 1;
                             modules: {
                                 slug: string;
                                 core: boolean;
-                                state: string;
+                                /** @enum {string} */
+                                state: "installed" | "disabled" | "substituted";
                                 served_by: {
                                     key: string;
                                     name: string;
@@ -25523,7 +25812,8 @@ export interface operations {
                                 } | null;
                                 substitution: {
                                     resolved: boolean;
-                                    reason: string | null;
+                                    /** @enum {string|null} */
+                                    reason: "no_provider" | "ambiguous" | null;
                                 } | null;
                             }[];
                         };
@@ -25564,11 +25854,13 @@ export interface operations {
                         charged: boolean;
                         kept: boolean;
                         composition: {
-                            schema_version: number;
+                            /** @constant */
+                            schema_version: 1;
                             modules: {
                                 slug: string;
                                 core: boolean;
-                                state: string;
+                                /** @enum {string} */
+                                state: "installed" | "disabled" | "substituted";
                                 served_by: {
                                     key: string;
                                     name: string;
@@ -25580,7 +25872,49 @@ export interface operations {
                                 } | null;
                                 substitution: {
                                     resolved: boolean;
-                                    reason: string | null;
+                                    /** @enum {string|null} */
+                                    reason: "no_provider" | "ambiguous" | null;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        slug: string;
+                        status: string;
+                        installed_at: null;
+                        installed_slugs: string[];
+                        addon: boolean;
+                        charged: boolean;
+                        kept: boolean;
+                        message: string;
+                        composition: {
+                            /** @constant */
+                            schema_version: 1;
+                            modules: {
+                                slug: string;
+                                core: boolean;
+                                /** @enum {string} */
+                                state: "installed" | "disabled" | "substituted";
+                                served_by: {
+                                    key: string;
+                                    name: string;
+                                    control_de_usuarios: string[];
+                                    necesita_de_pimia: {
+                                        operacion: string;
+                                        scope: string;
+                                    }[];
+                                } | null;
+                                substitution: {
+                                    resolved: boolean;
+                                    /** @enum {string|null} */
+                                    reason: "no_provider" | "ambiguous" | null;
                                 } | null;
                             }[];
                         };
@@ -25618,11 +25952,13 @@ export interface operations {
                         addon_released: boolean;
                         addon_ends_at: string | null;
                         composition: {
-                            schema_version: number;
+                            /** @constant */
+                            schema_version: 1;
                             modules: {
                                 slug: string;
                                 core: boolean;
-                                state: string;
+                                /** @enum {string} */
+                                state: "installed" | "disabled" | "substituted";
                                 served_by: {
                                     key: string;
                                     name: string;
@@ -25634,7 +25970,8 @@ export interface operations {
                                 } | null;
                                 substitution: {
                                     resolved: boolean;
-                                    reason: string | null;
+                                    /** @enum {string|null} */
+                                    reason: "no_provider" | "ambiguous" | null;
                                 } | null;
                             }[];
                         };

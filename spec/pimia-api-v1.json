@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia API v1 \u2014 contrato de partner",
-        "version": "1.4.0",
+        "version": "1.4.3",
         "description": "Contrato p\u00fablico de la API de Pimia para apps de partner (superficie curada por scopes: facturaci\u00f3n, presupuestos, clientes, gastos, pagos, art\u00edculos, banca, CRM, agenda, informes y cat\u00e1logos meta). Autenticaci\u00f3n: OAuth 2.0 del Authorization Server de Pimia (PKCE o client confidencial) \u2014 ver docs/guia-integradores.md."
     },
     "servers": [
@@ -4179,7 +4179,7 @@
                                         },
                                         "composition": {
                                             "type": "object",
-                                            "description": "Una sola respuesta: qu\u00e9 m\u00f3dulos hay y qui\u00e9n los sirve (13.32).\nTodos los del registro con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`: sustituido gana sobre la fila) y,\nsi est\u00e1n sustituidos, la IDENTIDAD del m\u00f3dulo propio del\nintegrador que los sirve \u2014sin URL: la direcci\u00f3n es del\ndespliegue del fork\u2014. `served_by` puede ser `null` con\n`substituted` (sin proveedor en los planes, o m\u00e1s de uno); el\nservicio nativo sigue cerrado igual. ADITIVO: `installed_modules` y `substituted_modules` conservan\nsu sem\u00e1ntica exacta para el cliente que no lea esto.",
+                                            "description": "Una sola respuesta: qu\u00e9 m\u00f3dulos hay y qui\u00e9n los sirve (13.32).\nTodos los del registro con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`: sustituido gana sobre la fila) y,\nsi est\u00e1n sustituidos, la IDENTIDAD del m\u00f3dulo propio del\nintegrador que los sirve \u2014sin URL: la direcci\u00f3n es del\ndespliegue del fork\u2014. `served_by` puede ser `null` con\n`substituted` (sin proveedor en los planes, o m\u00e1s de uno); el\nservicio nativo sigue cerrado igual. ADITIVO: `installed_modules` y `substituted_modules` conservan\nsu sem\u00e1ntica exacta para el cliente que no lea esto.\n\nDeclaramos la forma porque Scramble pierde los tipos anidados al\ninferir composition(); el SDK debe leer el mismo objeto que en /tenant-modules.",
                                             "properties": {
                                                 "schema_version": {
                                                     "type": "integer",
@@ -4206,8 +4206,46 @@
                                                             },
                                                             "served_by": {
                                                                 "type": [
-                                                                    "string",
+                                                                    "object",
                                                                     "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "control_de_usuarios": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "necesita_de_pimia": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "operacion": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "scope": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "required": [
+                                                                                "operacion",
+                                                                                "scope"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "name",
+                                                                    "control_de_usuarios",
+                                                                    "necesita_de_pimia"
                                                                 ]
                                                             },
                                                             "substitution": {
@@ -4217,10 +4255,18 @@
                                                                 ],
                                                                 "properties": {
                                                                     "resolved": {
-                                                                        "type": "string"
+                                                                        "type": "boolean"
                                                                     },
                                                                     "reason": {
-                                                                        "type": "string"
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ],
+                                                                        "enum": [
+                                                                            "no_provider",
+                                                                            "ambiguous",
+                                                                            null
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
@@ -4398,6 +4444,298 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
+        "/contracts/{contract}/signature": {
+            "delete": {
+                "operationId": "contract.cancelContractSignature",
+                "tags": [
+                    "CancelContractSignature"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            },
+            "get": {
+                "operationId": "contract.contractSignatureStatus",
+                "tags": [
+                    "ContractSignatureStatus"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:read"
+                        ]
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "contract.sendContractForSignature",
+                "tags": [
+                    "SendContractForSignature"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 255
+                                    },
+                                    "send_email": {
+                                        "type": "boolean"
+                                    },
+                                    "subject": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "email"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContractResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ContractResource"
+                                        },
+                                        "signingUrl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "signingUrl"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "El transporte puede incluir URL y cabeceras; solo exponemos el motivo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "El proveedor de firma no devolvi\u00f3 un recibo v\u00e1lido."
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "No se pudo confirmar el alta en el proveedor de firma."
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
@@ -4798,6 +5136,7 @@
         "/me": {
             "get": {
                 "operationId": "company.getUser",
+                "description": "**Cat\u00e1logo `meta`.** Lectura libre: la alcanza cualquier token v\u00e1lido, sin scope y sin consentimiento adicional del due\u00f1o del tenant.",
                 "summary": "Retrive the Admin account",
                 "tags": [
                     "Company"
@@ -4832,13 +5171,7 @@
                         }
                     }
                 },
-                "security": [
-                    {
-                        "oauth2": [
-                            "settings:read"
-                        ]
-                    }
-                ]
+                "x-pimia-partner-availability": "any-token"
             },
             "put": {
                 "operationId": "company.updateProfile",
@@ -6201,14 +6534,14 @@
                             }
                         }
                     },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 },
                 "security": [
@@ -27053,6 +27386,88 @@
                 ]
             }
         },
+        "/contracts/{contract}/signature/remind": {
+            "post": {
+                "operationId": "contract.remindContractSignature",
+                "summary": "Reacu\u00f1a el correo; no vuelve a crear ni distribuir el env\u00edo remoto",
+                "tags": [
+                    "RemindContractSignature"
+                ],
+                "parameters": [
+                    {
+                        "name": "contract",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contract ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subject": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "success"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "contracts:write"
+                        ]
+                    }
+                ]
+            }
+        },
         "/contracts/{contract}/renew": {
             "post": {
                 "operationId": "contract.renewContract",
@@ -32725,6 +33140,7 @@
             },
             "post": {
                 "operationId": "tasks.store",
+                "summary": "El 422 puede ser de validaci\u00f3n o de v\u00ednculo con un m\u00f3dulo sustituido.\nSe declaran ambos porque el FormRequest oculta el segundo al exportar",
                 "tags": [
                     "Task"
                 ],
@@ -32768,7 +33184,76 @@
                         }
                     },
                     "422": {
-                        "$ref": "#/components/responses/ValidationException"
+                        "description": "Error de validaci\u00f3n o taskable servido por un proveedor externo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "examples": [
+                                        {
+                                            "message": "The title field is required.",
+                                            "errors": {
+                                                "title": [
+                                                    "The title field is required."
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "error": "taskable_not_served",
+                                            "message": "El m\u00f3dulo crm lo sirve el proveedor de tu instalaci\u00f3n.",
+                                            "taskable_type": "lead",
+                                            "module": "crm"
+                                        }
+                                    ],
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "errors": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "message",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string",
+                                                    "const": "taskable_not_served"
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "taskable_type": {
+                                                    "type": "string"
+                                                },
+                                                "module": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "error",
+                                                "message",
+                                                "taskable_type",
+                                                "module"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
@@ -32844,6 +33329,7 @@
             },
             "put": {
                 "operationId": "tasks.update",
+                "summary": "El 422 puede ser de validaci\u00f3n o de v\u00ednculo con un m\u00f3dulo sustituido.\nSe declaran ambos porque el FormRequest oculta el segundo al exportar",
                 "tags": [
                     "Task"
                 ],
@@ -32896,7 +33382,76 @@
                         }
                     },
                     "422": {
-                        "$ref": "#/components/responses/ValidationException"
+                        "description": "Error de validaci\u00f3n o taskable servido por un proveedor externo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "examples": [
+                                        {
+                                            "message": "The title field is required.",
+                                            "errors": {
+                                                "title": [
+                                                    "The title field is required."
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "error": "taskable_not_served",
+                                            "message": "El m\u00f3dulo crm lo sirve el proveedor de tu instalaci\u00f3n.",
+                                            "taskable_type": "lead",
+                                            "module": "crm"
+                                        }
+                                    ],
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "errors": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "message",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string",
+                                                    "const": "taskable_not_served"
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                },
+                                                "taskable_type": {
+                                                    "type": "string"
+                                                },
+                                                "module": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "error",
+                                                "message",
+                                                "taskable_type",
+                                                "module"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
@@ -33918,7 +34473,7 @@
         "/billing/subscription": {
             "get": {
                 "operationId": "tenantBilling.subscription",
-                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLo puede leer cualquier usuario de la instancia: el plan y el consumo son\nde la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,\ncambiar de plan o abrir el portal \u2014 el due\u00f1o de la instancia, y no en\nmarca blanca \u2014; es lo que la pantalla usa para ense\u00f1ar o esconder los\nbotones, pero el corte real lo hacen las rutas de escritura.\n\n`usage.storage` es `null` cuando no se puede medir (esquema a medias) y\n`subscription.current_period_end` es `null` cuando Stripe no contesta:\nun dato que no consta se dice como tal, no se inventa un cero.\n\n**`addons` es lo que la suscripci\u00f3n paga en m\u00f3dulos a\u00f1adidos** (desde\nel 2026-09-04): cu\u00e1ntos, a cu\u00e1nto, y la cuota mensual DE LISTA \u2014plan\nm\u00e1s a\u00f1adidos **m\u00e1s integraciones**, sin prorrateos, cupones, impuestos\nni prueba: no es el pr\u00f3ximo cargo\u2014 ya formateada. Existe porque el panel\nense\u00f1aba \u00abTu plan: Pimia, 12,00 \u20ac al mes\u00bb a una empresa que pagaba 14:\nel precio del plan no es la cuota. La cantidad es la de la partida de\nStripe (copia local), no un recuento de filas \u2014que contar\u00eda tambi\u00e9n los\nheredados, que no se cobran\u2014. `null` sin suscripci\u00f3n, y `null` en un\nasiento PATROCINADO: su suscripci\u00f3n es la del canal, y la partida de \u00e9sa\nla comparten todas sus instancias; la instancia no paga nada.\n\n**`apps` son las integraciones de pago, una a una** (desde el\n2026-09-05, #716), con su total propio. Salen de las partidas de la\nsuscripci\u00f3n, igual que la cantidad de m\u00f3dulos: \u26d4 contar `company_apps`\ndir\u00eda de m\u00e1s en cuanto dos empresas de la instancia tuvieran la misma\n\u2014la segunda no vuelve a pagar\u2014.\n\n\u26d4 **Y el mismo defecto ha pasado DOS VECES en este campo.** `addons`\nnaci\u00f3 porque el total dec\u00eda 12 y se pagaban 14 (el plan no es la cuota);\nel 2026-09-05 dec\u00eda 16 y se pagaban 25,90 (los m\u00f3dulos tampoco lo son).\nLas dos veces el c\u00e1lculo de los sumandos conocidos era correcto y lo que\nfaltaba era un sumando nuevo. La decisi\u00f3n que esto sirve \u2014\u00abuna sola\ncesta en el producto: el sitio donde la pyme ve lo que paga es uno\u00bb\u2014\nsignifica que **quien a\u00f1ada una partida de cobro tiene que sumarla en\n`addonsPayload()`**, y que un total que no la incluya no es un total\nincompleto: es una cifra falsa en la pantalla que la pyme lee.",
+                "description": "**Reservada al panel de Pimia.** Exige `billing:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLo puede leer cualquier usuario de la instancia: el plan y el consumo son\nde la empresa. `billing.can_manage` dice si QUIEN MIRA puede contratar,\ncambiar de plan o abrir el portal \u2014 el due\u00f1o de la instancia, y no en\nmarca blanca \u2014; es lo que la pantalla usa para ense\u00f1ar o esconder los\nbotones, pero el corte real lo hacen las rutas de escritura.\n\n`usage.storage` es `null` cuando no se puede medir (esquema a medias) y\n`subscription.current_period_end` es `null` cuando Stripe no contesta:\nun dato que no consta se dice como tal, no se inventa un cero.\n\n**`addons` es lo que la suscripci\u00f3n paga en m\u00f3dulos a\u00f1adidos** (desde\nel 2026-09-04): cu\u00e1ntos, cu\u00e1nto suman, y la cuota mensual DE LISTA \u2014plan\nm\u00e1s a\u00f1adidos **m\u00e1s integraciones**, sin prorrateos, cupones, impuestos\nni prueba: no es el pr\u00f3ximo cargo\u2014 ya formateada. Existe porque el panel\nense\u00f1aba \u00abTu plan: Pimia, 12,00 \u20ac al mes\u00bb a una empresa que pagaba 14:\nel precio del plan no es la cuota.\n\n`quantity` es la cantidad de las PARTIDAS de Stripe (copia local), no un\nrecuento de filas \u2014que contar\u00eda tambi\u00e9n los heredados, que no se cobran\u2014.\n\u26a0\ufe0f Y `price_cents` es el precio de UN m\u00f3dulo: desde el #894 cada uno\ntiene el suyo (13.14/13.15), as\u00ed que cuando los de la instancia no\ncoinciden se publica el PROMEDIO y el n\u00famero exacto de lo que se paga\nest\u00e1 en `total_cents`. `null` sin suscripci\u00f3n, y `null` en un asiento\nPATROCINADO: su suscripci\u00f3n es la del canal, y sus partidas las comparten\ntodas sus instancias; la instancia no paga nada.\n\n**`apps` son las integraciones de pago, una a una** (desde el\n2026-09-05, #716), con su total propio. Salen de las partidas de la\nsuscripci\u00f3n, igual que la cantidad de m\u00f3dulos: \u26d4 contar `company_apps`\ndir\u00eda de m\u00e1s en cuanto dos empresas de la instancia tuvieran la misma\n\u2014la segunda no vuelve a pagar\u2014.\n\n\u26d4 **Y el mismo defecto ha pasado DOS VECES en este campo.** `addons`\nnaci\u00f3 porque el total dec\u00eda 12 y se pagaban 14 (el plan no es la cuota);\nel 2026-09-05 dec\u00eda 16 y se pagaban 25,90 (los m\u00f3dulos tampoco lo son).\nLas dos veces el c\u00e1lculo de los sumandos conocidos era correcto y lo que\nfaltaba era un sumando nuevo. La decisi\u00f3n que esto sirve \u2014\u00abuna sola\ncesta en el producto: el sitio donde la pyme ve lo que paga es uno\u00bb\u2014\nsignifica que **quien a\u00f1ada una partida de cobro tiene que sumarla en\n`addonsPayload()`**, y que un total que no la incluya no es un total\nincompleto: es una cifra falsa en la pantalla que la pyme lee.",
                 "summary": "El plan de ESTA instancia: l\u00edmites, consumo, prueba, qui\u00e9n la paga y el\nestado de la suscripci\u00f3n en Stripe",
                 "tags": [
                     "TenantBilling"
@@ -35759,7 +36314,7 @@
         "/tenant-modules": {
             "get": {
                 "operationId": "tenantModules.index",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende), `purchasable` (si ESTA instancia puede comprarlo ahora:\ntiene plan de pago y quien mira es su due\u00f1o) y `addon_active` (si ya lo\nest\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no\nse compran a Pimia: los activa el integrador y los cobra \u00e9l. Cada\nopcional ofrecido lleva entonces `billing: channel`, `price` es el\nprecio MINORISTA de su cat\u00e1logo (`null` si no lo revende), `purchasable`\nes falso y `contract_url` es su enlace de contrataci\u00f3n, con `tenant` e\n`item` puestos.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.\n\n**`composition` (2026-09-15, 13.32): una sola respuesta de qu\u00e9 m\u00f3dulos\nhay y qui\u00e9n los sirve.** Todos los del registro \u2014tambi\u00e9n los que\n`modules` omite por sustituidos\u2014 con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`; sustituido gana sobre la fila) y, si est\u00e1n\nsustituidos, la IDENTIDAD del m\u00f3dulo propio del integrador que los\nsirve (`served_by`: `key`, `name`, `control_de_usuarios`,\n`necesita_de_pimia`; sin URL, que es del despliegue del fork) y\n`substitution` (`resolved`; `reason` `no_provider` o `ambiguous` cuando\n`served_by` es `null`). ADITIVO: `modules`, `installed_slugs` y\n`substituted_slugs` conservan su sem\u00e1ntica exacta.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`available_in_plan` es lo que permite a la pantalla decir \u00abno incluido en\ntu plan\u00bb en vez de ofrecer un bot\u00f3n que devuelve 422 al pulsarlo, y\n`dependents` los m\u00f3dulos que dejar\u00edan de funcionar si se desactiva este.\n\nEl `@response` describe la forma porque el array se arma en tiempo de\nejecuci\u00f3n: sin \u00e9l, `meta`, `depends_on`, `dependents` e `installed_slugs`\nse publicaban sin tipar. Es PHPDoc normal, no una dependencia del\ngenerador.\n\n`listed` dice si el m\u00f3dulo se OFRECE en el escaparate. Los de\ncumplimiento fiscal salen con `false`: su presencia la decide el pa\u00eds del\nemisor y no es mercanc\u00eda \u2014\u00abno se ofrece desactivar una obligaci\u00f3n\nlegal\u00bb\u2014. La tienda del n\u00facleo ya lo respetaba; el contrato no lo\npublicaba, as\u00ed que el panel web ense\u00f1aba un bot\u00f3n de \u00abDesactivar\u00bb sobre\n`compliance-es` y otro de \u00abInstalar\u00bb sobre `compliance-fr` en una empresa\nespa\u00f1ola (\u00e9pica #677).\n\n**Los a\u00f1adidos (2026-09-03).** Un opcional que el plan NO incluye se\npuede a\u00f1adir pagando, y la respuesta lo dice con cuatro campos:\n`billing` (`core` no se vende, `included` lo trae el plan, `addon` se\npaga aparte), `price_cents` y `price` (lo que costar\u00eda al mes; `null` si\nno se vende o si nadie le ha puesto precio), `purchasable` (si ESTA\ninstancia puede comprar ESE m\u00f3dulo ahora: tiene plan de pago, quien mira\nes su due\u00f1o y el m\u00f3dulo tiene precio en Stripe) y `addon_active` (si ya\nlo est\u00e1 pagando). Con `billing: addon` y `purchasable: false` la pantalla\nlleva a contratar un plan, que es lo que el `402 subscription_required`\ndel alta tambi\u00e9n dice.\n\n\u26a0\ufe0f **El precio es de CADA m\u00f3dulo** desde el #894 (13.14/13.15): lo fija\nel superadmin en `module_prices` y ya no hay uno universal. El agregado\n`addons` conserva su forma \u2014`quantity` es la cantidad de las partidas de\nStripe y `price_cents` el precio de UN m\u00f3dulo, que es lo que el panel\nmultiplica\u2014, pero cuando los m\u00f3dulos de la instancia cuestan distinto ese\nunitario es el PROMEDIO: la cifra exacta de lo que se paga est\u00e1 en\n`addons.total_cents` de `GET /billing/subscription`.\n\n`available_in_plan` se conserva y ahora es \u00abincluido o a\u00f1adible\u00bb: lo que\nla instancia puede llegar a tener.\n\n**Con integrador (2026-09-06, regla 4 del punto 12)** los opcionales no\nse compran a Pimia: los activa el integrador y los cobra \u00e9l. Cada\nopcional ofrecido lleva entonces `billing: channel`, `price` es el\nprecio MINORISTA de su cat\u00e1logo (`null` si no lo revende), `purchasable`\nes falso y `contract_url` es su enlace de contrataci\u00f3n, con `tenant` e\n`item` puestos.\n\n**`addon_ends_at`** (desde el 2026-09-04, noche): un a\u00f1adido dado de\nbaja no se apaga, deja de RENOVARSE \u2014 sigue encendido hasta esa fecha\n(el fin del periodo ya pagado) y ah\u00ed se apaga. Mientras tanto\n`addon_active` sigue en `true` (este periodo est\u00e1 pagado) y volver a\nactivarlo no cobra: lo \u00abmantiene\u00bb. `null` en todo lo dem\u00e1s.\n\n**`composition` (2026-09-15, 13.32): una sola respuesta de qu\u00e9 m\u00f3dulos\nhay y qui\u00e9n los sirve.** Todos los del registro \u2014tambi\u00e9n los que\n`modules` omite por sustituidos\u2014 con su estado EFECTIVO (`installed`,\n`disabled` o `substituted`; sustituido gana sobre la fila) y, si est\u00e1n\nsustituidos, la IDENTIDAD del m\u00f3dulo propio del integrador que los\nsirve (`served_by`: `key`, `name`, `control_de_usuarios`,\n`necesita_de_pimia`; sin URL, que es del despliegue del fork) y\n`substitution` (`resolved`; `reason` `no_provider` o `ambiguous` cuando\n`served_by` es `null`). ADITIVO: `modules`, `installed_slugs` y\n`substituted_slugs` conservan su sem\u00e1ntica exacta.",
                 "summary": "Los m\u00f3dulos del registro y en qu\u00e9 estado est\u00e1 cada uno EN ESTA INSTANCIA",
                 "tags": [
                     "TenantModules"
@@ -35952,7 +36507,8 @@
                                             "type": "object",
                                             "properties": {
                                                 "schema_version": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "const": 1
                                                 },
                                                 "modules": {
                                                     "type": "array",
@@ -35966,7 +36522,12 @@
                                                                 "type": "boolean"
                                                             },
                                                             "state": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "installed",
+                                                                    "disabled",
+                                                                    "substituted"
+                                                                ]
                                                             },
                                                             "served_by": {
                                                                 "type": [
@@ -36025,6 +36586,11 @@
                                                                         "type": [
                                                                             "string",
                                                                             "null"
+                                                                        ],
+                                                                        "enum": [
+                                                                            "no_provider",
+                                                                            "ambiguous",
+                                                                            null
                                                                         ]
                                                                     }
                                                                 },
@@ -36149,7 +36715,8 @@
                                             "type": "object",
                                             "properties": {
                                                 "schema_version": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "const": 1
                                                 },
                                                 "modules": {
                                                     "type": "array",
@@ -36163,7 +36730,12 @@
                                                                 "type": "boolean"
                                                             },
                                                             "state": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "installed",
+                                                                    "disabled",
+                                                                    "substituted"
+                                                                ]
                                                             },
                                                             "served_by": {
                                                                 "type": [
@@ -36222,6 +36794,11 @@
                                                                         "type": [
                                                                             "string",
                                                                             "null"
+                                                                        ],
+                                                                        "enum": [
+                                                                            "no_provider",
+                                                                            "ambiguous",
+                                                                            null
                                                                         ]
                                                                     }
                                                                 },
@@ -36266,6 +36843,168 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "slug": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        },
+                                        "installed_at": {
+                                            "type": "null"
+                                        },
+                                        "installed_slugs": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "addon": {
+                                            "type": "boolean"
+                                        },
+                                        "charged": {
+                                            "type": "boolean"
+                                        },
+                                        "kept": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "composition": {
+                                            "type": "object",
+                                            "properties": {
+                                                "schema_version": {
+                                                    "type": "integer",
+                                                    "const": 1
+                                                },
+                                                "modules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "core": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "state": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "installed",
+                                                                    "disabled",
+                                                                    "substituted"
+                                                                ]
+                                                            },
+                                                            "served_by": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "key": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "control_de_usuarios": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "necesita_de_pimia": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "operacion": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "scope": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "required": [
+                                                                                "operacion",
+                                                                                "scope"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "key",
+                                                                    "name",
+                                                                    "control_de_usuarios",
+                                                                    "necesita_de_pimia"
+                                                                ]
+                                                            },
+                                                            "substitution": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "resolved": {
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ],
+                                                                        "enum": [
+                                                                            "no_provider",
+                                                                            "ambiguous",
+                                                                            null
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "resolved",
+                                                                    "reason"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "core",
+                                                            "state",
+                                                            "served_by",
+                                                            "substitution"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "schema_version",
+                                                "modules"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "slug",
+                                        "status",
+                                        "installed_at",
+                                        "installed_slugs",
+                                        "addon",
+                                        "charged",
+                                        "kept",
+                                        "message",
+                                        "composition"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -36346,7 +37085,8 @@
                                             "type": "object",
                                             "properties": {
                                                 "schema_version": {
-                                                    "type": "integer"
+                                                    "type": "integer",
+                                                    "const": 1
                                                 },
                                                 "modules": {
                                                     "type": "array",
@@ -36360,7 +37100,12 @@
                                                                 "type": "boolean"
                                                             },
                                                             "state": {
-                                                                "type": "string"
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "installed",
+                                                                    "disabled",
+                                                                    "substituted"
+                                                                ]
                                                             },
                                                             "served_by": {
                                                                 "type": [
@@ -36419,6 +37164,11 @@
                                                                         "type": [
                                                                             "string",
                                                                             "null"
+                                                                        ],
+                                                                        "enum": [
+                                                                            "no_provider",
+                                                                            "ambiguous",
+                                                                            null
                                                                         ]
                                                                     }
                                                                 },
@@ -50639,6 +51389,50 @@
                         "type": "integer",
                         "description": "El efectivo: el del contrato o el default del cat\u00e1logo regional\n(config/contracts.php). La pantalla ense\u00f1a este, no el crudo."
                     },
+                    "signature": {
+                        "type": "object",
+                        "description": "Solo datos del core: el enlace es una capacidad y \u00fanicamente\nlo recibe quien acaba de pedir el POST de env\u00edo.",
+                        "properties": {
+                            "status": {
+                                "type": "string"
+                            },
+                            "version": {
+                                "type": "integer"
+                            },
+                            "sent_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "signed_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "source_document_sha256": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "signed_document_sha256": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "status",
+                            "version",
+                            "sent_at",
+                            "signed_at",
+                            "source_document_sha256",
+                            "signed_document_sha256"
+                        ]
+                    },
                     "has_document": {
                         "type": "boolean",
                         "description": "\u00bfHay firmado adjunto? El fichero se sube por su POST multiparte\ndedicado (#584) y se pisa al resubir."
@@ -50714,6 +51508,7 @@
                     "renewal_mode",
                     "notice_days",
                     "notice_days_effective",
+                    "signature",
                     "has_document",
                     "estimate_id",
                     "cancelled_at"

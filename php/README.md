@@ -244,3 +244,27 @@ El 503 no se reintenta: llega como `ApiException`, cuyo `$e->body['code']`
 es `OwnerConfirmationRequired::MAIL_FAILED_CODE`. El SDK no ejecuta ni abre
 el enlace de confirmación. El plano central y los métodos de primer periodo
 siguen siendo exclusivos de TypeScript.
+
+### Firma del cliente en contratos (0.32.0)
+
+```php
+$sent = $client->contracts->sendForSignature(7, [
+    'name' => 'Ana', 'email' => 'ana@example.test', 'send_email' => true,
+], 'contrato-7-firma-1');
+// $sent['data'] contiene el contrato; $sent['signingUrl'] permite firmarlo.
+$status = $client->contracts->signatureStatus(7);
+$accepted = $client->contracts->remindSignature(7); // 202: ['success' => bool]
+$client->contracts->cancelSignature(7); // cancela la firma, no el contrato
+```
+
+`sendForSignature` acepta también `subject` y `body`. Los dos POST admiten
+una clave de idempotencia opcional. `signatureStatus` exige `contracts:read`;
+las otras acciones, `contracts:write`.
+
+`signingUrl` es una capacidad y solo vuelve al enviar: no lo registres en logs
+ni lo expongas en listados. `data.signature` trae `status`, `version`, `sent_at`,
+`signed_at`, `source_document_sha256`, `signed_document_sha256`; fechas y hashes
+pueden ser null. Completar la firma no activa el contrato y el retorno del
+navegador no acredita su estado: consúltalo al núcleo. El recordatorio es
+manual y su 202 acepta el correo, no acredita su entrega ni crea otra firma.
+Para personalizar `subject`/`body` del recordatorio, usa el POST genérico.

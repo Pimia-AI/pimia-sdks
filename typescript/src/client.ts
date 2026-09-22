@@ -54,6 +54,8 @@ export type EstimatesRequest = Schemas['EstimatesRequest']
  * vida va por sus acciones (`activate`/`cancel`/`renew`), nunca por el PUT.
  */
 export type ContractRequest = Schemas['ContractRequest']
+/** Destinatario y correo de firma; la forma pertenece al contrato del núcleo. */
+export type ContractSignatureRequest = operations['contract.sendContractForSignature']['requestBody']['content']['application/json']
 /**
  * Cuerpo de alta/edición de almacén. `is_default` se manda como INTENCIÓN
  * («que este sea el de por defecto»): el servidor apaga el anterior en la
@@ -133,8 +135,9 @@ export type IntegradorBillingCorteCode =
  * que nada lo avisara. Es la clase de fallo que no se ve hasta que alguien
  * pregunta por qué su editor no le autocompleta.
  *
- * El orden importa poco —una operación no publica los dos códigos con cuerpos
- * distintos— pero se prueba el `200` primero porque es el caso mayoritario.
+ * Se prueba el `200` primero porque es el caso mayoritario. El recordatorio
+ * de firma solo publica `202`: conservar ese cuerpo evita inferir `never` y
+ * no convierte el correo aceptado para envío en un correo ya entregado.
  */
 type Ok<O extends keyof operations> = operations[O] extends {
   responses: { 200: { content: { 'application/json': infer Body } } }
@@ -144,7 +147,11 @@ type Ok<O extends keyof operations> = operations[O] extends {
         responses: { 201: { content: { 'application/json': infer Body } } }
       }
     ? Body
-    : never
+    : operations[O] extends {
+          responses: { 202: { content: { 'application/json': infer Body } } }
+        }
+      ? Body
+      : never
 
 /**
  * El sobre `{ data: … }` de Laravel para las escrituras que el spec **no
@@ -526,6 +533,25 @@ export class PimiaClient {
         this.post<ResourceEnvelope<ContractResource>>('/contracts', body, options),
       update: (id: number | string, body: ContractRequest, options?: WriteOptions) =>
         this.put<ResourceEnvelope<ContractResource>>(`/contracts/${id}`, body, options),
+
+      /**
+       * Firma del cliente: `signingUrl` solo vuelve en `send` y es una
+       * capacidad para firmar; no debe registrarse ni exponerse en listados.
+       * `status` lee el estado del núcleo con `contracts:read`; las otras
+       * acciones exigen `contracts:write`. Completar la firma no activa el
+       * contrato: esa decisión sigue siendo de la empresa.
+       */
+      signature: {
+        send: (id: number | string, body: ContractSignatureRequest, options?: WriteOptions) =>
+          this.post<Ok<'contract.sendContractForSignature'>>(`/contracts/${id}/signature`, body, options),
+        status: (id: number | string, options?: ReadOptions) =>
+          this.get<Ok<'contract.contractSignatureStatus'>>(`/contracts/${id}/signature`, undefined, options),
+        cancel: (id: number | string, options?: ReadOptions) =>
+          this.delete<Ok<'contract.cancelContractSignature'>>(`/contracts/${id}/signature`, options),
+        /** El 202 acepta el recordatorio manual; no crea otro envío de firma. */
+        remind: (id: number | string, options?: WriteOptions) =>
+          this.post<Ok<'contract.remindContractSignature'>>(`/contracts/${id}/signature/remind`, {}, options),
+      },
 
       /**
        * Activa el contrato: DRAFT → ACTIVE, lo numera, y crea la recurrente
