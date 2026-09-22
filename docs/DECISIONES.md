@@ -2022,6 +2022,90 @@ obtiene en el registro de Pimia o en el panel de integrador).
       `servesNatively('stock')` devuelve false si está sustituido, incluso con
       fila `installed`.
 
+13. **La tarifa de socio es un DESCUENTO automático por volumen de asientos
+    vivos** (13.34, que actualiza 13.15; 👤 2026-09-21 y 2026-09-22). 👤, el 21:
+
+    > «los precios de mayorista que ofrece a sus integradores se crean en el
+    > panel de superadmin, stripe lo utilizamos para cobrar, no para crear
+    > productos. Además se podrán crear 3 tipos de precios en función del
+    > volumen de tenants que tenga el integrador, es decir cuantos más tenants
+    > más barato te sale el precio como mayorista»
+
+    Al día siguiente había **dos diseños abiertos para lo mismo**: uno de un
+    precio universal POR TRAMO (una lista de precios por tramo) y otro de un
+    precio de distribución POR MÓDULO sin tramos. 👤 el 22: **reconciliar**. Y
+    lo que sale es lo que 13.15 ya decía, con el volumen dentro: **un número
+    por producto y un número por tarifa**.
+
+    **Regla.** Cada módulo tiene su precio de distribución
+    (`module_prices.channel_price_cents`, lo fija el superadmin) y el **volumen
+    de asientos vivos** del integrador le aplica automáticamente el **descuento**
+    de su tramo (`wholesale_tiers.discount_pct`). Tres de ejemplo: base 0 %
+    desde 0 asientos, Plata 10 % desde N, Oro 20 % desde M; los umbrales y los
+    porcentajes los fija el superadmin. Pimia **no mantiene listas de precios
+    por tramo**: así añadir un producto no obliga a tocar ninguna tarifa y
+    ningún módulo se queda sin precio en ningún tramo por un olvido.
+
+    **Lo que esto cambia de 13.15, y es lo único:** allí «el volumen orienta, la
+    tarifa la asigna Pimia». Aquí **el volumen decide**. La tarifa deja de ser
+    una etiqueta que alguien pone a un socio y pasa a ser una consecuencia
+    medible de lo que sirve, que es lo que 👤 pidió el 21. Lo demás de 13.15
+    —dos precios por producto, la tarifa como descuento y no como lista— queda
+    en pie y es justamente lo que esto ejecuta.
+
+    **El volumen son los asientos VIVOS**, sin los suspendidos. 👤 dijo a la vez
+    «el `quantity` de la suscripción de canal, que ya se cuadra solo» y «no
+    cuentan las suspendidas», y las dos no pueden ser ciertas: el cuadre de
+    asientos no filtra `suspended_at` y Stripe los sigue cobrando. Se toma la
+    letra —no cuentan— porque errar por ahí le cobra de MÁS al integrador, no de
+    menos: un descuento regalado es dinero que no vuelve.
+
+    **Un tramo abarata, no REGALA:** el descuento está acotado a **menos del
+    100 %** (CHECK en la tabla y validación en el panel). Al 100 % el precio
+    caería al suelo de un céntimo y Pimia estaría sirviendo un módulo por nada
+    con toda la maquinaria de cobro puesta, que no es «gratis» sino una factura
+    absurda. «Este módulo no se cobra» se dice no vendiéndolo (que el plan lo
+    incluya), no descontándolo entero.
+
+    **El tramo base es intocable** (`min_seats = 0`, `discount_pct = 0`): no se
+    archiva ni cambia de umbral. Es lo que hace que la cobertura 0..∞ sea total
+    **por construcción**, sin pedirle al superadmin que no se equivoque, y lo
+    que garantiza que todo integrador tenga tramo. La escalera va por umbral
+    inferior (`<=`) y dos tramos vigentes no pueden compartir umbral.
+
+    **Stripe se usa para cobrar, no para decidir** (👤, el 21): el Price de cada
+    par (módulo, tramo) lo **acuña el núcleo** la primera vez que una activación
+    lo necesita, con el importe calculado, y queda guardado con su histórico
+    (`module_tier_prices`). El histórico es una tabla y no una columna porque
+    los reconciliadores necesitan **todos** los Prices que Pimia haya usado: un
+    cambio de precio deja partidas vivas cobrándose en el Price viejo, y
+    sobrescribirlo los dejaría ciegos justo donde hay dinero. **Enseñar un
+    precio no acuña nada**: las pantallas y el catálogo del integrador calculan.
+
+    **Y el descuento llega también a lo que YA está activo** (la «fase 2»), o
+    «cuantos más tenants más barato» sería mentira a medias. Al cambiar el
+    volumen, las activaciones vivas de módulo pasan al Price del tramo de hoy
+    **sin prorrateo** —o sea en la renovación, como 13.14— y **en las dos
+    direcciones**: quien crece se abarata y quien mengua vuelve a pagar lo que
+    le toca. Nada se congela, y no quedan dos partidas del mismo módulo a dos
+    precios. Cambiar el precio de un módulo, o el umbral o el descuento de un
+    tramo, mueve a cada integrador al Price de SU tramo —no a uno común— y
+    enseña antes a quién le sube y cuánto (13.14), ahora por integrador y tramo.
+
+    **Y el movimiento se ESCRIBE en el acto, no en la pasada de la noche.** Dar
+    de alta un tramo, cambiarlo o archivarlo mueve las partidas antes de
+    contestar, porque el catálogo del integrador enseña el tramo y el precio
+    nuevos desde el segundo siguiente: dejarlo para el barrido diario era hasta
+    un día entero de pantalla diciendo un número y factura diciendo otro (13.12).
+    Lo que sigue llegando en la renovación es el COBRO, no la escritura. El
+    barrido diario queda como red de lo que se quedó sin mover.
+
+    **Fuera:** las apps integradas. Su precio de canal
+    (`apps.channel_price_cents`) no tiene camino de escritura —existe en la
+    tabla y en el manifiesto, pero el controlador de superadmin no lo acepta—,
+    así que no se le puede aplicar ninguna tarifa sin arreglar antes eso. Issue
+    aparte; se dice aquí para que el hueco no parezca cerrado.
+
 ## Referencias (repos privados)
 
 - Catálogo OAuth: `config/oauth.php` del núcleo. La ampliación **está hecha**:
