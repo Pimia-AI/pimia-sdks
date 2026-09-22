@@ -343,6 +343,36 @@ for await (const f of central.facturasAClientes.iterate({ estado: 'pendiente_sin
 }
 ```
 
+Lo que cuesta tu canal, tramo a tramo (contrato central **1.19.0**):
+
+```ts
+const { data } = await central.facturacion()
+// ⛔ Antes de enseñar el total, mira si mezcla monedas: con activaciones en
+// monedas distintas `moneda` es null y `total_cents` NO es un importe.
+if (!data.anadidos.monedas_mezcladas) {
+  console.log(data.anadidos.total, data.anadidos.moneda)          // «24,00 €», «EUR»
+}
+data.anadidos.asientos_sin_precio                                  // asientos que no suman
+data.asientos[0]?.precio_cents                                     // null = sin precio propio
+
+// Qué tiene activado cada cliente, con NOMBRE (antes solo había un recuento):
+for (const fila of (await central.overview()).data.cartera) {
+  fila.activaciones.map((a) => `${a.kind}:${a.slug} — ${a.name}`)
+}
+
+// Si un módulo se reprecio después de activarse:
+const { items } = (await central.activaciones.list('talleres-ana')).data
+items.filter((i) => i.cambio_de_precio)  // precio_inicial_cents vs price_cents
+
+// Tu tramo por volumen; el descuento YA está aplicado en los wholesale_price_*:
+const { wholesale_tier } = (await central.catalogo.get()).data.disponibles
+wholesale_tier.next?.seats_missing     // asientos que faltan para el siguiente
+```
+
+⚠️ En la 0.33.0 `currency` del `PUT /desarrollador/catalogo` es un enum cerrado
+(`CatalogoCurrency`), no cualquier código de tres letras, y `compliance-es` /
+`compliance-fr` salen de `en_lugar_de` y `componentes_pimia`.
+
 Los tipos salen de `spec/pimia-central-v1.json` (`@pimia/sdk/central-api`).
 
 ## Más

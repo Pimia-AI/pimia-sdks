@@ -40,7 +40,12 @@ export type {
 
 export { PimiaCentralClient } from './central.js'
 export type {
+  ActivacionDeInstancia,
+  ActivacionEnCartera,
   ActivacionMayoristaRequest,
+  AnadidosDeCartera,
+  AsientoDeCanal,
+  CatalogoCurrency,
   CatalogoDelIntegradorRequest,
   CentralRequestOptions,
   CentralResponseMeta,
@@ -71,6 +76,7 @@ export type {
   PimiaCentralClientOptions,
   SponsorshipRequest,
   StripeCorteCode,
+  TramoMayorista,
   StripeMissingPermission,
   StripeWebhookEvent,
   BillingPortalRequest,

@@ -78,6 +78,14 @@ export interface paths {
          *     desarrollador aunque el tenant lo recuerde: es su relación comercial,
          *     no la de quien mira.
          *
+         *     `activaciones` (#921) son los módulos y apps que ESTE integrador tiene
+         *     activados por su canal en esa instancia, con NOMBRE. Va aquí y no en un
+         *     contador porque el panel tenía que contar desde
+         *     `anadidos.por_tenant[].activaciones` de `/facturacion` y no podía decir
+         *     QUÉ: un cliente con el CRM activo salía idéntico a uno sin nada. Lista
+         *     vacía = no tiene nada activado por canal (no es «no consta»: la consulta
+         *     cubre toda la cartera de una vez).
+         *
          *     El cuerpo se declara entero porque el generador no sigue el `map()`
          *     sobre la colección de tenants: en la 1.3.0 `cartera` salía como una
          *     lista de `string` y el panel no podía tipar ni una fila.
@@ -135,6 +143,21 @@ export interface paths {
          *     el Stripe de Pimia (13.30a), o `null`— y `canal_puede_cobrar`: si Pimia
          *     puede cobrarle un asiento (canal vivo o tarjeta), que es lo que «Pasar a
          *     producción» y cada alta en producción exigen.
+         *
+         *     `anadidos.moneda` (1.19.0) es el código ISO con el que están escritos
+         *     `anadidos.total_cents` y `anadidos.total`, y sale de las activaciones
+         *     VIVAS: un módulo lleva la suya en `module_prices` (#894), así que no es
+         *     la del catálogo del integrador, ni la de sus asientos, ni siquiera una
+         *     constante de Pimia. Sin ella el panel la deducía de la cadena ya escrita.
+         *
+         *     ⛔ Con activaciones en monedas DISTINTAS, `moneda` va a `null` y
+         *     `anadidos.monedas_mezcladas` a `true`: `total_cents` es entonces una suma
+         *     de peras y manzanas y no se debe enseñar como un importe. `null` ahí no
+         *     es «no consta» — la bandera lo acompaña siempre y dice por qué.
+         *
+         *     ⚠️ El cuerpo va declarado entero en el `@response`, así que un campo
+         *     nuevo de `resumenDeCartera()` que no se añada AQUÍ no llega al contrato
+         *     por mucho que el servicio lo devuelva y lo tipe.
          */
         get: operations["desarrollador.facturacion"];
         put?: never;
@@ -347,6 +370,15 @@ export interface paths {
          *
          *     `base` es su licencia (el asiento de canal); `items`, los módulos y apps
          *     activos con lo que cuestan al integrador al mes; `total` lo suma.
+         *
+         *     Cada `item` lleva además (#921) `precio_inicial_cents` —el importe con el
+         *     que NACIÓ la activación, que no se toca nunca—, `precio_desde` —desde
+         *     cuándo rige el `price_cents` de hoy, que no es `active_since`: esa es la
+         *     fecha de activación— y `cambio_de_precio`, que es la comparación de los
+         *     dos. ⛔ Sin ellos el repreciado de un módulo era INDETECTABLE desde
+         *     fuera: el superadmin lo aplica y `moverAlTramo()` reescribe
+         *     `price_cents` en la misma petición, así que los dos importes que el panel
+         *     compararía —el de la fila y el del catálogo— son el mismo número.
          */
         get: operations["integradorActivacion.index"];
         put?: never;
@@ -425,6 +457,12 @@ export interface paths {
          *     `perfil` y `currency` van a `null` mientras el integrador no haya
          *     guardado nada; `disponibles` dice qué puede entrar en `items` (es la
          *     lista contra la que valida el `PUT`).
+         *
+         *     `disponibles.wholesale_tier` es su tarifa por volumen: el tramo en el que
+         *     está (con el descuento que ya llevan aplicado los `wholesale_price_*` de
+         *     arriba), los asientos vivos que lo justifican y el tramo siguiente con
+         *     cuántos asientos le faltan para llegar — `next` a `null` cuando ya está
+         *     en el último peldaño de la escalera.
          */
         get: operations["integradorCatalogo.show"];
         /**
@@ -1345,16 +1383,21 @@ export interface components {
          *     opcional ofrecido, una app activa del catálogo de Pimia, o `base`/`pimia`),
          *     que no haya dos filas para lo mismo, que el precio sea SIEMPRE una cifra en
          *     subunidades (👤, 2026-09-06: sin filas «incluido»; 0 vale) y que la moneda
-         *     sea un código ISO 4217. El precio minorista no se valida contra ningún
-         *     precio de Pimia: es del integrador (regla 4 del punto 12).
+         *     esté en el catálogo de Pimia —no basta con que tenga tres letras—. El precio
+         *     minorista no se valida contra ningún precio de Pimia: es del integrador
+         *     (regla 4 del punto 12).
          */
         IntegradorCatalogoRequest: {
             /**
              * @description Solo la moneda. El nombre comercial, el soporte y dónde se contrata
              *     son de cada VERTICAL desde el 2026-09-11 (`PATCH /verticales/{v}`):
              *     un integrador con dos productos tiene dos marcas, no una.
+             *     ⛔ La forma no basta: `ZZZ` tiene tres letras y no es una moneda.
+             *     Medido en vivo el 2026-09-16 (QA del integrador, D-02): el catálogo
+             *     se guardaba en `ZZZ` y los precios salían sin moneda que formatear.
+             * @enum {string}
              */
-            currency: string;
+            currency: "EUR" | "USD" | "GBP" | "MXN" | "COP" | "ARS" | "BRL" | "PEN";
             items: {
                 /** @enum {string} */
                 kind: "base" | "module" | "app";
@@ -1439,7 +1482,7 @@ export interface components {
             name: string;
             description?: string | null;
             /** @enum {string|null} */
-            en_lugar_de?: "purchases" | "finance" | "reports" | "compliance-es" | "compliance-fr" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | null;
+            en_lugar_de?: "purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | null;
             /**
              * @description Lo que DECLARA que sabe distinguir. Frases en producto, no slugs:
              *     Pimia no las concede ni las aplica (13.29j).
@@ -1479,7 +1522,7 @@ export interface components {
             /** @description Las dos dimensiones de 13.29b. `-1` = sin tope, como en `plans`. */
             usuarios_incluidos?: number;
             empresas_incluidas?: number;
-            componentes_pimia?: ("purchases" | "finance" | "reports" | "compliance-es" | "compliance-fr" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock")[] | null;
+            componentes_pimia?: ("purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock")[] | null;
             modulos_propios?: string[] | null;
         };
         /**
@@ -1756,6 +1799,11 @@ export interface operations {
                                     desde: string | null;
                                     hasta: string | null;
                                 } | null;
+                                activaciones: {
+                                    kind: string;
+                                    slug: string;
+                                    name: string;
+                                }[];
                             }[];
                             resumen: {
                                 total: number;
@@ -1855,6 +1903,8 @@ export interface operations {
                             asientos: {
                                 tenant_id: string;
                                 rol: string;
+                                precio_cents: number | null;
+                                moneda: string | null;
                                 en_mora: boolean;
                                 gracia_hasta: string | null;
                                 suspendido_desde: string | null;
@@ -1864,10 +1914,17 @@ export interface operations {
                                 activaciones: number;
                                 total_cents: number;
                                 total: string;
+                                moneda: string | null;
+                                monedas_mezcladas: boolean;
+                                asientos: number;
+                                asientos_cents: number;
+                                asientos_total: string;
+                                asientos_sin_precio: number;
                                 por_tenant: {
                                     tenant_id: string;
                                     activaciones: number;
                                     total_cents: number;
+                                    base_cents: number | null;
                                 }[];
                             };
                         };
@@ -2326,6 +2383,9 @@ export interface operations {
                                 active_since: string;
                                 price_cents: number | null;
                                 price: string | null;
+                                precio_inicial_cents: number;
+                                precio_desde: string;
+                                cambio_de_precio: boolean;
                             }[];
                             total_cents: number;
                             total: string;
@@ -2482,6 +2542,19 @@ export interface operations {
                                     wholesale_price_cents: number | null;
                                     wholesale_price: string | null;
                                 }[];
+                                wholesale_tier: {
+                                    key: string;
+                                    name: string;
+                                    discount_pct: string;
+                                    seats: number;
+                                    next: {
+                                        key: string;
+                                        name: string;
+                                        min_seats: number;
+                                        discount_pct: string;
+                                        seats_missing: number;
+                                    } | null;
+                                };
                             };
                         };
                     };
@@ -2545,6 +2618,19 @@ export interface operations {
                                     wholesale_price_cents: number | null;
                                     wholesale_price: string | null;
                                 }[];
+                                wholesale_tier: {
+                                    key: string;
+                                    name: string;
+                                    discount_pct: string;
+                                    seats: number;
+                                    next: {
+                                        key: string;
+                                        name: string;
+                                        min_seats: number;
+                                        discount_pct: string;
+                                        seats_missing: number;
+                                    } | null;
+                                };
                             };
                         };
                     };

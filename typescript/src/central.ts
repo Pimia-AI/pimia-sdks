@@ -228,6 +228,63 @@ export type FacturaAClienteRetryCode = ResponseBody<operations['integradorFactur
 
 /** Foto local del cobro; null fuera de una vertical con Stripe de este integrador. */
 export type CobroDeInstancia = Ok<'desarrollador.overview'>['data']['cartera'][number]['cobro']
+
+/**
+ * Lo que ESTE integrador tiene activado por su canal en una instancia de su
+ * cartera (central 1.18.0): módulos y apps con `kind`, `slug` y **nombre**.
+ * Una lista vacía significa que no tiene nada activado por canal — no es «no
+ * consta»: `overview` cubre la cartera entera de una vez.
+ */
+export type ActivacionEnCartera = Ok<'desarrollador.overview'>['data']['cartera'][number]['activaciones'][number]
+
+/**
+ * Un asiento de canal en `GET /desarrollador/facturacion` (central 1.18.0).
+ * `precio_cents` y `moneda` son el precio propio del asiento y la moneda en la
+ * que está escrito; ambos anulables, y `null` ahí es «este asiento no tiene
+ * precio propio», no cero.
+ */
+export type AsientoDeCanal = Ok<'desarrollador.facturacion'>['data']['asientos'][number]
+
+/**
+ * El agregado de añadidos de `GET /desarrollador/facturacion` (central
+ * 1.18.0/1.19.0): además del total, el desglose de asientos
+ * (`asientos`, `asientos_cents`, `asientos_total`, `asientos_sin_precio`) y la
+ * `moneda` en la que están escritos `total_cents` y `total`, que sale de las
+ * activaciones VIVAS (cada módulo lleva la suya desde el #894).
+ *
+ * ⛔ Con activaciones en monedas distintas, `moneda` va a `null` y
+ * `monedas_mezcladas` a `true`: `total_cents` es entonces una suma de monedas
+ * distintas y **no se debe enseñar como un importe**. El `null` no es «no
+ * consta» — la bandera lo acompaña siempre y dice por qué.
+ */
+export type AnadidosDeCartera = Ok<'desarrollador.facturacion'>['data']['anadidos']
+
+/**
+ * Una activación de `GET /desarrollador/tenants/{slug}/activaciones` (central
+ * 1.19.0). `precio_inicial_cents` es el importe con el que NACIÓ la activación
+ * y no se toca nunca; `precio_desde` dice desde cuándo rige el `price_cents` de
+ * hoy (no es `active_since`, que es la fecha de activación) y
+ * `cambio_de_precio` compara los dos. Sin ellos el repreciado de un módulo era
+ * indetectable desde fuera.
+ */
+export type ActivacionDeInstancia = Ok<'integradorActivacion.index'>['data']['items'][number]
+
+/**
+ * El tramo mayorista del catálogo (central 1.19.0): el peldaño en el que está
+ * el integrador —con el descuento que YA llevan aplicado los
+ * `wholesale_price_*` de `disponibles`—, los asientos vivos que lo justifican y
+ * el tramo siguiente con cuántos le faltan. `next` es `null` en el último
+ * peldaño de la escalera.
+ */
+export type TramoMayorista = Ok<'integradorCatalogo.show'>['data']['disponibles']['wholesale_tier']
+
+/**
+ * Las monedas que `PUT /desarrollador/catalogo` acepta (central 1.19.0): el
+ * catálogo de Pimia, no cualquier código de tres letras. ⛔ Antes bastaba la
+ * forma `^[A-Za-z]{3}$` y un catálogo se guardó en `ZZZ`, con precios que no
+ * había cómo formatear.
+ */
+export type CatalogoCurrency = CatalogoDelIntegradorRequest['currency']
 export type PrimerPeriodoConflictCode = ResponseBody<operations['integradorInstancia.produccion'], 409>['code']
 export type ProduccionRequest = Body<'integradorInstancia.produccion'>
 export type AtribuirVerticalRequest = Body<'vertical.attach'>
@@ -284,7 +341,12 @@ export class PimiaCentralClient {
 
   // ── La cartera y la salud de la integración (habilidad `desarrollador`) ──
 
-  /** `GET /desarrollador/overview`: la cartera, con la atribución de cada alta. */
+  /**
+   * `GET /desarrollador/overview`: la cartera, con la atribución de cada alta.
+   *
+   * Desde central 1.18.0 cada fila lleva `activaciones` ({@link ActivacionEnCartera}):
+   * qué tiene activado ese cliente por el canal de este integrador, con nombre.
+   */
   overview() {
     return this.request<Ok<'desarrollador.overview'>>('/desarrollador/overview')
   }
@@ -294,7 +356,18 @@ export class PimiaCentralClient {
     return this.request<Ok<'desarrollador.salud'>>('/desarrollador/salud')
   }
 
-  /** `GET /desarrollador/facturacion`: lo que el integrador paga a Pimia (canal y asientos). */
+  /**
+   * `GET /desarrollador/facturacion`: lo que el integrador paga a Pimia (canal y asientos).
+   *
+   * Desde central 1.18.0/1.19.0 cada asiento publica su `precio_cents` y su
+   * `moneda` ({@link AsientoDeCanal}), y el agregado `anadidos`
+   * ({@link AnadidosDeCartera}) desglosa los asientos y declara en qué moneda
+   * está escrito su total.
+   *
+   * ⛔ Antes de pintar `anadidos.total`, mira `anadidos.monedas_mezcladas`: con
+   * activaciones en monedas distintas la moneda es `null` y el total no es un
+   * importe.
+   */
   facturacion() {
     return this.request<Ok<'desarrollador.facturacion'>>('/desarrollador/facturacion')
   }
@@ -346,6 +419,12 @@ export class PimiaCentralClient {
        * `GET /desarrollador/catalogo`: el catálogo propio (`perfil`, `currency`,
        * `items`) y lo que se puede revender (`disponibles`: Pimia base, los
        * módulos opcionales ofrecidos y las apps integradas activas).
+       *
+       * Desde central 1.19.0 `disponibles.wholesale_tier`
+       * ({@link TramoMayorista}) dice en qué tramo por volumen está y qué le
+       * falta para el siguiente. El descuento ya viene aplicado en los
+       * `wholesale_price_cents` / `wholesale_price` de cada fila: no lo apliques
+       * otra vez.
        */
       get: () => this.request<Ok<'integradorCatalogo.show'>>('/desarrollador/catalogo'),
       /**
@@ -353,6 +432,9 @@ export class PimiaCentralClient {
        * el cliente del integrador ve en la pantalla de plan de su instancia en
        * vez de los precios de Pimia; el precio es minorista y no toca el
        * dinero de Pimia.
+       *
+       * ⚠️ Desde central 1.19.0 `currency` es un enum cerrado
+       * ({@link CatalogoCurrency}), no cualquier código de tres letras.
        */
       replace: (body: CatalogoDelIntegradorRequest) =>
         this.request<Ok<'integradorCatalogo.update'>>('/desarrollador/catalogo', {
@@ -370,6 +452,10 @@ export class PimiaCentralClient {
       /**
        * `GET /desarrollador/tenants/{slug}/activaciones`: la base (su asiento),
        * los módulos y apps activos y lo que le cuestan al integrador al mes.
+       *
+       * Desde central 1.19.0 cada `item` ({@link ActivacionDeInstancia}) lleva
+       * `precio_inicial_cents`, `precio_desde` y `cambio_de_precio`: con ellos
+       * se ve si el módulo se repreció después de activarse.
        */
       list: (tenantSlug: string) =>
         this.request<Ok<'integradorActivacion.index'>>(

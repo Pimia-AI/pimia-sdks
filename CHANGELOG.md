@@ -8,6 +8,107 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.33.0] — 2026-09-22
+
+El contrato del **plano central 1.19.0** (arrastra también lo que la 1.18.0
+dejó sin publicar), sincronizado desde **factSaas@e21d6d74 (2026-09-22) — 65
+operaciones** (`e21d6d74251a22d4c638cd727c6ac660341c1eb3`). Comparación
+operación a operación frente a 0.32.0, resolviendo `$ref`: **ninguna nueva,
+ninguna retirada, 9 modificadas**. El contrato de instancia no se mueve:
+`spec/pimia-api-v1.json` sigue en **1.4.3, 446 operaciones**
+(`factSaas@0ca763c6`) y es **idéntico byte a byte** al de `origin/main` del
+núcleo, comprobado antes de tocar nada. Sólo TypeScript: el plano central no
+está en el SDK de PHP (el porqué, en la entrada 0.22.0).
+
+### Añadido
+
+- **GET `/desarrollador/facturacion`** (`desarrollador.facturacion`). Cada
+  asiento publica `precio_cents` y `moneda`, **los dos anulables**: `null` es
+  «este asiento no tiene precio propio», no cero. Y el agregado `anadidos`
+  gana el desglose de asientos —`asientos`, `asientos_cents`, `asientos_total`,
+  `asientos_sin_precio`—, la `moneda` en la que están escritos `total_cents` y
+  `total`, y la bandera `monedas_mezcladas`. `anadidos.por_tenant[]` añade
+  `base_cents` (anulable). La moneda sale de las activaciones **vivas**: cada
+  módulo lleva la suya en `module_prices` desde el #894, así que no es la del
+  catálogo del integrador, ni la de sus asientos, ni una constante de Pimia.
+- **GET `/desarrollador/overview`** (`desarrollador.overview`). Cada fila de
+  `cartera` lleva `activaciones`: los módulos y apps que ESTE integrador tiene
+  activados por su canal en esa instancia, con `kind`, `slug` y **`name`**.
+  Antes el panel sólo podía contarlos desde `anadidos.por_tenant[].activaciones`
+  de `/facturacion` y no podía decir cuáles: un cliente con el CRM activo salía
+  idéntico a uno sin nada. Lista vacía = nada activado por canal; no es «no
+  consta», la consulta cubre la cartera entera de una vez. `cartera[].cobro` ya
+  estaba desde la 1.16.1 y no cambia.
+- **GET `/desarrollador/tenants/{slug}/activaciones`**
+  (`integradorActivacion.index`). Cada `item` añade `precio_inicial_cents` —el
+  importe con el que NACIÓ la activación, que no se toca nunca—, `precio_desde`
+  —desde cuándo rige el `price_cents` de hoy; **no es `active_since`**, que es
+  la fecha de activación— y `cambio_de_precio`, la comparación de los dos. Sin
+  ellos el repreciado de un módulo era indetectable desde fuera: el superadmin
+  lo aplica y la fila y el catálogo pasan a decir el mismo número.
+- **GET `/desarrollador/catalogo`** y **PUT `/desarrollador/catalogo`**
+  (`integradorCatalogo.show` / `integradorCatalogo.update`).
+  `disponibles.wholesale_tier` publica la tarifa por volumen: `key`, `name`,
+  `discount_pct`, `seats` (los asientos vivos que la justifican) y `next`
+  —`key`, `name`, `min_seats`, `discount_pct`, `seats_missing`—, que es `null`
+  en el último peldaño. ⚠️ **El descuento ya viene aplicado** en los
+  `wholesale_price_cents` / `wholesale_price` de `disponibles.base|modules|apps`
+  (que existían desde la 1.5.0): no lo apliques otra vez.
+- TS: seis tipos exportados para las formas nuevas — `AsientoDeCanal`,
+  `AnadidosDeCartera`, `ActivacionEnCartera`, `ActivacionDeInstancia`,
+  `TramoMayorista` y `CatalogoCurrency`—, y los JSDoc de `central.overview()`,
+  `central.facturacion()`, `central.catalogo.get/replace()` y
+  `central.activaciones.list()` dicen qué trae cada campo nuevo y dónde está la
+  trampa. Tests nuevos: el 1.19.0 del spec versionado, las cinco respuestas y
+  un fichero de asertos de tipos que compila con `tsc --strict`.
+
+### Cambiado
+
+- ⚠️ **`PUT /desarrollador/catalogo`: `currency` pasa de `string` con patrón
+  `^[A-Za-z]{3}$` a un enum cerrado** — `EUR`, `USD`, `GBP`, `MXN`, `COP`,
+  `ARS`, `BRL`, `PEN`. En TypeScript el campo se estrecha, así que un literal
+  fuera de la lista deja de compilar. No es una restricción gratuita: medido en
+  vivo el 2026-09-16 (QA del integrador, D-02) un catálogo se guardó en `ZZZ`
+  —tres letras, ninguna moneda— y sus precios salían sin nada que formatear.
+- ⚠️ **`compliance-es` y `compliance-fr` salen de dos enums**: `en_lugar_de`
+  en **POST `/desarrollador/modulos`** y **PATCH
+  `/desarrollador/modulos/{modulo}`**, y `componentes_pimia` en **POST
+  `/desarrollador/verticales/{vertical}/planes`** y **PATCH
+  `/desarrollador/verticales/{vertical}/planes/{plan}`**. Los demás valores no
+  se mueven. El cumplimiento fiscal de un país no es un módulo que un
+  integrador sustituya ni componga en un plan.
+- Descripciones al día en las cuatro operaciones de arriba (el contrato las
+  lleva enteras en el `@response`, así que un campo que no se añada ahí no
+  llega al SDK por mucho que el servicio lo devuelva).
+- `typescript/src/central-api.ts` regenerado con `scripts/sync-spec.sh --api
+  central`; `dist/central-api.d.ts` sale del build. `@pimia/design-tokens`
+  acompaña la 0.33.0 sin cambios funcionales. PHP toma la versión del tag del
+  espejo.
+
+### Cómo migrar
+
+- **Antes de pintar `anadidos.total`, mira `anadidos.monedas_mezcladas`.** Con
+  activaciones en monedas distintas, `moneda` va a `null` y la bandera a
+  `true`: `total_cents` es entonces una suma de peras y manzanas y **no es un
+  importe**. Ese `null` no significa «no consta» — la bandera lo acompaña
+  siempre y dice por qué. Y deja de deducir la moneda de la cadena ya
+  formateada de `total`.
+- `precio_cents`, `moneda` y `por_tenant[].base_cents` son **anulables**: un
+  asiento sin precio propio se cuenta en `anadidos.asientos_sin_precio`, no se
+  suma como cero.
+- Para saber si un módulo se reprecio después de activarse, compara
+  `precio_inicial_cents` con `price_cents`, o lee `cambio_de_precio` — no
+  `active_since` contra `precio_desde`, que responden a preguntas distintas.
+- Si tu código pasa `currency` al `PUT` del catálogo desde una variable
+  `string`, estréchala a `CatalogoCurrency` (o valida contra ella) antes de
+  compilar. Lo mismo con `en_lugar_de` / `componentes_pimia` si alguna vez
+  mandaste `compliance-es` o `compliance-fr`.
+- Los `wholesale_price_*` **ya llevan el descuento del tramo**:
+  `wholesale_tier.discount_pct` es informativo, para enseñar en qué peldaño
+  está y cuánto le falta para el siguiente (`next.seats_missing`).
+- El starter conserva las dependencias publicadas; se actualizan **después** de
+  publicar, como manda el paso 4 del checklist. Esta rama no crea el tag.
+
 ## [0.32.0] — 2026-09-22
 
 Firma del cliente en contratos, con helpers TypeScript y PHP. Contrato de

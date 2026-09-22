@@ -1,5 +1,16 @@
 # Checklist de release
 
+**v0.33.0 preparada — 2026-09-22**: contrato del plano central **1.19.0**
+desde `factSaas@e21d6d74` (65 operaciones; arrastra la 1.18.0, que nunca se
+publicó). Comparación operación a operación frente a 0.32.0: ninguna nueva,
+ninguna retirada, **9 modificadas**. El contrato de instancia no se toca —
+idéntico byte a byte al de `origin/main` del núcleo, comprobado antes de
+sincronizar. Sólo TypeScript. Dos estrechamientos documentados en «Cómo
+migrar»: el enum de `currency` del catálogo y la salida de `compliance-es` /
+`compliance-fr` de `en_lugar_de` y `componentes_pimia`. SDK y design tokens
+versionan 0.33.0. Pendiente de revisión, merge y tag por 👤. Tras publicar,
+actualizar las dependencias del starter (paso 4).
+
 **v0.32.0 preparada — 2026-09-22**: firma del cliente en TS/PHP, contrato de
 instancia 1.4.3 desde `factSaas@0ca763c6`: 446 operaciones, cuatro nuevas,
 17 modificadas (incluidos schemas compartidos), ninguna retirada. El
@@ -142,8 +153,11 @@ que es lo único que se puede comprobar hoy.
 | 0.27.0 | 2026-09-08 | Las tres costuras del CRM de fuera (`/bootstrap`, `/crm/assignable-users`, `POST /opportunities`) y el modo de token prestado, en los dos SDKs. Sin cambios de spec. Arrastra las 0.22.0–0.26.0. | ✅ |
 | 0.28.0 | 2026-09-14 | Correo y Stripe propios del integrador en `PimiaCentralClient`: contrato central **1.15.0, 61 operaciones** (`factSaas@de884f44`). Sólo TypeScript. | ✅ |
 | 0.29.0 | *sin publicar* | El cobro del cliente del integrador (#835): «Facturo con Pimia» en `PimiaCentralClient` (central **1.16.0, 65 operaciones**) y `billing.integrador` en los dos SDKs (`/api/v1` **1.1.0, 441 operaciones**, primera sincronización desde la 0.22.0). `factSaas@808976ba`. | — |
-| 0.30.0 | *preparada, sin publicar; versión aprobada por el fundador* | Specs `factSaas@229840ee`: central 1.16.1 (65), instancia 1.1.0 (441). Primer periodo, cobro en cartera, retry 202 y confirmación del dueño TS/PHP. Cambios incompatibles documentados en Cómo migrar. | Pendiente de publicación |
-| 0.30.1 | *preparada, sin publicar* | Documentación del origen baseUrl y rechazo temprano de /api y /api/v1 en TS/PHP. Sin cambios de spec. | Pendiente de publicación |
+| 0.30.0 | 2026-09-15 | Specs `factSaas@229840ee`: central 1.16.1 (65), instancia 1.1.0 (441). Primer periodo, cobro en cartera, retry 202 y confirmación del dueño TS/PHP. Cambios incompatibles documentados en Cómo migrar. | — |
+| 0.30.1 | 2026-09-15 | Documentación del origen baseUrl y rechazo temprano de /api y /api/v1 en TS/PHP. Sin cambios de spec. | — |
+| 0.31.0 | 2026-09-16 | Contrato de instancia **1.4.0, 442 operaciones** (`factSaas@ae2a4088`): composición efectiva y resumen fiscal JSON. Central sube a 1.17.0. | — |
+| 0.32.0 | 2026-09-22 | La firma del cliente en contratos, TS y PHP. Instancia **1.4.3, 446 operaciones** (`factSaas@0ca763c6`). | — |
+| 0.33.0 | *preparada, sin publicar* | Contrato del plano central **1.19.0, 65 operaciones** (`factSaas@e21d6d74`), con lo que la 1.18.0 dejó sin publicar: moneda y desglose de asientos en `anadidos`, `cartera[].activaciones` con nombre, el precio inicial de cada activación y el tramo mayorista del catálogo. ⚠️ Dos enums estrechados. Sólo TypeScript. | Pendiente de publicación |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,
