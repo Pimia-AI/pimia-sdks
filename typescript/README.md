@@ -378,3 +378,29 @@ ni ejecuta la confirmación. La cartera/ficha obtiene `CobroDeInstancia` de
 `central.overview().data.cartera[].cobro`; puede ser null, igual que su enlace.
 
 Cambios incompatibles y versión propuesta: [Cómo migrar](../CHANGELOG.md#cómo-migrar).
+
+### Firma del cliente en contratos (0.32.0)
+
+```ts
+const sent = await client.contracts.signature.send(7, {
+  name: 'Ana', email: 'ana@example.test', send_email: true,
+}, { idempotencyKey: 'contrato-7-firma-1' })
+// sent.data es ContractResource; sent.signingUrl es una capacidad para firmar.
+const { data } = await client.contracts.signature.status(7)
+const accepted = await client.contracts.signature.remind(7) // 202: { success: boolean }
+await client.contracts.signature.cancel(7) // cancela la firma, no el contrato
+```
+
+`send` acepta además `subject` y `body`; su cuerpo es el tipo exportado
+`ContractSignatureRequest`. Las cuatro respuestas derivan del OpenAPI. `status`
+exige `contracts:read`; las otras acciones, `contracts:write`. Los métodos
+aceptan las opciones habituales de cabeceras/señal; los POST también admiten
+`idempotencyKey`.
+
+`signingUrl` solo vuelve en `send`: no lo registres en logs ni lo expongas en
+listados. El resto consulta o modifica el estado del núcleo sin devolver esa
+capacidad. `data.signature` contiene estado, versión, fechas y hashes; fechas
+y hashes pueden ser null. El spec tipa `status` como string, sin enum.
+Completar la firma no activa el contrato y volver del navegador no acredita
+que esté firmado. El 202 del recordatorio acepta el correo, no su entrega;
+para personalizar su `subject`/`body`, usa el POST genérico a la misma ruta.

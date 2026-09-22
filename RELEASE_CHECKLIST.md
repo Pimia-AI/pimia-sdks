@@ -1,5 +1,12 @@
 # Checklist de release
 
+**v0.32.0 preparada — 2026-09-22**: firma del cliente en TS/PHP, contrato de
+instancia 1.4.3 desde `factSaas@0ca763c6`: 446 operaciones, cuatro nuevas,
+17 modificadas (incluidos schemas compartidos), ninguna retirada. El
+CHANGELOG recoge el inventario y la migración. SDK y design tokens versionan
+0.32.0; PHP hereda el tag del espejo. Pendiente de revisión, merge y tag por
+Fable. Tras publicar, actualizar las dependencias del starter (paso 4).
+
 **v0.1.0 publicada el 2026-08-01**: `@pimia/sdk` y `@pimia/design-tokens` en
 npm (con provenance SLSA) y `pimia/pimia-php` en Packagist. Verificada con
 instalación limpia de los tres en proyectos vacíos.

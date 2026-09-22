@@ -11,6 +11,7 @@ export type {
   BorrowedTokenOptions,
   ContractRequest,
   ContractResource,
+  ContractSignatureRequest,
   CustomerRequest,
   CustomerResource,
   EstimateResource,

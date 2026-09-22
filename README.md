@@ -455,11 +455,11 @@ en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes. Las
 
 **El SDK habla dos contratos**:
 
-- el del **tenant** (`spec/pimia-api-v1.json`, **438 operaciones**,
-  `factSaas@522cf264`) — facturar, cobrar, el almacén, el CRM: lo que usa una
+- el del **tenant** (`spec/pimia-api-v1.json`, **1.4.3, 446 operaciones**,
+  `factSaas@0ca763c6`) — facturar, cobrar, el almacén, el CRM: lo que usa una
   app de partner;
-- el del **plano central** (`spec/pimia-central-v1.json`, **1.15.0, 61
-  operaciones**, `factSaas@de884f44`) — la cuenta del integrador: cartera,
+- el del **plano central** (`spec/pimia-central-v1.json`, **1.17.0, 65
+  operaciones**, sincronizado en 0.31.0) — la cuenta del integrador: cartera,
   vínculos, verticales, catálogo, activación mayorista, el login de sus
   clientes, y su correo y su Stripe. Vive en `PimiaCentralClient` y es **sólo
   TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué, en la entrada
@@ -470,6 +470,16 @@ completos y con tests. Los helpers de dominio cubren —los mismos diez en los
 dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
+
+**v0.32.0, preparada (2026-09-22)**: firma del cliente en contratos con
+`client.contracts.signature.send/status/cancel/remind` en TS y
+`$client->contracts->sendForSignature/signatureStatus/cancelSignature/remindSignature`
+en PHP. `signingUrl` solo vuelve al enviar y es una capacidad; completar la
+firma no activa el contrato. El recordatorio responde 202, correo aceptado.
+Ejemplos y scopes en los README de [TypeScript](typescript/README.md#firma-del-cliente-en-contratos-0320)
+y [PHP](php/README.md#firma-del-cliente-en-contratos-0320).
+El [CHANGELOG](CHANGELOG.md) inventaría también los cambios de composición,
+tareas, `/me` y facturación incorporados al sincronizar el spec.
 
 **v0.28.0, preparada**: el contrato del plano central 1.15.0 — `central.correo`
 y `central.stripe`, `PimiaApiError.code`, y dos tipos incompatibles que traía

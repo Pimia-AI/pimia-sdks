@@ -8,6 +8,88 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.32.0] — 2026-09-22
+
+Firma del cliente en contratos, con helpers TypeScript y PHP. Contrato de
+instancia **1.4.3**, sincronizado desde **factSaas@0ca763c6 (2026-09-22) —
+446 operaciones** (`0ca763c68c1a4a86fb28744f85f72986afebf6cc`). Comparación
+operación a operación frente a 0.31.0, resolviendo schemas compartidos:
+**4 nuevas, 17 modificadas, ninguna retirada**. Central permanece en 1.17.0,
+65 operaciones; esta sincronización corresponde al contrato de instancia.
+
+### Añadido
+
+- **POST `/contracts/{contract}/signature`**
+  (`contract.sendContractForSignature`): envía `name`, `email` y opcionalmente
+  `send_email`, `subject`, `body`; devuelve `data: ContractResource` y
+  `signingUrl`. El enlace es una capacidad para firmar: solo vuelve aquí,
+  nunca en listados ni en la consulta de estado; no debe registrarse en logs.
+- **GET `/contracts/{contract}/signature`**
+  (`contract.contractSignatureStatus`): consulta el estado del núcleo con
+  `contracts:read`.
+- **DELETE `/contracts/{contract}/signature`**
+  (`contract.cancelContractSignature`): cancela la firma, no el contrato.
+- **POST `/contracts/{contract}/signature/remind`**
+  (`contract.remindContractSignature`): recordatorio manual; **202** con
+  `{ success: boolean }` acepta el correo, no acredita su entrega ni crea
+  otro envío remoto de firma. POST, DELETE y remind exigen `contracts:write`.
+- TS: `contracts.signature.send/status/cancel/remind`, cuerpos y respuestas
+  derivados del spec; se exporta `ContractSignatureRequest`. `Ok` contempla
+  el 202 del recordatorio para que no se infiera `never`.
+- PHP: `contracts->sendForSignature/signatureStatus/cancelSignature/remindSignature`,
+  con clave de idempotencia opcional en los POST.
+- `ContractResource.signature` publica `status`, `version`, `sent_at`,
+  `signed_at`, `source_document_sha256` y `signed_document_sha256`.
+  Fechas y hashes admiten null. Afecta a **GET/POST `/contracts`**,
+  **GET/PUT `/contracts/{contract}`**, **POST `/contracts/{contract}/activate`**,
+  **POST `/contracts/{contract}/cancel`**, **POST `/contracts/{contract}/renew`**
+  y **POST/DELETE `/contracts/{contract}/document`**, además de las nuevas
+  operaciones que devuelven el recurso.
+
+### Cambiado
+
+Otras ocho operaciones modificadas por el spec, además de las nueve anteriores:
+
+- **GET `/bootstrap`** corrige `composition`: `served_by` pasa de string
+  nullable al objeto proveedor nullable (`key`, `name`, `control_de_usuarios`,
+  `necesita_de_pimia`); `substitution.resolved` es boolean y `reason` es
+  `no_provider | ambiguous | null`.
+- **GET `/tenant-modules`**, **POST `/tenant-modules/{slug}/install`** y
+  **POST `/tenant-modules/{slug}/disable`** fijan `composition.schema_version`
+  a 1, `state` a `installed | disabled | substituted` y `substitution.reason`
+  a `no_provider | ambiguous | null`. Install añade el **202** de instalación
+  pendiente con `installed_at: null`, `message` y `composition`, junto al 200.
+- **POST `/tasks`** y **PUT `/tasks/{task}`** declaran sus dos variantes 422:
+  validación o `taskable_not_served` con `error`, `message`, `taskable_type`,
+  `module`. Se corrige la limitación documentada en 0.31.0.
+- **GET `/me`** deja de declarar `settings:read`: catálogo `meta`, accesible
+  con cualquier token válido (`x-pimia-partner-availability: any-token`).
+- **GET `/billing/subscription`** y **GET `/tenant-modules`** aclaran el precio
+  por módulo y que el agregado `price_cents` puede ser un promedio; el total
+  exacto está en `addons.total_cents` de billing. Cambia la descripción,
+  no la forma de esos importes.
+- Tipos `api.ts` regenerados; `dist/api.d.ts` se genera al compilar.
+  `@pimia/design-tokens` acompaña 0.32.0 sin cambios funcionales. PHP toma la
+  versión del tag del espejo, sin campo `version` en composer.json.
+
+### Cómo migrar
+
+- Añade `signature` a los fixtures de `ContractResource`. Los estados del
+  núcleo son NONE, SENT, COMPLETED, DECLINED y EXPIRED, pero **el spec exporta
+  `status: string`, sin enum**: el SDK conserva esa limitación del contrato.
+- Adapta consumidores de composición a los tipos corregidos. Conserva la
+  semántica de `installed_modules`/`substituted_modules`; maneja el 202 de
+  instalación como pendiente, no como instalación terminada.
+- Completar la firma no activa el contrato. Consulta el estado real del núcleo;
+  el retorno del navegador no prueba que la firma se haya completado. Para
+  editar un contrato con envío vivo, cancela la firma primero; reenviar sube
+  su versión. La activación sigue siendo decisión de la empresa.
+- `remind(id, options?)` / `remindSignature(id, idempotencyKey?)` utilizan el
+  correo por defecto. Si necesitas `subject`/`body` personalizados, el spec
+  los permite mediante el POST genérico a `/contracts/{id}/signature/remind`.
+- El starter conserva las dependencias publicadas; se actualizan después de
+  publicar, como indica el checklist. Esta rama no crea el tag de release.
+
 ## [0.31.0] — 2026-09-16
 
 Contrato de instancia **1.4.0**: composición efectiva y resumen fiscal JSON.
