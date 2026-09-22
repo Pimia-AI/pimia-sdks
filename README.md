@@ -424,7 +424,7 @@ aviso.
 de clientes con la atribución de cada alta, los vínculos con cada instancia,
 sus clients OAuth, sus verticales, su catálogo y la activación mayorista, su
 login, su correo y su Stripe propios, las invitaciones, el patrocinio y el
-traspaso de propiedad. **1.15.0, 61 operaciones**; no lleva contenido fiscal
+traspaso de propiedad. **1.19.0, 65 operaciones**; no lleva contenido fiscal
 de ningún cliente. Se autentica con el **token personal** de la cuenta,
 acotado por plano (`central`, `desarrollador`; cada operación declara la suya
 en `x-pimia-required-ability`). Lo consume `PimiaCentralClient` en TypeScript;
@@ -447,7 +447,7 @@ cd php && composer install && vendor/bin/phpunit
 
 ## Estado
 
-**Última publicada: v0.27.0 (2026-09-08)** en npm (`@pimia/sdk`,
+**Última publicada: v0.32.0 (2026-09-22)** en npm (`@pimia/sdk`,
 `@pimia/design-tokens`) y Packagist (`pimia/pimia-php`). Cada tag `v*` dispara
 el workflow de release, que publica los tres artefactos, y **los tres versionan
 en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes. Las
@@ -458,10 +458,10 @@ en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes. Las
 - el del **tenant** (`spec/pimia-api-v1.json`, **1.4.3, 446 operaciones**,
   `factSaas@0ca763c6`) — facturar, cobrar, el almacén, el CRM: lo que usa una
   app de partner;
-- el del **plano central** (`spec/pimia-central-v1.json`, **1.17.0, 65
-  operaciones**, sincronizado en 0.31.0) — la cuenta del integrador: cartera,
-  vínculos, verticales, catálogo, activación mayorista, el login de sus
-  clientes, y su correo y su Stripe. Vive en `PimiaCentralClient` y es **sólo
+- el del **plano central** (`spec/pimia-central-v1.json`, **1.19.0, 65
+  operaciones**, `factSaas@e21d6d74`, sincronizado en 0.33.0) — la cuenta del
+  integrador: cartera, vínculos, verticales, catálogo, activación mayorista,
+  el login de sus clientes, y su correo y su Stripe. Vive en `PimiaCentralClient` y es **sólo
   TypeScript**: el SDK de PHP no lo lleva a propósito (el porqué, en la entrada
   0.22.0 del CHANGELOG).
 
@@ -471,7 +471,20 @@ dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
 
-**v0.32.0, preparada (2026-09-22)**: firma del cliente en contratos con
+**v0.33.0, preparada (2026-09-22)**: el contrato del plano central **1.19.0**
+(con lo que la 1.18.0 dejó sin publicar), `factSaas@e21d6d74`. Ninguna
+operación nueva ni retirada, nueve modificadas: el desglose de asientos y la
+moneda de `anadidos` en `/desarrollador/facturacion` —⛔ con
+`monedas_mezcladas: true` la moneda es `null` y el total **no es un importe**—,
+`cartera[].activaciones` con nombre en `/desarrollador/overview`,
+`precio_inicial_cents` / `precio_desde` / `cambio_de_precio` en las
+activaciones de una instancia, y `disponibles.wholesale_tier` en el catálogo.
+⚠️ Dos estrechamientos del contrato: `currency` del `PUT` del catálogo pasa a
+enum cerrado, y `compliance-es` / `compliance-fr` salen de `en_lugar_de` y
+`componentes_pimia`. Sólo TypeScript. Detalle y migración, en el
+[CHANGELOG](CHANGELOG.md).
+
+**v0.32.0, publicada (2026-09-22)**: firma del cliente en contratos con
 `client.contracts.signature.send/status/cancel/remind` en TS y
 `$client->contracts->sendForSignature/signatureStatus/cancelSignature/remindSignature`
 en PHP. `signingUrl` solo vuelve al enviar y es una capacidad; completar la

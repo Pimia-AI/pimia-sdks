@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia \u2014 plano central, contrato del integrador",
-        "version": "1.17.0",
+        "version": "1.19.0",
         "description": "Contrato del plano central de Pimia para el integrador: su cartera de clientes y la atribuci\u00f3n de cada alta, los v\u00ednculos con cada instancia, sus clients OAuth, las invitaciones, el patrocinio (asumir la licencia de un cliente), la tarjeta de su canal guardada antes del primer cliente (13.30a), el traspaso de propiedad, sus verticales (el sector para el que arma su producto, por cu\u00e1l entr\u00f3 cada instancia qu\u00e9 m\u00f3dulos nacen encendidos en sus clientes nuevos y qu\u00e9 m\u00f3dulos de Pimia sustituye por software suyo), su cat\u00e1logo (qu\u00e9 revende a sus clientes, a qu\u00e9 precio minorista y con qu\u00e9 enlace de contrataci\u00f3n) y la activaci\u00f3n mayorista (lo que activa a cada cliente \u2014la base, m\u00f3dulos, apps\u2014 y Pimia le cobra en su suscripci\u00f3n de canal), sus nombres de login (los que sirve en su servidor y reenv\u00eda al AS del \u00e1pice), sus tokens de m\u00e1quina, qui\u00e9n pertenece a cada instancia (para traspasarla) y el portal de Stripe de su canal. Autenticaci\u00f3n: token personal de Sanctum acotado por plano (`central`, `desarrollador`), el mismo que usa el dashboard del integrador. No lleva contenido fiscal de ning\u00fan cliente: a los datos de una instancia se llega por OAuth consentido, con el contrato de /api/v1."
     },
     "servers": [
@@ -261,7 +261,7 @@
         "/desarrollador/overview": {
             "get": {
                 "operationId": "desarrollador.overview",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCada fila de `cartera` lleva `origen`: el client OAuth de ESTE\ndesarrollador por el que se le atribuye el tenant \u2014con\n`atribuido: true` si el alta lo dej\u00f3 escrito (`origin_client_id`,\n#726) y `false` si se infiere porque el v\u00ednculo est\u00e1 vivo y el\ndesarrollador tiene un \u00fanico client con or\u00edgenes (la red de\n`IntegradorDelTenant::clientDe`)\u2014 o `null`. Nunca el client de otro\ndesarrollador aunque el tenant lo recuerde: es su relaci\u00f3n comercial,\nno la de quien mira.\n\nEl cuerpo se declara entero porque el generador no sigue el `map()`\nsobre la colecci\u00f3n de tenants: en la 1.3.0 `cartera` sal\u00eda como una\nlista de `string` y el panel no pod\u00eda tipar ni una fila.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nCada fila de `cartera` lleva `origen`: el client OAuth de ESTE\ndesarrollador por el que se le atribuye el tenant \u2014con\n`atribuido: true` si el alta lo dej\u00f3 escrito (`origin_client_id`,\n#726) y `false` si se infiere porque el v\u00ednculo est\u00e1 vivo y el\ndesarrollador tiene un \u00fanico client con or\u00edgenes (la red de\n`IntegradorDelTenant::clientDe`)\u2014 o `null`. Nunca el client de otro\ndesarrollador aunque el tenant lo recuerde: es su relaci\u00f3n comercial,\nno la de quien mira.\n\n`activaciones` (#921) son los m\u00f3dulos y apps que ESTE integrador tiene\nactivados por su canal en esa instancia, con NOMBRE. Va aqu\u00ed y no en un\ncontador porque el panel ten\u00eda que contar desde\n`anadidos.por_tenant[].activaciones` de `/facturacion` y no pod\u00eda decir\nQU\u00c9: un cliente con el CRM activo sal\u00eda id\u00e9ntico a uno sin nada. Lista\nvac\u00eda = no tiene nada activado por canal (no es \u00abno consta\u00bb: la consulta\ncubre toda la cartera de una vez).\n\nEl cuerpo se declara entero porque el generador no sigue el `map()`\nsobre la colecci\u00f3n de tenants: en la 1.3.0 `cartera` sal\u00eda como una\nlista de `string` y el panel no pod\u00eda tipar ni una fila.",
                 "summary": "GET /api/desarrollador/overview \u2014 cartera y cuota",
                 "tags": [
                     "Desarrollador"
@@ -522,6 +522,28 @@
                                                                     "desde",
                                                                     "hasta"
                                                                 ]
+                                                            },
+                                                            "activaciones": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "kind": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "slug": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "name": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "kind",
+                                                                        "slug",
+                                                                        "name"
+                                                                    ]
+                                                                }
                                                             }
                                                         },
                                                         "required": [
@@ -538,7 +560,8 @@
                                                             "marca_blanca",
                                                             "origen",
                                                             "vertical",
-                                                            "contratacion"
+                                                            "contratacion",
+                                                            "activaciones"
                                                         ]
                                                     }
                                                 },
@@ -777,7 +800,7 @@
         "/desarrollador/facturacion": {
             "get": {
                 "operationId": "desarrollador.facturacion",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nDesde la 1.14.0 publica tambi\u00e9n `metodo_de_pago` \u2014la tarjeta guardada en\nel Stripe de Pimia (13.30a), o `null`\u2014 y `canal_puede_cobrar`: si Pimia\npuede cobrarle un asiento (canal vivo o tarjeta), que es lo que \u00abPasar a\nproducci\u00f3n\u00bb y cada alta en producci\u00f3n exigen.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\nDesde la 1.14.0 publica tambi\u00e9n `metodo_de_pago` \u2014la tarjeta guardada en\nel Stripe de Pimia (13.30a), o `null`\u2014 y `canal_puede_cobrar`: si Pimia\npuede cobrarle un asiento (canal vivo o tarjeta), que es lo que \u00abPasar a\nproducci\u00f3n\u00bb y cada alta en producci\u00f3n exigen.\n\n`anadidos.moneda` (1.19.0) es el c\u00f3digo ISO con el que est\u00e1n escritos\n`anadidos.total_cents` y `anadidos.total`, y sale de las activaciones\nVIVAS: un m\u00f3dulo lleva la suya en `module_prices` (#894), as\u00ed que no es\nla del cat\u00e1logo del integrador, ni la de sus asientos, ni siquiera una\nconstante de Pimia. Sin ella el panel la deduc\u00eda de la cadena ya escrita.\n\n\u26d4 Con activaciones en monedas DISTINTAS, `moneda` va a `null` y\n`anadidos.monedas_mezcladas` a `true`: `total_cents` es entonces una suma\nde peras y manzanas y no se debe ense\u00f1ar como un importe. `null` ah\u00ed no\nes \u00abno consta\u00bb \u2014 la bandera lo acompa\u00f1a siempre y dice por qu\u00e9.\n\n\u26a0\ufe0f El cuerpo va declarado entero en el `@response`, as\u00ed que un campo\nnuevo de `resumenDeCartera()` que no se a\u00f1ada AQU\u00cd no llega al contrato\npor mucho que el servicio lo devuelva y lo tipe.",
                 "summary": "GET /api/desarrollador/facturacion \u2014 su suscripci\u00f3n de canal",
                 "tags": [
                     "Desarrollador"
@@ -858,6 +881,18 @@
                                                             "rol": {
                                                                 "type": "string"
                                                             },
+                                                            "precio_cents": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "moneda": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
                                                             "en_mora": {
                                                                 "type": "boolean"
                                                             },
@@ -877,6 +912,8 @@
                                                         "required": [
                                                             "tenant_id",
                                                             "rol",
+                                                            "precio_cents",
+                                                            "moneda",
                                                             "en_mora",
                                                             "gracia_hasta",
                                                             "suspendido_desde"
@@ -898,6 +935,27 @@
                                                         "total": {
                                                             "type": "string"
                                                         },
+                                                        "moneda": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "monedas_mezcladas": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "asientos": {
+                                                            "type": "integer"
+                                                        },
+                                                        "asientos_cents": {
+                                                            "type": "integer"
+                                                        },
+                                                        "asientos_total": {
+                                                            "type": "string"
+                                                        },
+                                                        "asientos_sin_precio": {
+                                                            "type": "integer"
+                                                        },
                                                         "por_tenant": {
                                                             "type": "array",
                                                             "items": {
@@ -911,12 +969,19 @@
                                                                     },
                                                                     "total_cents": {
                                                                         "type": "integer"
+                                                                    },
+                                                                    "base_cents": {
+                                                                        "type": [
+                                                                            "integer",
+                                                                            "null"
+                                                                        ]
                                                                     }
                                                                 },
                                                                 "required": [
                                                                     "tenant_id",
                                                                     "activaciones",
-                                                                    "total_cents"
+                                                                    "total_cents",
+                                                                    "base_cents"
                                                                 ]
                                                             }
                                                         }
@@ -925,6 +990,12 @@
                                                         "activaciones",
                                                         "total_cents",
                                                         "total",
+                                                        "moneda",
+                                                        "monedas_mezcladas",
+                                                        "asientos",
+                                                        "asientos_cents",
+                                                        "asientos_total",
+                                                        "asientos_sin_precio",
                                                         "por_tenant"
                                                     ]
                                                 }
@@ -2015,7 +2086,7 @@
         "/desarrollador/tenants/{slug}/activaciones": {
             "get": {
                 "operationId": "integradorActivacion.index",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`base` es su licencia (el asiento de canal); `items`, los m\u00f3dulos y apps\nactivos con lo que cuestan al integrador al mes; `total` lo suma.",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`base` es su licencia (el asiento de canal); `items`, los m\u00f3dulos y apps\nactivos con lo que cuestan al integrador al mes; `total` lo suma.\n\nCada `item` lleva adem\u00e1s (#921) `precio_inicial_cents` \u2014el importe con el\nque NACI\u00d3 la activaci\u00f3n, que no se toca nunca\u2014, `precio_desde` \u2014desde\ncu\u00e1ndo rige el `price_cents` de hoy, que no es `active_since`: esa es la\nfecha de activaci\u00f3n\u2014 y `cambio_de_precio`, que es la comparaci\u00f3n de los\ndos. \u26d4 Sin ellos el repreciado de un m\u00f3dulo era INDETECTABLE desde\nfuera: el superadmin lo aplica y `moverAlTramo()` reescribe\n`price_cents` en la misma petici\u00f3n, as\u00ed que los dos importes que el panel\ncomparar\u00eda \u2014el de la fila y el del cat\u00e1logo\u2014 son el mismo n\u00famero.",
                 "summary": "GET /api/desarrollador/tenants/{slug}/activaciones \u2014 lo activado a este cliente",
                 "tags": [
                     "IntegradorActivacion"
@@ -2101,6 +2172,15 @@
                                                                     "string",
                                                                     "null"
                                                                 ]
+                                                            },
+                                                            "precio_inicial_cents": {
+                                                                "type": "integer"
+                                                            },
+                                                            "precio_desde": {
+                                                                "type": "string"
+                                                            },
+                                                            "cambio_de_precio": {
+                                                                "type": "boolean"
                                                             }
                                                         },
                                                         "required": [
@@ -2109,7 +2189,10 @@
                                                             "name",
                                                             "active_since",
                                                             "price_cents",
-                                                            "price"
+                                                            "price",
+                                                            "precio_inicial_cents",
+                                                            "precio_desde",
+                                                            "cambio_de_precio"
                                                         ]
                                                     }
                                                 },
@@ -2425,7 +2508,7 @@
         "/desarrollador/catalogo": {
             "get": {
                 "operationId": "integradorCatalogo.show",
-                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`perfil` y `currency` van a `null` mientras el integrador no haya\nguardado nada; `disponibles` dice qu\u00e9 puede entrar en `items` (es la\nlista contra la que valida el `PUT`).",
+                "description": "**Exige la habilidad `desarrollador`** en el token, y que la cuenta sea de desarrollador.\n\n`perfil` y `currency` van a `null` mientras el integrador no haya\nguardado nada; `disponibles` dice qu\u00e9 puede entrar en `items` (es la\nlista contra la que valida el `PUT`).\n\n`disponibles.wholesale_tier` es su tarifa por volumen: el tramo en el que\nest\u00e1 (con el descuento que ya llevan aplicado los `wholesale_price_*` de\narriba), los asientos vivos que lo justifican y el tramo siguiente con\ncu\u00e1ntos asientos le faltan para llegar \u2014 `next` a `null` cuando ya est\u00e1\nen el \u00faltimo pelda\u00f1o de la escalera.",
                 "summary": "GET /api/desarrollador/catalogo \u2014 el cat\u00e1logo propio y lo que se puede revender",
                 "tags": [
                     "IntegradorCatalogo"
@@ -2626,12 +2709,67 @@
                                                                     "wholesale_price"
                                                                 ]
                                                             }
+                                                        },
+                                                        "wholesale_tier": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "key": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "discount_pct": {
+                                                                    "type": "string"
+                                                                },
+                                                                "seats": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "next": {
+                                                                    "type": [
+                                                                        "object",
+                                                                        "null"
+                                                                    ],
+                                                                    "properties": {
+                                                                        "key": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "name": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "min_seats": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "discount_pct": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "seats_missing": {
+                                                                            "type": "integer"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "key",
+                                                                        "name",
+                                                                        "min_seats",
+                                                                        "discount_pct",
+                                                                        "seats_missing"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "key",
+                                                                "name",
+                                                                "discount_pct",
+                                                                "seats",
+                                                                "next"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
                                                         "base",
                                                         "modules",
-                                                        "apps"
+                                                        "apps",
+                                                        "wholesale_tier"
                                                     ]
                                                 }
                                             },
@@ -2871,12 +3009,67 @@
                                                                     "wholesale_price"
                                                                 ]
                                                             }
+                                                        },
+                                                        "wholesale_tier": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "key": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "discount_pct": {
+                                                                    "type": "string"
+                                                                },
+                                                                "seats": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "next": {
+                                                                    "type": [
+                                                                        "object",
+                                                                        "null"
+                                                                    ],
+                                                                    "properties": {
+                                                                        "key": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "name": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "min_seats": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "discount_pct": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "seats_missing": {
+                                                                            "type": "integer"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "key",
+                                                                        "name",
+                                                                        "min_seats",
+                                                                        "discount_pct",
+                                                                        "seats_missing"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "key",
+                                                                "name",
+                                                                "discount_pct",
+                                                                "seats",
+                                                                "next"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
                                                         "base",
                                                         "modules",
-                                                        "apps"
+                                                        "apps",
+                                                        "wholesale_tier"
                                                     ]
                                                 }
                                             },
@@ -8370,12 +8563,21 @@
         "schemas": {
             "IntegradorCatalogoRequest": {
                 "type": "object",
-                "description": "Cuerpo de `PUT /api/desarrollador/catalogo`: el cat\u00e1logo del integrador\nENTERO \u2014cabecera y filas\u2014, que sustituye al que hubiera.\n\nLo que se defiende: que cada fila revenda algo que existe (un m\u00f3dulo\nopcional ofrecido, una app activa del cat\u00e1logo de Pimia, o `base`/`pimia`),\nque no haya dos filas para lo mismo, que el precio sea SIEMPRE una cifra en\nsubunidades (\ud83d\udc64, 2026-09-06: sin filas \u00abincluido\u00bb; 0 vale) y que la moneda\nsea un c\u00f3digo ISO 4217. El precio minorista no se valida contra ning\u00fan\nprecio de Pimia: es del integrador (regla 4 del punto 12).",
+                "description": "Cuerpo de `PUT /api/desarrollador/catalogo`: el cat\u00e1logo del integrador\nENTERO \u2014cabecera y filas\u2014, que sustituye al que hubiera.\n\nLo que se defiende: que cada fila revenda algo que existe (un m\u00f3dulo\nopcional ofrecido, una app activa del cat\u00e1logo de Pimia, o `base`/`pimia`),\nque no haya dos filas para lo mismo, que el precio sea SIEMPRE una cifra en\nsubunidades (\ud83d\udc64, 2026-09-06: sin filas \u00abincluido\u00bb; 0 vale) y que la moneda\nest\u00e9 en el cat\u00e1logo de Pimia \u2014no basta con que tenga tres letras\u2014. El precio\nminorista no se valida contra ning\u00fan precio de Pimia: es del integrador\n(regla 4 del punto 12).",
                 "properties": {
                     "currency": {
                         "type": "string",
-                        "description": "Solo la moneda. El nombre comercial, el soporte y d\u00f3nde se contrata\nson de cada VERTICAL desde el 2026-09-11 (`PATCH /verticales/{v}`):\nun integrador con dos productos tiene dos marcas, no una.",
-                        "pattern": "^[A-Za-z]{3}$"
+                        "description": "Solo la moneda. El nombre comercial, el soporte y d\u00f3nde se contrata\nson de cada VERTICAL desde el 2026-09-11 (`PATCH /verticales/{v}`):\nun integrador con dos productos tiene dos marcas, no una.\n\u26d4 La forma no basta: `ZZZ` tiene tres letras y no es una moneda.\nMedido en vivo el 2026-09-16 (QA del integrador, D-02): el cat\u00e1logo\nse guardaba en `ZZZ` y los precios sal\u00edan sin moneda que formatear.",
+                        "enum": [
+                            "EUR",
+                            "USD",
+                            "GBP",
+                            "MXN",
+                            "COP",
+                            "ARS",
+                            "BRL",
+                            "PEN"
+                        ]
                     },
                     "items": {
                         "type": "array",
@@ -8581,8 +8783,6 @@
                             "purchases",
                             "finance",
                             "reports",
-                            "compliance-es",
-                            "compliance-fr",
                             "pos",
                             "crm",
                             "work",
@@ -8676,8 +8876,6 @@
                                 "purchases",
                                 "finance",
                                 "reports",
-                                "compliance-es",
-                                "compliance-fr",
                                 "pos",
                                 "crm",
                                 "work",
