@@ -8,6 +8,199 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [0.34.0] — 2026-09-23
+
+Contratos, fase 2: el clausulado propio de la empresa, los cuatro modos de
+facturación, los hitos, el proyecto, la vista previa antes de firmar y la
+factura manual bajo su contrato. Helpers en TypeScript y en PHP. Contrato de
+instancia sincronizado desde **factSaas@57b3e03d (2026-09-23) — 455
+operaciones** (`57b3e03de32d96bd1e265a83df65223b4d179daa`), el commit del
+merge del PR #940. Comparación operación a operación frente a 0.33.0,
+resolviendo los schemas compartidos: **9 nuevas, 30 modificadas, ninguna
+retirada**. El plano central no se toca: `spec/pimia-central-v1.json` sigue en
+1.19.0, 65 operaciones.
+
+⚠️ **El `info.version` del contrato de instancia sigue diciendo 1.4.3** con
+nueve operaciones más (`config/scramble.php:103` del núcleo). No es una
+sincronización vieja —el artefacto es idéntico byte a byte al de `origin/main`,
+comprobado antes de tocar nada— sino que el núcleo no lo subió al publicar el
+#940. Anotado aquí porque la versión del documento deja de servir para saber
+si un cliente está al día: lo que identifica este contrato es el commit.
+
+⚠️ La **0.33.0 quedó preparada y sin publicar** (plano central 1.19.0, nunca
+tageada): esta entrada NO la sustituye. Publicar la 0.34.0 arrastra las dos.
+
+### Añadido
+
+- **El catálogo de clausulados**, nueve operaciones nuevas del núcleo:
+  **GET `/contract-models`** (`contract-models.index`), **POST
+  `/contract-models`** (`contract-models.store`), **GET
+  `/contract-models/{id}`** (`contract-models.show`), **PUT
+  `/contract-models/{id}`** (`contract-models.update`), **POST
+  `/contract-models/{id}/publish`** (`contractModels.publish`), **POST
+  `/contract-models/{id}/archive`** (`contractModels.archive`) y **GET
+  `/contract-models/variables`** (`contract.contractModelVariables`). Scope
+  `contracts:read` / `contracts:write`, pero **abilities propias**: poder
+  editar o enviar un contrato no concede redactar ni publicar modelos.
+- **La revisión documental**: **POST `/contracts/{id}/document-preview`**
+  (`contractDocumentPreview.store`) prepara el papel y devuelve su
+  `reference`, su `source_document_sha256`, su tamaño, si lleva ancla y dónde
+  la espera, más la `download_url`; **GET
+  `/contracts/{id}/document-preview/{reference}`**
+  (`contracts.document-preview.download`) sirve esos MISMOS bytes desde el
+  archivo, sin regenerarlos nunca. La preview **no envía**: no crea envelope,
+  no manda correos y no consume intento de firma.
+- TS: `client.contracts.models` con `list`, `get`, `create`, `update`,
+  `publish`, `archive` y `variables`; `client.contracts.documentPreview()` y
+  `client.contracts.documentPreviewDownload()` (devuelve `Blob`, con el
+  `accept: */*` que evita leer un PDF como texto y corromperlo en silencio).
+- PHP: `Pimia\Resource\ContractModels`, colgado de
+  `$client->contracts->models` con los siete equivalentes, más
+  `$client->contracts->documentPreview()` y `downloadDocumentPreview()` (el
+  PDF llega como cadena binaria: el transporte no decodifica lo que no es
+  JSON).
+- **Diez tipos nuevos exportados en TS** para el clausulado
+  —`ContractModelBlock` y sus cinco bloques, `ContractModelInline` y sus dos
+  trozos, `ContractModelRequest`—, más `ContractBillingMode`,
+  `CONTRACT_BILLING_MODES`, `ContractMilestoneResource`,
+  `ContractMilestoneInput`, `ContractModelResource`,
+  `ContractModelVersionResource`, `ContractModelListEnvelope`,
+  `ContractModelVariable`, `ContractModelVariablesMeta`,
+  `ContractModelVariablesResponse`, `ContractDocumentVersionResource`,
+  `ContractDocumentPreview`, `ContractDocumentPreviewRequest`,
+  `ContractSignaturePlacement`, `ContractDocumentBlocked` y
+  `ContractVariableType`.
+- **`contractDocumentBlockers(error)`** (TS) y
+  **`Contracts::documentBlockers($body)`** (PHP): los motivos de un bloqueo,
+  TODOS y no el primero. El spec publica el 422 genérico de validación porque
+  el controlador del núcleo contesta con un `response()->json()` que el
+  generador no inspecciona, así que `blockers` se lee con un helper en vez de
+  afirmarse desde un tipo que no lo tiene.
+- Tests: `typescript/test/contracts-fase2.test.js` (10 casos: las siete
+  operaciones del catálogo, el 409 del borrador, el diccionario y su `meta`,
+  los cuatro modos, el recorrido preview → descarga → firma, el bloqueo con
+  sus motivos, la revisión obsoleta y la factura manual),
+  `typescript/test/types/contracts-fase2.ts` (asertos de tipo bajo
+  `tsc --strict`, con los `@ts-expect-error` de lo que NO debe compilar) y
+  `php/tests/ContractsFase2Test.php` con los mismos nueve casos.
+
+### Cambiado
+
+- **Las 12 operaciones que devuelven un contrato** —GET `/contracts`, GET/PUT
+  `/contracts/{id}`, POST `/contracts`, POST `/contracts/{id}/activate`,
+  `/cancel`, `/renew`, `/document`, DELETE `/contracts/{id}/document`,
+  GET/POST/DELETE `/contracts/{id}/signature`— publican ahora, **siempre**:
+  `billing_mode`, `total_amount` (anulable), `project_id` (anulable) y
+  `project` (solo si puedes verlo), `contract_model_version_id` (anulable) y
+  `contract_model` (nombre y número de versión), `milestones[]` y
+  `recurring_invoices[]`. Las dos listas dejaron de ser condicionales a
+  propósito: `[]` dice «ninguna» y una clave ausente solo diría «no sé».
+  `billing_every` pasa a `string | null`.
+- ⚠️ **`POST`/`PUT /contracts`: `amount` y `billing_every` dejan de ser
+  obligatorios** y pasan a anulables; `billing_every` gana `null` en su enum.
+  El cuerpo acepta `billing_mode` (enum cerrado de cuatro),
+  `total_amount`, `project_id`, `contract_model_version_id` y `milestones[]`
+  (`description`, `amount` en céntimos, `planned_date`, `position`).
+  **Un campo ajeno al modo es un 422**, no un dato que se ignore.
+- ⚠️ **`POST`/`PUT /invoices` aceptan `contract_id`**: es el vínculo de la
+  factura MANUAL con su contrato. La columna existía desde
+  `2026_08_30_120000` y nadie la escribía, así que la factura de un contrato
+  por hitos no aparecía bajo su contrato.
+- **`contract_id` (anulable) se publica en toda factura**, y eso toca 15
+  operaciones: GET/POST `/invoices`, GET/PUT `/invoices/{id}`, POST
+  `/invoices/{id}/clone`, POST `/invoices/{id}/credit-note`, POST
+  `/estimates/{id}/convert-to-invoice`, GET/POST `/payments`, GET/PUT
+  `/payments/{id}` y GET/POST `/recurring-invoices`, GET/PUT
+  `/recurring-invoices/{id}` —las de pagos y recurrentes porque embeben la
+  factura—. Complementa a `recurring_invoice_id`, no lo sustituye: aquel traza
+  lo que emitió una recurrente gobernada y este lo que se creó a mano.
+- **`POST /contracts/{id}/signature` acepta `document_version_id`**: la
+  `reference` de la revisión que se acaba de ver. `nullable` en la validación
+  y **obligatoria bajo el bloqueo cuando el contrato usa un modelo** —la regla
+  la decide el estado de la fila, no la forma del cuerpo—, así que un contrato
+  sin modelo se sigue enviando sin ella. No es una ruta nueva ni un
+  `signature_send` alternativo: es la de siempre con un requisito más.
+- ⚠️ **El enum de abilities gana cinco valores** —`view-contract-model`,
+  `create-contract-model`, `edit-contract-model`, `publish-contract-model`,
+  `archive-contract-model`— en **POST `/roles`**, **PUT `/roles/{id}`** y
+  **PUT `/roles/{id}/abilities`**. Es aditivo: nada que compilara deja de
+  compilar.
+- `typescript/src/api.ts` regenerado con `scripts/sync-spec.sh`;
+  `dist/api.d.ts` sale del build. `@pimia/design-tokens` acompaña la 0.34.0
+  sin cambios funcionales. PHP toma la versión del tag del espejo.
+
+### Lo que el SDK estrecha a mano, y por qué
+
+Cinco formas se escriben aquí en vez de tomarse del generado, y las cinco
+están **medidas contra el núcleo**, no supuestas. Van anotadas en el código:
+
+- **`ContractModelRequest.content`.** La regla del núcleo es
+  `['nullable', 'array']`, así que el spec publica `string[] | null` — una
+  lista de cadenas, que no es lo que el servidor valida. Tomarlo tal cual
+  habría hecho que el árbol CORRECTO no compilase.
+- **`draft_content`, `content`, `compatible_modes` y `variables_used`** salen
+  del generador como `unknown[]` (columnas JSON sin tipar).
+- **`expected_signature_field` es un OBJETO** (`page`, `page_count` y la caja
+  en porcentaje) y el generado dice `unknown[]`: un panel que hiciera
+  `.length` sobre eso no vería nada. Lo mismo con `data_snapshot`.
+- **El `200` de `contract-models.show` y de `contractModels.publish`** sale
+  como objeto opaco (`Record<string, never>`), el defecto ya conocido de las
+  17 operaciones de la 0.6.0: usarlo afirmaría que `data` no tiene
+  propiedades. Los siete atajos devuelven el tipo estrechado.
+- **El `data` de `/contract-models/variables`** es `unknown[]`: el diccionario
+  se tipa contra `app/ContractModels/VariableDictionary.php`.
+
+Y una que **no** se estrecha: `status` del contrato y del modelo siguen siendo
+`string` sin enum en el contrato público, como `frequency`/`limit_by` de la
+recurrente desde la 0.6.0. Inventar aquí un enum que el spec no declara sería
+afirmar una garantía que el servidor no da.
+
+### Cómo migrar
+
+- **Un alta antigua sin `billing_mode` sigue siendo de cuotas.** El núcleo lo
+  resuelve al modo persistido o a `INSTALLMENTS`, así que el código que ya
+  mandaba `amount` + `billing_every` no cambia. Lo que cambia es que ahora
+  **puedes** no mandarlos: para `MILESTONES`, `ONE_OFF` y `NONE` son un 422.
+- **Solo `INSTALLMENTS` crea o adopta recurrente al activar.** En los otros
+  tres modos, `activate` pasa a ACTIVE sin recurrente ni factura, y pasar
+  `recurringInvoiceId` es un 422, no una adopción silenciosa. Si tu código
+  espera una recurrente después de activar, condiciónalo al modo. Y
+  `invoices:write` solo se exige de verdad en el modo que factura, resuelto
+  con el modo PERSISTIDO.
+- **Los hitos son GUÍA.** No emiten factura, no marcan cobro y `planned_date`
+  no es un vencimiento. La factura de un hito se crea a mano con
+  `contract_id`. Y viajan como CONJUNTO: omitir `milestones` conserva los que
+  haya, mandarla —aunque sea `[]`— la sustituye entera. La API no acepta ids
+  de hito, que es lo que impide adjuntar al tuyo el hito de otro contrato.
+- **`recurring_invoices: []` ahora significa «ninguna»,** no «no te lo
+  cuento»: si tu código trataba la clave ausente como «no consta», ya puede
+  distinguirlas.
+- **Un contrato con modelo no se envía sin revisión.** El recorrido es
+  `documentPreview()` → `documentPreviewDownload(reference)` → `signature.send`
+  con `document_version_id`. Un contrato SIN modelo sigue enviándose sin ella
+  —el núcleo prepara su revisión por el mismo camino— así que un cliente
+  anterior a esta versión no se rompe; el que use modelos, sí tiene que pasar
+  a este recorrido.
+- ⛔ **Un bloqueo no se reintenta solo.** Ni preparando otra revisión ni
+  reenviando la firma: falta un dato o la revisión dejó de ser vigente, y las
+  dos cosas las arregla una persona. Preparar otra vez hornea OTRO PDF y
+  retira la revisión anterior. Lee los motivos con `contractDocumentBlockers`
+  / `Contracts::documentBlockers` y enséñalos todos.
+- **El hash no autoriza.** `source_document_sha256` identifica los bytes y es
+  evidencia; lo que se manda al firmar es la `reference`, y el servidor lo
+  vuelve a comprobar todo bajo bloqueo. Tampoco esperes ese hash en el PDF
+  firmado: al colocar la firma, el proveedor reescribe su propio documento.
+- **Una versión publicada es inmutable y no se elige «la última».** Publicar
+  la v2 no toca la v1 ni los contratos que la eligieron; archivar retira de
+  las selecciones NUEVAS y no borra historial.
+- **Guardar un borrador exige la `draft_revision` que leíste.** Un 409 dice
+  que otra edición guardó mientras tanto: recarga y reaplica, no reintentes
+  con el mismo número.
+- **`implicit_preview: true` no acredita que nadie haya visto el papel:** es
+  la revisión que preparó el propio envío de un contrato sin modelo.
+- El starter conserva las dependencias publicadas; se actualizan **después**
+  de publicar, como manda el paso 4 del checklist. Esta rama no crea el tag.
+
 ## [0.33.0] — 2026-09-22
 
 El contrato del **plano central 1.19.0** (arrastra también lo que la 1.18.0
