@@ -17,6 +17,7 @@ export type {
   ContractMilestoneInput,
   ContractMilestoneResource,
   ContractModelBlock,
+  ContractModelDetailResource,
   ContractModelListEnvelope,
   ContractModelHeadingBlock,
   ContractModelInline,

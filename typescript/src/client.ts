@@ -148,6 +148,15 @@ export type ContractModelResource = Omit<
   versions?: ContractModelVersionResource[]
 }
 
+/**
+ * El modelo tal como lo devuelven `get` y `publish`: el spec añade ahí
+ * `required: ["versions"]`, así que el historial se garantiza y no hace falta
+ * guardarlo contra `undefined`.
+ */
+export type ContractModelDetailResource = ContractModelResource & {
+  versions: ContractModelVersionResource[]
+}
+
 /** El sobre de un listado de modelos; el spec no tipa la paginación de Laravel. */
 export interface ContractModelListEnvelope {
   data: ContractModelResource[]
@@ -942,7 +951,7 @@ export class PimiaClient {
          * afirmaría que `data` **no tiene propiedades**.
          */
         get: (id: number | string, options?: ReadOptions) =>
-          this.get<ResourceEnvelope<ContractModelResource>>(
+          this.get<ResourceEnvelope<ContractModelDetailResource>>(
             `/contract-models/${id}`,
             undefined,
             options,
@@ -970,7 +979,7 @@ export class PimiaClient {
          * Nunca elijas «la última» en silencio: la versión es una decisión.
          */
         publish: (id: number | string, options?: WriteOptions) =>
-          this.post<ResourceEnvelope<ContractModelResource>>(
+          this.post<ResourceEnvelope<ContractModelDetailResource>>(
             `/contract-models/${id}/publish`,
             {},
             options,
@@ -996,7 +1005,7 @@ export class PimiaClient {
          * del esquema: léelos de ahí en vez de clavarlos en el panel.
          */
         variables: (
-          query?: { billing_mode?: ContractBillingMode },
+          query?: { billing_mode?: ContractBillingMode | null },
           options?: ReadOptions,
         ) =>
           this.get<ContractModelVariablesResponse>(

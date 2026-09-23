@@ -218,7 +218,9 @@ test('preview: prepara, descarga los MISMOS bytes y envía con la referencia', a
     data: revision,
     download_url: `https://acme.pimia.es/api/v1/contracts/7/document-preview/${revision.reference}`,
   }
-  const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46])
+  // Cabecera PDF y dos bytes que NO son UTF-8 válido: leer la respuesta como
+  // texto los reemplazaría por U+FFFD y el tamaño seguiría cuadrando por azar.
+  const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0xff, 0xfe])
   const { client, calls } = clienteEspia((n) => {
     if (n === 2) {
       return new Response(pdf, { status: 200, headers: { 'content-type': 'application/pdf' } })
@@ -231,7 +233,7 @@ test('preview: prepara, descarga los MISMOS bytes y envía con la referencia', a
 
   const bytes = await client.contracts.documentPreviewDownload(7, vista.data.reference)
   assert.ok(bytes instanceof Blob)
-  assert.equal(bytes.size, 4)
+  assert.deepEqual(new Uint8Array(await bytes.arrayBuffer()), pdf)
 
   await client.contracts.signature.send(7, {
     name: 'Ana',
@@ -323,7 +325,7 @@ test('una factura manual se vincula a su contrato por `contract_id`', async () =
     invoice_date: '2026-11-02',
     due_date: '2026-11-30',
     contract_id: 7,
-    items: [],
+    items: [{ name: 'Hito 1', quantity: 1, price: 50000 }],
   })
 
   assert.equal(creada.data.contract_id, 7)

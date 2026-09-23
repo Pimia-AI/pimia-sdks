@@ -93,7 +93,8 @@ async function catalogo(client: PimiaClient) {
   // Los modos compatibles se deducen del texto y llegan como enum, no como string suelta.
   detalle.data.published_version?.compatible_modes satisfies ContractBillingMode[] | undefined
   detalle.data.published_version?.variables_used satisfies string[] | undefined
-  detalle.data.versions?.[0]?.version_number satisfies number | undefined
+  // En el detalle el historial está garantizado: sin `?.` sobre `versions`.
+  detalle.data.versions[0]?.version_number satisfies number | undefined
 
   await client.contracts.models.publish(4)
   await client.contracts.models.archive(4)

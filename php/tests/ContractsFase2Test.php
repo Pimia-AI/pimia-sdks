@@ -175,6 +175,8 @@ final class ContractsFase2Test extends TestCase
 
         // El PDF llega como bytes, no decodificado: leerlo como JSON lo corrompe.
         $this->assertSame($pdf, $client->contracts->downloadDocumentPreview(7, $vista['data']['reference']));
+        // Y se pide sin exigir JSON: el 200 de esa ruta es `application/pdf`.
+        $this->assertSame('*/*', $transport->calls[1]['headers']['accept']);
 
         $client->contracts->sendForSignature(7, [
             'name' => 'Ana', 'email' => 'ana@example.test',
@@ -199,7 +201,8 @@ final class ContractsFase2Test extends TestCase
 
         $client->contracts->documentPreview('7');
 
-        $this->assertSame([], json_decode($transport->calls[0]['body'], true));
+        // Literal, no decodificado: `json_decode` funde `{}` y `[]` en el mismo array vacío.
+        $this->assertSame('{}', $transport->calls[0]['body']);
     }
 
     public function test_un_bloqueo_llega_con_todos_los_motivos_y_sin_reintento(): void
@@ -257,7 +260,7 @@ final class ContractsFase2Test extends TestCase
 
         $creada = $client->invoices->create([
             'customer_id' => 5, 'invoice_date' => '2026-11-02', 'due_date' => '2026-11-30',
-            'contract_id' => 7, 'items' => [],
+            'contract_id' => 7, 'items' => [['name' => 'Hito 1', 'quantity' => 1, 'price' => 50000]],
         ]);
 
         $this->assertSame(7, $creada['data']['contract_id']);

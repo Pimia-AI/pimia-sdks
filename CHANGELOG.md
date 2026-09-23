@@ -64,7 +64,8 @@ tageada): esta entrada NO la sustituye. Publicar la 0.34.0 arrastra las dos.
   trozos, `ContractModelRequest`—, más `ContractBillingMode`,
   `CONTRACT_BILLING_MODES`, `ContractMilestoneResource`,
   `ContractMilestoneInput`, `ContractModelResource`,
-  `ContractModelVersionResource`, `ContractModelListEnvelope`,
+  `ContractModelDetailResource` (lo que devuelven `get` y `publish`: ahí
+  `versions` está garantizado), `ContractModelVersionResource`, `ContractModelListEnvelope`,
   `ContractModelVariable`, `ContractModelVariablesMeta`,
   `ContractModelVariablesResponse`, `ContractDocumentVersionResource`,
   `ContractDocumentPreview`, `ContractDocumentPreviewRequest`,

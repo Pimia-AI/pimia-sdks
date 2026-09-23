@@ -125,7 +125,9 @@ final class Contracts
      */
     public function documentPreview(int|string $id, array $data = [], ?string $idempotencyKey = null): mixed
     {
-        return $this->client->post("/contracts/{$id}/document-preview", $data, $idempotencyKey);
+        // Sin datos, el cuerpo tiene que ser `{}`: un array PHP vacío se
+        // serializa como `[]`, que no es el objeto que declara el contrato.
+        return $this->client->post("/contracts/{$id}/document-preview", $data === [] ? new \stdClass() : $data, $idempotencyKey);
     }
 
     /**
@@ -143,7 +145,8 @@ final class Contracts
      */
     public function downloadDocumentPreview(int|string $id, string $reference): mixed
     {
-        return $this->client->get("/contracts/{$id}/document-preview/{$reference}");
+        // El cliente pide JSON por defecto; aquí el 200 es `application/pdf`.
+        return $this->client->request('GET', "/contracts/{$id}/document-preview/{$reference}", headers: ['accept' => '*/*']);
     }
 
     /**
