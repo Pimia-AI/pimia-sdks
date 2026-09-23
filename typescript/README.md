@@ -409,6 +409,99 @@ ni ejecuta la confirmación. La cartera/ficha obtiene `CobroDeInstancia` de
 
 Cambios incompatibles y versión propuesta: [Cómo migrar](../CHANGELOG.md#cómo-migrar).
 
+### Contratos: modos, modelos y vista previa (0.34.0)
+
+Un contrato tiene **modo**, y el modo manda sobre el resto de la ficha:
+
+```ts
+// Cuotas: la recurrente nace al activar.
+await client.contracts.create({
+  title: 'Mantenimiento', customer_id: 5, starts_at: '2026-10-01',
+  billing_mode: 'INSTALLMENTS', amount: 12000, billing_every: 'MONTHLY',
+})
+
+// Hitos: total opcional, guía ordenada, proyecto y clausulado elegido.
+await client.contracts.create({
+  title: 'Reforma', customer_id: 5, starts_at: '2026-10-01',
+  billing_mode: 'MILESTONES', total_amount: 450000, project_id: 11,
+  contract_model_version_id: 9,
+  milestones: [
+    { description: 'Fase 1', amount: 150000, planned_date: '2026-11-01', position: 1 },
+    { description: 'Fase 2', amount: 300000, planned_date: null, position: 2 },
+  ],
+})
+```
+
+`ONE_OFF` lleva `total_amount` opcional y `NONE` no lleva nada económico:
+es un documento que se firma. `customer_id` sigue siendo obligatorio en los
+cuatro, y un campo ajeno al modo es un **422**, no un dato que se ignore. Un
+alta sin `billing_mode` se resuelve al persistido o a `INSTALLMENTS`, así que
+los contratos anteriores no cambian.
+
+⛔ **Solo `INSTALLMENTS` factura.** En los otros tres, `activate` pasa a ACTIVE
+sin crear recurrente ni factura, y `recurringInvoiceId` ahí es un 422. Los
+hitos son **guía**: no emiten nada. La factura de un hito se crea a mano y se
+ve bajo el contrato:
+
+```ts
+await client.invoices.create({ customer_id: 5, invoice_date: '2026-11-02', due_date: '2026-11-30', contract_id: 7, items: [...] })
+```
+
+**El clausulado propio de la empresa.** Es un formato de datos —bloques y,
+dentro, texto o marcadores—, nunca HTML ni plantilla:
+
+```ts
+const { data: diccionario, meta } = await client.contracts.models.variables({ billing_mode: 'MILESTONES' })
+// meta.block_types, meta.inline_types y meta.limits vienen del servidor: no los claves.
+
+const { data: modelo } = await client.contracts.models.create({
+  name: 'Mantenimiento',
+  content: [
+    { type: 'heading', level: 2, text: [{ type: 'text', value: 'Objeto', bold: true }] },
+    { type: 'paragraph', text: [{ type: 'text', value: 'Entre ' }, { type: 'variable', key: 'customer.name' }] },
+    { type: 'table', variable: 'contract.milestones' },
+    { type: 'signature' }, // dónde firma el cliente: uno, ni cero ni dos
+  ],
+  draft_revision: 0,
+})
+await client.contracts.models.publish(modelo.id) // versión INMUTABLE
+```
+
+Guardar contenido exige la `draft_revision` que leíste: si otra edición guardó
+mientras tanto, es un **409** y hay que recargar y reaplicar. Publicar la v2 no
+toca la v1 ni los contratos que la eligieron; `archive` retira de las
+selecciones nuevas y no borra historial. Los `modes` de cada marcador dicen con
+qué modos es compatible, y `guarded` que además hay que **poder ver** el dato.
+El catálogo tiene **abilities propias**: poder enviar un contrato no concede
+redactar modelos.
+
+**Revisar antes de firmar**, que desde el #934 es el recorrido:
+
+```ts
+const vista = await client.contracts.documentPreview(7, { name: 'Ana', email: 'ana@example.test' })
+const pdf = await client.contracts.documentPreviewDownload(7, vista.data.reference) // Blob
+await client.contracts.signature.send(7, {
+  name: 'Ana', email: 'ana@example.test', document_version_id: vista.data.reference,
+})
+```
+
+La preview **no envía**: no crea envelope, no manda correos y no consume
+intento de firma. Los bytes se sirven del archivo y no se regeneran nunca —un
+PDF horneado de nuevo sería otro documento—. `source_document_sha256` es
+evidencia, **no autorización**: lo que se manda es la `reference`, y el
+servidor lo vuelve a comprobar bajo bloqueo.
+
+⛔ Si falta un dato o la revisión dejó de ser vigente, el 422 trae **todos** los
+motivos y no se reintenta solo:
+
+```ts
+try { await client.contracts.documentPreview(7) }
+catch (e) { const motivos = contractDocumentBlockers(e); if (motivos) mostrarBloqueo(motivos) }
+```
+
+`implicit_preview: true` marca la revisión que preparó el propio envío de un
+contrato sin modelo: **no acredita que nadie haya visto el papel**.
+
 ### Firma del cliente en contratos (0.32.0)
 
 ```ts

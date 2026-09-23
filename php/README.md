@@ -245,6 +245,84 @@ es `OwnerConfirmationRequired::MAIL_FAILED_CODE`. El SDK no ejecuta ni abre
 el enlace de confirmación. El plano central y los métodos de primer periodo
 siguen siendo exclusivos de TypeScript.
 
+### Contratos: modos, modelos y vista previa (0.34.0)
+
+```php
+// Cuotas: es el ÚNICO modo que crea o adopta recurrente al activar.
+$client->contracts->create([
+    'title' => 'Mantenimiento', 'customer_id' => 5, 'starts_at' => '2026-10-01',
+    'billing_mode' => 'INSTALLMENTS', 'amount' => 12000, 'billing_every' => 'MONTHLY',
+]);
+
+// Hitos: total opcional, guía ordenada en céntimos, proyecto y clausulado.
+$client->contracts->create([
+    'title' => 'Reforma', 'customer_id' => 5, 'starts_at' => '2026-10-01',
+    'billing_mode' => 'MILESTONES', 'total_amount' => 450000,
+    'project_id' => 11, 'contract_model_version_id' => 9,
+    'milestones' => [
+        ['description' => 'Fase 1', 'amount' => 150000, 'planned_date' => '2026-11-01', 'position' => 1],
+        ['description' => 'Fase 2', 'amount' => 300000, 'planned_date' => null, 'position' => 2],
+    ],
+]);
+```
+
+`ONE_OFF` lleva `total_amount` opcional y `NONE` no lleva nada económico.
+`customer_id` sigue siendo obligatorio en los cuatro modos y un campo ajeno al
+modo es un **422**. Un alta sin `billing_mode` se resuelve al persistido o a
+`INSTALLMENTS`: los contratos anteriores no cambian.
+
+⛔ Los hitos son **guía**: no emiten factura ni marcan cobro. La de un hito se
+crea a mano y aparece bajo el contrato:
+`$client->invoices->create([..., 'contract_id' => 7])`.
+
+**El catálogo de clausulados** vive en `$client->contracts->models` y tiene
+**abilities propias**: poder enviar un contrato no concede redactar modelos.
+
+```php
+$diccionario = $client->contracts->models->variables('MILESTONES');
+// $diccionario['meta']['limits'] y ['block_types'] vienen del servidor.
+
+$modelo = $client->contracts->models->create([
+    'name' => 'Mantenimiento',
+    'draft_revision' => 0,
+    'content' => [
+        ['type' => 'heading', 'level' => 2, 'text' => [['type' => 'text', 'value' => 'Objeto', 'bold' => true]]],
+        ['type' => 'paragraph', 'text' => [['type' => 'variable', 'key' => 'customer.name']]],
+        ['type' => 'table', 'variable' => 'contract.milestones'],
+        ['type' => 'signature'], // dónde firma el cliente: uno, ni cero ni dos
+    ],
+]);
+$client->contracts->models->publish($modelo['data']['id']); // versión INMUTABLE
+```
+
+Guardar contenido exige la `draft_revision` que leíste: un **409** dice que
+otra edición guardó mientras tanto. Publicar la v2 no toca la v1 ni los
+contratos que la eligieron; `archive` retira de las selecciones nuevas sin
+borrar historial.
+
+**Revisar antes de firmar:**
+
+```php
+$vista = $client->contracts->documentPreview(7, ['name' => 'Ana', 'email' => 'ana@example.test']);
+$pdf = $client->contracts->downloadDocumentPreview(7, $vista['data']['reference']); // bytes
+$client->contracts->sendForSignature(7, [
+    'name' => 'Ana', 'email' => 'ana@example.test',
+    'document_version_id' => $vista['data']['reference'],
+]);
+```
+
+La preview **no envía** y los bytes se sirven del archivo sin regenerarse.
+`source_document_sha256` es evidencia, **no autorización**. Un 422 de falta de
+dato o de revisión obsoleta trae todos los motivos y **no se reintenta solo**:
+
+```php
+try { $client->contracts->documentPreview(7); }
+catch (ValidationException $e) { $motivos = Contracts::documentBlockers($e->body); }
+```
+
+`implicit_preview => true` marca la revisión que preparó el propio envío de un
+contrato sin modelo: no acredita que nadie haya visto el papel.
+
 ### Firma del cliente en contratos (0.32.0)
 
 ```php

@@ -455,9 +455,11 @@ en bloque**: un tag `vX.Y.Z` es esa misma versión en los tres paquetes. Las
 
 **El SDK habla dos contratos**:
 
-- el del **tenant** (`spec/pimia-api-v1.json`, **1.4.3, 446 operaciones**,
-  `factSaas@0ca763c6`) — facturar, cobrar, el almacén, el CRM: lo que usa una
-  app de partner;
+- el del **tenant** (`spec/pimia-api-v1.json`, **455 operaciones**,
+  `factSaas@57b3e03d`, sincronizado en 0.34.0) — facturar, cobrar, el almacén,
+  el CRM: lo que usa una app de partner. ⚠️ Su `info.version` sigue diciendo
+  **1.4.3** con nueve operaciones más que en la 0.32.0: lo que identifica este
+  contrato es el commit, no la versión del documento;
 - el del **plano central** (`spec/pimia-central-v1.json`, **1.19.0, 65
   operaciones**, `factSaas@e21d6d74`, sincronizado en 0.33.0) — la cuenta del
   integrador: cartera, vínculos, verticales, catálogo, activación mayorista,
@@ -470,6 +472,20 @@ completos y con tests. Los helpers de dominio cubren —los mismos diez en los
 dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
+
+**v0.34.0, preparada (2026-09-23)**: contratos fase 2, `factSaas@57b3e03d` —
+**9 operaciones nuevas y 30 modificadas**. El catálogo de clausulados de la
+empresa (`client.contracts.models` / `$client->contracts->models`) con su
+diccionario de marcadores, la vista previa que devuelve la revisión exacta que
+se enviará a firmar (`documentPreview` + `documentPreviewDownload`), los cuatro
+modos de facturación —⛔ **solo `INSTALLMENTS` crea recurrente**; los hitos son
+guía y no emiten nada—, el proyecto opcional y la factura manual vinculada por
+`contract_id`. `POST /contracts/{id}/signature` acepta ahora
+`document_version_id`. Cinco formas se estrechan a mano porque el generador las
+deja en `unknown[]` o en objeto opaco. Ejemplos en los README de
+[TypeScript](typescript/README.md#contratos-modos-modelos-y-vista-previa-0340)
+y [PHP](php/README.md#contratos-modos-modelos-y-vista-previa-0340); detalle y
+migración, en el [CHANGELOG](CHANGELOG.md).
 
 **v0.33.0, preparada (2026-09-22)**: el contrato del plano central **1.19.0**
 (con lo que la 1.18.0 dejó sin publicar), `factSaas@e21d6d74`. Ninguna

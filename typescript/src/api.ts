@@ -1068,6 +1068,151 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contracts/{contract}/document-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prepara el documento del contrato y devuelve su revisión */
+        post: operations["contractDocumentPreview.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contracts/{contract}/document-preview/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los bytes EXACTOS que se enviarán a firmar
+         * @description Se sirven desde el archivo de la revisión y nunca se regeneran: enseñar
+         *     un PDF horneado de nuevo sería enseñar otro documento (decisión 7 del
+         *     #932, «mostrar el documento exacto que se enviará»).
+         */
+        get: operations["contracts.document-preview.download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contract-models/variables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Los marcadores disponibles, con su tipo, formato, requisito y ejemplo */
+        get: operations["contract.contractModelVariables"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contract-models/{contractModel}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publica el borrador como versión inmutable
+         * @description Publicar v2 NO toca v1 ni los contratos que la eligieron: es la decisión
+         *     5 del #932 y lo que hace posible saber qué texto firmó cada cliente.
+         */
+        post: operations["contractModels.publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contract-models/{contractModel}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retira el modelo de las selecciones nuevas, conservando lo ya elegido
+         * @description Archivar no borra ni versiones ni contratos: los que ya apuntan a una de
+         *     sus versiones siguen imprimiendo y firmando ese texto. Lo único que
+         *     cambia es que nadie puede elegirlo de nuevo.
+         */
+        post: operations["contractModels.archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contract-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los modelos de la empresa activa
+         * @description ⚠️ La primera línea de este docblock es el `summary` de la operación en
+         *     el OpenAPI: un párrafo entero ahí sale como título en el SDK.
+         */
+        get: operations["contract-models.index"];
+        put?: never;
+        /** Crea un modelo de clausulado, con su borrador si viene */
+        post: operations["contract-models.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contract-models/{contractModel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Un modelo con su borrador, su versión publicada y su historial */
+        get: operations["contract-models.show"];
+        /**
+         * Edita el nombre y el borrador de un modelo
+         * @description El borrador se guarda bajo BLOQUEO y contra la revisión que el cliente
+         *     leyó: dos ediciones a la vez no pueden pisarse. Quien llega con una
+         *     revisión vieja recibe un 409 y el borrador vigente para que resuelva; lo
+         *     contrario sería perder el texto del otro sin que nadie se enterase.
+         */
+        put: operations["contract-models.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/contracts/delete": {
         parameters: {
             query?: never;
@@ -1097,6 +1242,16 @@ export interface paths {
         };
         get: operations["contracts.index"];
         put?: never;
+        /**
+         * Alta de un contrato
+         * @description El contrato y sus hitos van en UNA transacción: una guía de entregas a
+         *     medias es peor que un 500, porque se lee como un contrato completo al
+         *     que le faltan hitos que nadie echará de menos.
+         *
+         *     ⚠️ La primera línea de este docblock es el `summary` de la operación en
+         *     el OpenAPI: un párrafo entero ahí sale como título en el SDK y en la
+         *     documentación del integrador.
+         */
         post: operations["contracts.store"];
         delete?: never;
         options?: never;
@@ -7071,6 +7226,12 @@ export interface components {
          *     dentro de una instancia conviven varias empresas, y el id a secas casaría
          *     la recurrente de otra. El modelo lo re-comprueba (empresa Y cliente), pero
          *     el 422 de aquí llega antes y dice qué falla.
+         *
+         *     Desde el #933, ADOPTAR es un acto exclusivo de las cuotas: solo
+         *     `INSTALLMENTS` crea o adopta una recurrente al activar. Se comprueba contra
+         *     el modo PERSISTIDO del contrato de la ruta —nunca contra uno que venga en el
+         *     cuerpo—, y el modelo lo vuelve a comprobar bajo el bloqueo: este 422 es el
+         *     que explica, aquel es el que garantiza.
          */
         ActivateContractRequest: {
             recurring_invoice_id?: number | null;
@@ -7335,6 +7496,120 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
         };
+        /** ContractDocumentVersionResource */
+        ContractDocumentVersionResource: {
+            reference: string;
+            contract_id: number;
+            status: string;
+            contract_model_version_id: number | null;
+            signature_version: number | null;
+            locale: string | null;
+            currency_code: string | null;
+            date_format: string | null;
+            render_revision: string;
+            anchored: boolean;
+            source_document_sha256: string;
+            byte_size: number;
+            /**
+             * @description Dónde colocó el proveedor la firma DE VERDAD; vacío hasta que se
+             *     envía, porque hasta entonces no lo sabe nadie.
+             */
+            signature_fields: unknown[] | null;
+            /**
+             * @description Y dónde la ESPERA el papel, medido sobre sus propios bytes. Las
+             *     dos juntas son lo que permite ver, sin abrir el PDF, que la firma
+             *     cayó donde el redactor puso el marcador.
+             */
+            expected_signature_field: unknown[] | null;
+            /**
+             * @description ⚠️ `true` = esta revisión la preparó el propio envío porque el
+             *     contrato no usa modelo y el cliente no mandó referencia. NO
+             *     acredita que nadie haya visto el papel; es el camino temporal que
+             *     3/4 retira.
+             */
+            implicit_preview: boolean;
+            data_snapshot: unknown[];
+            created_at: string | null;
+        };
+        /** ContractMilestoneResource */
+        ContractMilestoneResource: {
+            id: number;
+            contract_id: number;
+            description: string;
+            amount: number;
+            planned_date: string | null;
+            position: number;
+        };
+        /**
+         * ContractModelRequest
+         * @description Alta y edición de un modelo de clausulado (`POST /contract-models`,
+         *     `PUT /contract-models/{id}`).
+         *
+         *     Dos decisiones que no son costumbre sino contrato:
+         *
+         *      - **`status` NO se acepta aquí.** Archivar es su propia acción, como
+         *        activar/cancelar en los contratos (`ContractRequest`): un PUT que pudiera
+         *        archivar de paso convertiría una corrección de nombre en una retirada del
+         *        catálogo.
+         *      - **`draft_revision` es obligatorio cuando se manda contenido.** Es el
+         *        control de concurrencia del criterio de salida 1: dos personas editando el
+         *        mismo borrador no pueden pisarse. Quien manda la revisión que leyó y ya no
+         *        es la vigente recibe un 409 con el porqué, no un guardado silencioso
+         *        encima del trabajo del otro.
+         *
+         *     El contenido se valida con {@see ContentSchema} EN EL SERVIDOR y sin exigir
+         *     todavía el bloque de firma: quien está escribiendo a medias no puede perder
+         *     el texto por no haberlo colocado aún. Publicar sí lo exige.
+         */
+        ContractModelRequest: {
+            name: string;
+            /**
+             * @description El árbol del clausulado. Ausente = «no toques el borrador»; un
+             *     array (aunque sea con un solo párrafo) lo sustituye entero.
+             */
+            content?: string[] | null;
+            /**
+             * @description La revisión que el cliente leyó. `required_with` y no siempre:
+             *     renombrar un modelo no compite con nadie por el texto.
+             */
+            draft_revision?: number | null;
+        };
+        /** ContractModelResource */
+        ContractModelResource: {
+            id: number;
+            company_id: number;
+            name: string;
+            status: string;
+            /** @description El borrador y su revisión: lo que se edita y con qué número. */
+            draft_content: unknown[] | null;
+            draft_revision: number;
+            published_version_id: number | null;
+            /**
+             * @description La semilla de plataforma se declara para que el panel pueda
+             *     decir «este lo trajo Pimia» sin adivinarlo por el nombre.
+             */
+            seed_key: string | null;
+            creator_id: number | null;
+            created_at: string | null;
+            updated_at: string | null;
+            published_version?: components["schemas"]["ContractModelVersionResource"] | null;
+            versions?: components["schemas"]["ContractModelVersionResource"][];
+        };
+        /** ContractModelVersionResource */
+        ContractModelVersionResource: {
+            id: number;
+            contract_model_id: number;
+            version_number: number;
+            content: unknown[];
+            schema_version: string;
+            dictionary_version: string;
+            render_revision: string;
+            layout_key: string;
+            compatible_modes: unknown[];
+            variables_used: unknown[];
+            published_by: number | null;
+            published_at: string;
+        };
         /**
          * ContractRequest
          * @description Alta y edición de un contrato (`POST /contracts`, `PUT /contracts/{id}`).
@@ -7351,6 +7626,34 @@ export interface components {
          *        del spec deduce el enum de la regla, y el estudio dejó medido lo que pasa
          *        cuando no se hace — `frequency`/`status`/`limit_by` de la recurrente son
          *        `string` sin enum en el contrato público y el SDK hereda esa opacidad.
+         *
+         *     ── El modo de facturación manda sobre el resto del cuerpo (#933) ──────────
+         *
+         *     Desde la decisión 11 del #932 hay cuatro modos y cada uno acepta un cuerpo
+         *     distinto. La matriz, dicha entera:
+         *
+         *     | campo                | INSTALLMENTS | MILESTONES | ONE_OFF   | NONE      |
+         *     |----------------------|--------------|------------|-----------|-----------|
+         *     | `amount` (la CUOTA)  | obligatorio  | prohibido  | prohibido | prohibido |
+         *     | `billing_every`      | obligatorio  | prohibido  | prohibido | prohibido |
+         *     | `billing_anchor_day` | opcional     | prohibido  | prohibido | prohibido |
+         *     | `total_amount`       | prohibido    | opcional   | opcional  | prohibido |
+         *     | `milestones`         | prohibido    | opcional   | prohibido | prohibido |
+         *
+         *     `customer_id` y `starts_at` siguen siendo obligatorios en los CUATRO: nadie
+         *     ha ratificado retirarlos para `NONE`, y activar los exige igualmente
+         *     (Contract::activate()).
+         *
+         *     Prohibido significa 422 con el porqué, no descarte en silencio: mandar una
+         *     cuota en un contrato de hitos es una confusión del cliente —seguramente
+         *     quería `total_amount`— y tragársela dejaría el contrato diciendo que cobra
+         *     todos los meses algo que nadie va a cobrar. Las reglas son `required_if` /
+         *     `prohibited_unless` y no un `if` en PHP a propósito: así el generador del
+         *     spec publica la condición en vez de una regla que cambia según quién la mire.
+         *
+         *     ⚠️ `prohibited_unless` deja pasar el valor VACÍO (null, '' o []), que es lo
+         *     que hace que un cliente pueda mandar siempre el mismo cuerpo con los campos
+         *     del otro modo a null. Un `0` no es vacío: eso sí es un importe, y se rechaza.
          */
         ContractRequest: {
             title: string;
@@ -7366,13 +7669,26 @@ export interface components {
              */
             ends_at?: string | null;
             /**
-             * @description Céntimos, enteros — la convención monetaria de la casa. El tope
-             *     es el mismo que el de `total` en documentos.
+             * @description Los cuatro modos de la decisión 11. Opcional en el cuerpo:
+             *     prepareForValidation lo resuelve al persistido o a INSTALLMENTS.
+             * @enum {string|null}
              */
-            amount: number;
+            billing_mode?: "INSTALLMENTS" | "MILESTONES" | "ONE_OFF" | "NONE" | null;
+            /**
+             * @description Céntimos, enteros — la convención monetaria de la casa. El tope
+             *     es el mismo que el de `total` en documentos. Es la CUOTA, y por
+             *     eso solo existe en el modo que cobra cuotas.
+             */
+            amount?: number | null;
+            /**
+             * @description El TOTAL opcional de un contrato de hitos o de pago único. No es
+             *     `amount` con otro nombre y no se deriva de él ni al revés: uno es
+             *     lo que se cobra cada periodo y otro lo que vale el trabajo entero.
+             */
+            total_amount?: number | null;
             currency_id?: number | null;
-            /** @enum {string} */
-            billing_every: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "ANNUAL";
+            /** @enum {string|null} */
+            billing_every?: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "ANNUAL" | null;
             /**
              * @description 1..31 y no 1..28: el 29-31 es entrada legítima («factúrame a fin
              *     de mes») que la compilación fija al 28 — rechazarla aquí obligaría
@@ -7392,6 +7708,67 @@ export interface components {
              *     podía quedar apuntando al presupuesto de OTRA empresa del tenant.
              */
             estimate_id?: number | null;
+            /**
+             * @description La obra que el contrato ampara (decisión 12). Tres candados, y
+             *     los tres hacen falta: 1. `company_id` de la cabecera — el alcance de `estimate_id`,
+             *     por la misma razón: dentro de una instancia conviven varias
+             *     empresas y un id a secas casaría el proyecto de otra.
+             *     2. `deleted_at` nulo — `projects` usa SoftDeletes y `exists` NO
+             *     lo sabe: sin esto se podría estrenar un vínculo a una obra
+             *     que la empresa ya retiró.
+             *     3. La política de proyectos (`view-project`) sobre el usuario
+             *     que escribe. Es lo que impide que `edit-contract` se
+             *     convierta en una puerta trasera al censo de obras: quien no
+             *     puede ver un proyecto tampoco lo nombra en un contrato.
+             *
+             *     Y la coherencia con el cliente: un contrato es de UN cliente y
+             *     el proyecto también, así que vincular la obra de otro sería una
+             *     ficha que no significa nada. Se rechaza con el porqué.
+             */
+            project_id?: number | null;
+            /**
+             * @description El clausulado elegido, en la versión EXACTA (#934, decisión 5
+             *     del #932). Tres candados, y los tres hacen falta: 1. `company_id` de la cabecera — como `estimate_id` y
+             *     `project_id`: dentro de una instancia conviven varias
+             *     empresas y un id a secas casaría el modelo de otra.
+             *     2. Solo en BORRADOR: el controlador recorta el payload fuera de
+             *     él (EDITABLES_FUERA_DE_BORRADOR no lo lleva) y una firma viva
+             *     bloquea la edición entera. Cambiar el papel de un contrato
+             *     activo no es una corrección: es otro contrato.
+             *     3. Coherencia con el MODO y con el estado del catálogo, en
+             *     `withValidator`: un modelo que imprime la cuota mensual no
+             *     sirve para un contrato por hitos, y un modelo ARCHIVADO no
+             *     admite selecciones nuevas —aunque conserve las que ya tenía.
+             *
+             *     ⛔ Nada aplica «la última publicada» por su cuenta: el nulo es
+             *     el recorrido de siempre y publicar v2 no toca a quien eligió v1.
+             */
+            contract_model_version_id?: number | null;
+            /**
+             * @description Los hitos, como CONJUNTO. La API no acepta ids de hito y eso no
+             *     es un olvido: mandar la lista entera es la única semántica en la
+             *     que no se puede adjuntar el hito de otro contrato —ni de otra
+             *     empresa— al tuyo. Omitir la clave conserva los que haya;
+             *     mandarla (aunque sea `[]`) la sustituye entera y de una pieza.
+             */
+            milestones?: {
+                description: string;
+                /** @description Céntimos, como todo importe de la casa. */
+                amount: number;
+                /**
+                 * Format: date-time
+                 * @description La fecha PREVISTA de la entrega. Ni vencimiento ni ancla de
+                 *     facturación: un hito no emite nada.
+                 */
+                planned_date?: string | null;
+                /**
+                 * @description El orden en pantalla. Si no llega, manda la posición en el array.
+                 *     `distinct` porque la columna lleva índice único por contrato: dos
+                 *     hitos en la misma posición eran un 23505 (500) en vez de un 422,
+                 *     y antes de eso una guía cuyo orden dependía del id.
+                 */
+                position?: number | null;
+            }[] | null;
         };
         /** ContractResource */
         ContractResource: {
@@ -7408,7 +7785,16 @@ export interface components {
             starts_at: string | null;
             ends_at: string | null;
             amount: number | null;
-            billing_every: string;
+            /**
+             * @description El modo manda sobre el resto de la ficha (decisión 11): `amount`
+             *     y `billing_every` solo son datos reales en `INSTALLMENTS`, y
+             *     `total_amount` solo en `MILESTONES`/`ONE_OFF`. En los demás
+             *     llegan a `null`, que aquí significa «este contrato no tiene eso»
+             *     y no «no consta».
+             */
+            billing_mode: string;
+            total_amount: number | null;
+            billing_every: string | null;
             billing_anchor_day: number | null;
             renewal_mode: string;
             notice_days: number | null;
@@ -7435,12 +7821,57 @@ export interface components {
              */
             has_document: boolean;
             estimate_id: number | null;
+            /**
+             * @description El vínculo a la obra (decisión 12), que convive con el
+             *     presupuesto y no lo sustituye. El ID se publica siempre —es una
+             *     columna DEL CONTRATO, y ocultarlo dejaría a su dueño sin saber
+             *     que existe—; los DATOS del proyecto, solo a quien pueda verlo.
+             */
+            project_id: number | null;
+            /**
+             * @description El clausulado elegido (#934). El ID va SIEMPRE —es una columna
+             *     del contrato y ocultarlo dejaría a su dueño sin saber que
+             *     existe—; el detalle, resumido: nombre del modelo y número de
+             *     versión, que es lo que una pantalla necesita nombrar. El árbol
+             *     entero se lee en `/contract-models/{id}`, con su propia ability.
+             */
+            contract_model_version_id: number | null;
+            contract_model?: {
+                version_id: number;
+                version_number: number;
+                contract_model_id: number;
+                name: string;
+            };
             /** Format: date-time */
             cancelled_at: string | null;
             fields?: components["schemas"]["CustomFieldValueResource"][];
             customer?: components["schemas"]["CustomerResource"] | null;
             estimate?: components["schemas"]["EstimateResource"] | null;
-            recurring_invoices?: components["schemas"]["RecurringInvoiceResource"][];
+            /**
+             * @description El proyecto, reducido a lo que un contrato necesita nombrar y
+             *     SOLO para quien puede verlo. Expandir la ficha entera convertiría
+             *     `view-contract` en una lectura del censo de obras —presupuesto,
+             *     horas, responsable—, que es justo lo que el #933 prohíbe. Ausente
+             *     = «no hay proyecto, o no es tuyo»; para eso está `project_id`. Un proyecto retirado (SoftDeletes) deja la relación en `null` y
+             *     el `project_id` en su sitio: el vínculo se firmó y no se reescribe.
+             */
+            project?: {
+                id: number;
+                name: string;
+            };
+            /**
+             * @description La guía de entregas, SIEMPRE presente (vacía en los otros tres
+             *     modos). Un array vacío dice «no hay hitos»; una clave ausente
+             *     solo diría «no sé».
+             */
+            milestones: components["schemas"]["ContractMilestoneResource"][];
+            /**
+             * @description También SIEMPRE, y por eso dejó de ser un `when()`: en un
+             *     contrato de hitos, de pago único o de solo-documento no hay
+             *     recurrentes NUNCA, y omitir la clave dejaba al cliente sin poder
+             *     distinguir «ninguna» de «no te lo cuento» (#933).
+             */
+            recurring_invoices: components["schemas"]["RecurringInvoiceResource"][];
             invoices?: components["schemas"]["InvoiceResource"][];
         };
         /**
@@ -8843,6 +9274,15 @@ export interface components {
             external_ref: string | null;
             payment_method_id: number | null;
             recurring_invoice_id: number | null;
+            /**
+             * @description El contrato bajo el que se creó esta factura, si nació bajo uno
+             *     (#933). Complementa a `recurring_invoice_id`, no lo sustituye:
+             *     aquel traza lo que emitió una recurrente gobernada y este lo que
+             *     se creó a mano bajo el contrato. La columna existía desde
+             *     2026_08_30_120000 y no se publicaba, así que el vínculo era
+             *     invisible por la API aunque el contrato sí listara sus facturas.
+             */
+            contract_id: number | null;
             sequence_number: number | null;
             exchange_rate: number | null;
             base_discount_val: number;
@@ -9130,6 +9570,33 @@ export interface components {
             template_name?: string | null;
             invoice_series_id?: number | null;
             payment_method_id?: number | null;
+            /**
+             * @description El contrato bajo el que nace esta factura MANUAL (#933, pieza 7). La columna y su FK existen desde 2026_08_30_120000 y
+             *     `Contract::invoices()` ya las leía, pero NADIE las escribía: sin
+             *     regla aquí, la clave se caía en la lista blanca del payload
+             *     (ContractFields) y la factura de un contrato por hitos no
+             *     aparecía bajo su contrato. Una columna no es un recorrido.
+             *
+             *     No sustituye a `recurring_invoice_id`: aquella traza lo que emite
+             *     una recurrente gobernada y esta lo que se crea a mano (altas,
+             *     penalizaciones, el hito que se entrega). Y no altera NADA fiscal
+             *     —ni serie, ni número, ni impuestos, ni VeriFactu—: es una
+             *     referencia, no una regla de emisión.
+             *
+             *     Tres candados, los tres necesarios:
+             *     1. la empresa de la cabecera, el alcance de siempre (#395);
+             *     2. `view-contract` al establecer o cambiar el vínculo, para que
+             *     `invoices:write` no abra contratos nuevos; conservar uno
+             *     existente no exige permiso de lectura sobre él;
+             *     3. el mismo cliente que la factura — un contrato es de UN
+             *     cliente, y colgarle la factura de otro sería un rastro falso.
+             *
+             *     El valor que se valida es el EFECTIVO: `prepareForValidation`
+             *     repone el persistido cuando el PUT no lo manda, así que cambiar
+             *     de cliente conservando el contrato viejo es un 422 y no un
+             *     vínculo que se queda mintiendo.
+             */
+            contract_id?: number | null;
             /**
              * @description Los tres de abajo los manda el panel y hasta ahora se persistían SIN
              *     regla, porque el payload era una lista negra: cualquier clave que
@@ -10248,7 +10715,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
         };
         /**
          * RoleRequest
@@ -10273,7 +10740,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
             }[] | null;
         };
         /** RoleResource */
@@ -12864,6 +13331,17 @@ export interface operations {
                     send_email?: boolean;
                     subject?: string;
                     body?: string;
+                    /**
+                     * @description La revisión confirmada. ⛔ `nullable` en la validación y
+                     *     OBLIGATORIA bajo el bloqueo cuando el contrato usa un modelo: si
+                     *     fuera `required` aquí, la regla la decidiría la forma del cuerpo y
+                     *     no el estado de la fila, y un contrato sin modelo —que puede
+                     *     preparar su revisión por el mismo recorrido— se quedaría sin poder
+                     *     enviar desde un cliente anterior al #934 (👤 2026-09-23). Una
+                     *     referencia que llegue se valida SIEMPRE: una inválida nunca cae al
+                     *     camino implícito.
+                     */
+                    document_version_id?: string | null;
                 };
             };
         };
@@ -13630,6 +14108,374 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contractDocumentPreview.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    name?: string | null;
+                    /** Format: email */
+                    email?: string | null;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description ⛔ Sin `route()`: la ruta cuelga del prefijo de instancia, que lleva su
+             *     propio `{tenant}`, y el generador exige ese parámetro —medido: 500
+             *     «Missing parameter: tenant»—. La URL de descarga es esta misma más la
+             *     referencia, así que se compone de lo que ya se está sirviendo y no
+             *     depende de cómo se prefije la API.
+             *
+             *
+             *
+             *     `ContractDocumentVersionResource`
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractDocumentVersionResource"];
+                        download_url: string;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contracts.document-preview.download": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract ID */
+                contract: number;
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "contract.contractModelVariables": {
+        parameters: {
+            query?: {
+                billing_mode?: "INSTALLMENTS" | "MILESTONES" | "ONE_OFF" | "NONE" | null;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: unknown[];
+                        meta: {
+                            /** @constant */
+                            dictionary_version: "1";
+                            /** @constant */
+                            schema_version: "1";
+                            /** @constant */
+                            render_revision: "2026-09-23.2";
+                            /**
+                             * @description Los tipos de bloque e inline que el editor puede producir: el
+                             *     panel no tiene por qué llevar la lista clavada y que se le
+                             *     quede vieja.
+                             */
+                            block_types: [
+                                "heading",
+                                "paragraph",
+                                "list",
+                                "table",
+                                "signature"
+                            ];
+                            inline_types: [
+                                "text",
+                                "variable"
+                            ];
+                            limits: {
+                                /** @constant */
+                                max_blocks: 300;
+                                /** @constant */
+                                max_inlines: 300;
+                                /** @constant */
+                                max_list_items: 200;
+                                /** @constant */
+                                max_text_length: 5000;
+                                /** @constant */
+                                max_bytes: 200000;
+                                /** @constant */
+                                max_heading_level: 3;
+                            };
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contractModels.publish": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract model ID */
+                contractModel: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "contractModels.archive": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract model ID */
+                contractModel: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contract-models.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Archivados fuera por defecto: el listado sirve sobre todo para
+                 *      ELEGIR, y un archivado no se puede elegir. `status=ALL` los devuelve
+                 *      porque la lectura histórica se conserva (criterio de salida 1).
+                 */
+                status?: string;
+                limit?: string;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"][];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "contract-models.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractModelRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "contract-models.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract model ID */
+                contractModel: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"] & Record<string, never>;
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "contract-models.update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The contract model ID */
+                contractModel: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractModelRequest"];
+            };
+        };
+        responses: {
+            /** @description `ContractModelResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContractModelResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "contracts.delete": {

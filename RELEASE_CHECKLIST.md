@@ -1,5 +1,19 @@
 # Checklist de release
 
+**v0.34.0 preparada — 2026-09-23**: contratos fase 2 en TS y PHP —catálogo de
+clausulados, diccionario de marcadores, vista previa con referencia de
+revisión, los cuatro modos de facturación con hitos y proyecto, y la factura
+manual vinculada—. Contrato de instancia desde `factSaas@57b3e03d`: **455
+operaciones, 9 nuevas, 30 modificadas, ninguna retirada**. ⚠️ El `info.version`
+del núcleo sigue diciendo **1.4.3** con nueve operaciones más: lo que
+identifica este contrato es el commit, no la versión del documento. Cinco
+formas se estrechan a mano porque el generador las deja en `unknown[]`,
+`string[]` u objeto opaco; el CHANGELOG las lista una a una con su porqué.
+⚠️ **La 0.33.0 quedó preparada y sin tagear**: publicar la 0.34.0 arrastra las
+dos entradas. SDK y design tokens versionan 0.34.0; PHP hereda el tag del
+espejo. Pendiente de revisión, merge y tag por Fable. Tras publicar,
+actualizar las dependencias del starter (paso 4).
+
 **v0.33.0 preparada — 2026-09-22**: contrato del plano central **1.19.0**
 desde `factSaas@e21d6d74` (65 operaciones; arrastra la 1.18.0, que nunca se
 publicó). Comparación operación a operación frente a 0.32.0: ninguna nueva,
