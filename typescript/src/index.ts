@@ -6,10 +6,35 @@
  * salen los tipos de `./api`.
  */
 
-export { PimiaClient, toFormData } from './client.js'
+export { PimiaClient, toFormData, contractDocumentBlockers, CONTRACT_BILLING_MODES } from './client.js'
 export type {
   BorrowedTokenOptions,
+  ContractBillingMode,
+  ContractDocumentBlocked,
+  ContractDocumentPreview,
+  ContractDocumentPreviewRequest,
+  ContractDocumentVersionResource,
+  ContractMilestoneInput,
+  ContractMilestoneResource,
+  ContractModelBlock,
+  ContractModelListEnvelope,
+  ContractModelHeadingBlock,
+  ContractModelInline,
+  ContractModelListBlock,
+  ContractModelParagraphBlock,
+  ContractModelRequest,
+  ContractModelResource,
+  ContractModelSignatureBlock,
+  ContractModelTableBlock,
+  ContractModelTextInline,
+  ContractModelVariable,
+  ContractModelVariableInline,
+  ContractModelVariablesMeta,
+  ContractModelVariablesResponse,
+  ContractModelVersionResource,
   ContractRequest,
+  ContractSignaturePlacement,
+  ContractVariableType,
   ContractResource,
   ContractSignatureRequest,
   CustomerRequest,

@@ -54,8 +54,362 @@ export type EstimatesRequest = Schemas['EstimatesRequest']
  * vida va por sus acciones (`activate`/`cancel`/`renew`), nunca por el PUT.
  */
 export type ContractRequest = Schemas['ContractRequest']
-/** Destinatario y correo de firma; la forma pertenece al contrato del núcleo. */
+/**
+ * Destinatario y correo de firma; la forma pertenece al contrato del núcleo.
+ *
+ * Desde el #934 acepta `document_version_id`: la `reference` de la revisión
+ * que se acaba de revisar en {@link PimiaClient.contracts}`.documentPreview()`.
+ * Es `nullable` en la validación y **obligatoria bajo el bloqueo cuando el
+ * contrato usa un modelo de clausulado** — la regla la decide el estado de la
+ * fila, no la forma del cuerpo—, así que un contrato sin modelo se sigue
+ * enviando sin ella. Una referencia inválida nunca cae a ese camino: es un 422.
+ */
 export type ContractSignatureRequest = operations['contract.sendContractForSignature']['requestBody']['content']['application/json']
+/**
+ * Los cuatro modos de facturación de un contrato (decisión 11 del núcleo
+ * #932). Salen del enum del `ContractRequest`, así que si el núcleo añade un
+ * quinto, aparece al regenerar los tipos y no en producción.
+ *
+ * El modo manda sobre el resto de la ficha, y eso no es cosmética: `amount` y
+ * `billing_every` solo son datos reales en `INSTALLMENTS`, y `total_amount`
+ * solo en `MILESTONES` y `ONE_OFF`. En los demás llegan a `null`, que
+ * significa «este contrato no tiene eso» y **no** «no consta».
+ */
+export type ContractBillingMode = NonNullable<ContractRequest['billing_mode']>
+
+/**
+ * Los cuatro modos como valor, para pintar un selector sin escribirlos a mano.
+ * El orden es el del núcleo: `INSTALLMENTS` primero porque es el que heredan
+ * los contratos anteriores al #933.
+ */
+export const CONTRACT_BILLING_MODES = [
+  'INSTALLMENTS',
+  'MILESTONES',
+  'ONE_OFF',
+  'NONE',
+] as const satisfies readonly ContractBillingMode[]
+
+/** Un hito tal y como lo devuelve la API: importe en céntimos y `position` ya resuelta. */
+export type ContractMilestoneResource = Schemas['ContractMilestoneResource']
+
+/**
+ * Un hito tal y como se MANDA.
+ *
+ * ⚠️ Los hitos viajan como CONJUNTO: omitir `milestones` conserva los que
+ * haya y mandarla —aunque sea `[]`— la sustituye entera. La API no acepta ids
+ * de hito, y eso no es un olvido del contrato: es lo que impide adjuntar al
+ * tuyo el hito de otro contrato.
+ *
+ * ⛔ Un hito es GUÍA: no emite factura, no marca cobro y `planned_date` no es
+ * un vencimiento. La factura de un hito se crea a mano con `contract_id`.
+ */
+export type ContractMilestoneInput = NonNullable<ContractRequest['milestones']>[number]
+
+/**
+ * Una versión PUBLICADA de un modelo. Es inmutable: publicar la v2 no toca la
+ * v1 ni los contratos que la eligieron, que es lo que permite saber qué texto
+ * firmó cada cliente.
+ *
+ * `compatible_modes` se DEDUCE de los marcadores que el texto usa y no se
+ * declara: un modelo que imprime la cuota mensual solo sirve para un contrato
+ * de cuotas. `variables_used` es el inventario de esos marcadores.
+ *
+ * ⚠️ Los tres campos se estrechan a mano: el generador los publica como
+ * `unknown[]` porque el recurso del núcleo devuelve columnas JSON sin tipar.
+ */
+export type ContractModelVersionResource = Omit<
+  Schemas['ContractModelVersionResource'],
+  'content' | 'compatible_modes' | 'variables_used'
+> & {
+  content: ContractModelBlock[]
+  compatible_modes: ContractBillingMode[]
+  variables_used: string[]
+}
+
+/**
+ * Un modelo de clausulado de la empresa: su borrador, su versión publicada y
+ * su historial.
+ *
+ * `draft_revision` es el número que hay que devolver al guardar contenido
+ * (ver {@link ContractModelRequest}). `status` es `ACTIVE` o `ARCHIVED`:
+ * archivar retira de las selecciones NUEVAS y no borra nada. `seed_key` no
+ * nulo = lo trajo Pimia, y eso se dice, no se adivina por el nombre.
+ *
+ * ⚠️ `draft_content` y las versiones se estrechan a mano, por lo mismo que
+ * arriba; `published_version` y `versions` solo vienen cuando la operación las
+ * carga (el detalle trae el historial, el listado no).
+ */
+export type ContractModelResource = Omit<
+  Schemas['ContractModelResource'],
+  'draft_content' | 'published_version' | 'versions'
+> & {
+  draft_content: ContractModelBlock[] | null
+  published_version?: ContractModelVersionResource | null
+  versions?: ContractModelVersionResource[]
+}
+
+/** El sobre de un listado de modelos; el spec no tipa la paginación de Laravel. */
+export interface ContractModelListEnvelope {
+  data: ContractModelResource[]
+}
+
+/**
+ * Dónde cae la firma en el papel: página y caja en PORCENTAJE de la página.
+ *
+ * ⚠️ Es un OBJETO, y el tipo generado dice `unknown[]`: la columna es JSON y
+ * el generador la leyó como lista. Un panel que hiciera `.length` sobre esto
+ * no vería nada. La forma está medida contra `PdfAnchorLocator::locate()`.
+ * `null` en la caja = se supo la página pero no se pudo medir el recuadro.
+ */
+export interface ContractSignaturePlacement {
+  page: number
+  page_count: number
+  left: number | null
+  top: number | null
+  width: number | null
+  height: number | null
+}
+
+/**
+ * La REVISIÓN DOCUMENTAL de un contrato: el papel exacto que se preparó.
+ *
+ * `reference` es el asa con la que se envía a firmar
+ * (`signature.send(..., { document_version_id })`). `source_document_sha256`
+ * identifica los BYTES y es **evidencia, no autorización**: el servidor lo
+ * vuelve a comprobar todo bajo bloqueo, y un hash que traiga el navegador no
+ * autoriza nada. Tampoco promete que el PDF firmado tenga este hash: al
+ * colocar la firma, el proveedor reescribe su propio documento.
+ *
+ * ⚠️ `implicit_preview: true` = esta revisión la preparó el propio envío
+ * porque el contrato no usa modelo y nadie mandó referencia. **No acredita que
+ * nadie haya visto el papel.**
+ */
+export type ContractDocumentVersionResource = Omit<
+  Schemas['ContractDocumentVersionResource'],
+  'expected_signature_field' | 'signature_fields' | 'data_snapshot'
+> & {
+  /** Dónde ESPERA el papel su firma, medido sobre sus propios bytes. */
+  expected_signature_field: ContractSignaturePlacement | null
+  /** Dónde la colocó el proveedor DE VERDAD; `null` hasta que se envía. */
+  signature_fields: Record<string, unknown>[] | null
+  /** La ficha resuelta que se archivó: contexto, modelo, tarjeta y partes. */
+  data_snapshot: Record<string, unknown>
+}
+
+/**
+ * Un trozo de texto del clausulado. `bold` es el único formato: el editor de
+ * la empresa no es un maquetador.
+ */
+export interface ContractModelTextInline {
+  type: 'text'
+  value: string
+  bold?: boolean
+}
+
+/**
+ * Un MARCADOR de dato dentro del texto. `key` es una clave del diccionario de
+ * `contracts.models.variables()`; una que no exista ahí es un 422 con su
+ * nombre, nunca un hueco en silencio.
+ */
+export interface ContractModelVariableInline {
+  type: 'variable'
+  key: string
+  bold?: boolean
+}
+
+export type ContractModelInline = ContractModelTextInline | ContractModelVariableInline
+
+/** Encabezado de 1 a 3 niveles: más jerarquía que esa no es un contrato. */
+export interface ContractModelHeadingBlock {
+  type: 'heading'
+  level?: 1 | 2 | 3
+  text: ContractModelInline[]
+}
+
+export interface ContractModelParagraphBlock {
+  type: 'paragraph'
+  text: ContractModelInline[]
+}
+
+/** Una lista; cada item es su propia fila de trozos de texto y marcadores. */
+export interface ContractModelListBlock {
+  type: 'list'
+  ordered?: boolean
+  items: ContractModelInline[][]
+}
+
+/**
+ * Una tabla rellenada por un marcador de tipo `table` —hoy solo
+ * `contract.milestones`—. Un dato de tabla dentro de un párrafo es un 422.
+ */
+export interface ContractModelTableBlock {
+  type: 'table'
+  variable: string
+}
+
+/**
+ * Dónde firma el cliente. No lleva datos: su contenido entero es el ancla que
+ * el núcleo escribe en el PDF, y el SDK no la compone ni la nombra.
+ *
+ * ⛔ Uno por modelo, ni cero ni dos: sin él no hay sitio donde firmar y con
+ * dos el proveedor colocaría dos campos. Publicar lo exige; guardar un
+ * borrador a medias, no.
+ */
+export interface ContractModelSignatureBlock {
+  type: 'signature'
+}
+
+/**
+ * Un bloque del clausulado. El árbol es DELIBERADAMENTE plano —bloques, y
+ * dentro trozos de texto o marcadores— y nada más: ni HTML, ni condiciones, ni
+ * bucles, ni acceso a relaciones.
+ *
+ * ⚠️ **Este tipo se escribe a mano, y es a propósito.** La regla del núcleo es
+ * `['nullable', 'array']`, así que el generador del spec publica
+ * `content: string[] | null` — una lista de cadenas, que no es lo que el
+ * servidor valida. Tomar ese tipo tal cual habría hecho que el árbol correcto
+ * no compilase. La forma de aquí está medida contra
+ * `app/ContractModels/ContentSchema.php` del núcleo, y sus límites vivos los
+ * publica `contracts.models.variables()` en `meta.limits` / `meta.block_types`:
+ * léelos de ahí en vez de clavarlos.
+ */
+export type ContractModelBlock =
+  | ContractModelHeadingBlock
+  | ContractModelParagraphBlock
+  | ContractModelListBlock
+  | ContractModelTableBlock
+  | ContractModelSignatureBlock
+
+/**
+ * Cuerpo de alta/edición de un modelo de clausulado.
+ *
+ * Sin `status` a propósito: archivar es su propia acción, como
+ * `activate`/`cancel` en los contratos. Y `draft_revision` es obligatoria
+ * **cuando mandas `content`**: es la revisión que leíste, y quien llega con
+ * una vieja recibe un 409 con el porqué en vez de pisar el texto del otro.
+ * Omitir `content` conserva el borrador; mandarlo lo sustituye entero.
+ *
+ * `content` se estrecha a {@link ContractModelBlock}: ver el porqué allí.
+ */
+export type ContractModelRequest = Omit<Schemas['ContractModelRequest'], 'content'> & {
+  content?: ContractModelBlock[] | null
+}
+
+/** El tipo de dato de un marcador; decide cómo lo imprime el núcleo. */
+export type ContractVariableType = 'text' | 'long_text' | 'date' | 'integer' | 'money' | 'table'
+
+/**
+ * Una entrada del diccionario de marcadores.
+ *
+ * ⚠️ **También se escribe a mano**: el `200` de la operación publica
+ * `data: unknown[]` porque el controlador devuelve un `response()->json()` que
+ * el generador no sabe mirar dentro. La forma está medida contra
+ * `app/ContractModels/VariableDictionary.php` del núcleo.
+ *
+ * - `modes`: con qué modos es compatible. Un marcador de cuota no existe en un
+ *   contrato por hitos, y ofrecerlo sería un bloqueo cinco pantallas después.
+ * - `required`: si el modelo lo usa y el dato falta, la preparación se BLOQUEA.
+ *   Un dato opcional en la ficha puede ser obligatorio para el modelo que lo
+ *   imprime.
+ * - `empty_as`: la única representación declarada del vacío (`open_ended` para
+ *   un contrato sin fin, `blank` para la descripción). Ahí la ausencia ES el dato.
+ * - `guarded`: además de existir, hay que PODER VERLO — hoy `project.name`. Se
+ *   vuelve a comprobar al descargar el papel: los bytes archivados no heredan
+ *   el permiso con el que se crearon.
+ * - `example`: sirve para enseñarlo en el menú; no es el valor del contrato.
+ */
+export interface ContractModelVariable {
+  key: string
+  label: string
+  type: ContractVariableType
+  format: string | null
+  modes: ContractBillingMode[]
+  required: boolean
+  empty_as: string | null
+  guarded: boolean
+  example: string
+}
+
+/**
+ * Lo que el diccionario dice ADEMÁS de sus entradas: las versiones que se
+ * graban en cada versión publicada, los tipos que el editor puede producir y
+ * los límites vivos del esquema. Sale del spec, así que un límite nuevo llega
+ * al regenerar.
+ */
+export type ContractModelVariablesMeta = Ok<'contract.contractModelVariables'>['meta']
+
+/** Respuesta de `contracts.models.variables()`: el diccionario y su `meta`. */
+export interface ContractModelVariablesResponse {
+  data: ContractModelVariable[]
+  meta: ContractModelVariablesMeta
+}
+
+/**
+ * Cuerpo de la vista previa. Declarar el destinatario ATA la revisión a ese
+ * firmante: enviarla a otro exigirá preparar otra. No declararlo no es un
+ * agujero —el papel no imprime el nombre del firmante— pero deja pasar un
+ * cambio de destinatario sin obligar a revisar.
+ */
+export type ContractDocumentPreviewRequest = NonNullable<
+  operations['contractDocumentPreview.store']['requestBody']
+>['content']['application/json']
+
+/**
+ * La revisión preparada y la URL con la que se descargan SUS bytes.
+ *
+ * `download_url` es la ruta de `documentPreviewDownload()` ya compuesta por el
+ * servidor; el PDF no se regenera nunca, porque un PDF horneado de nuevo sería
+ * otro documento.
+ */
+export type ContractDocumentPreview = Omit<Ok<'contractDocumentPreview.store'>, 'data'> & {
+  data: ContractDocumentVersionResource
+}
+
+/**
+ * El 422 que BLOQUEA una preparación o un envío: qué falta, dato por dato.
+ *
+ * ⚠️ El spec publica el 422 genérico de validación (`message` + `errors`)
+ * porque el controlador contesta con un `response()->json()` que el generador
+ * no inspecciona; `blockers` está medido en
+ * `ContractDocumentPreviewController` y en `SendContractForSignatureController`
+ * del núcleo. Por eso se lee con {@link contractDocumentBlockers} en vez de
+ * afirmarse desde el tipo generado.
+ */
+export interface ContractDocumentBlocked {
+  success: false
+  message: string
+  blockers: string[]
+}
+
+/**
+ * Los motivos de un bloqueo, o `undefined` si el error no trae ninguno.
+ *
+ * ```ts
+ * try {
+ *   await client.contracts.documentPreview(7)
+ * } catch (e) {
+ *   const motivos = contractDocumentBlockers(e)
+ *   if (motivos) mostrarBloqueo(motivos) // TODOS, no solo el primero
+ * }
+ * ```
+ *
+ * ⛔ Un bloqueo **no se reintenta solo**: ni preparando otra revisión ni
+ * reenviando la firma. Falta un dato o la revisión dejó de ser vigente, y las
+ * dos cosas las arregla una persona, no un bucle. Preparar otra vez también
+ * hornea OTRO PDF, que es justo lo que la decisión 7 del #932 prohíbe hacer en
+ * silencio.
+ */
+export function contractDocumentBlockers(error: unknown): string[] | undefined {
+  const body = error instanceof PimiaApiError ? error.body : error
+
+  if (!body || typeof body !== 'object') return undefined
+
+  const blockers = (body as { blockers?: unknown }).blockers
+
+  return Array.isArray(blockers) && blockers.every((b) => typeof b === 'string')
+    ? (blockers as string[])
+    : undefined
+}
 /**
  * Cuerpo de alta/edición de almacén. `is_default` se manda como INTENCIÓN
  * («que este sea el de por defecto»): el servidor apaga el anterior en la
@@ -518,10 +872,32 @@ export class PimiaClient {
   /**
    * Contratos de servicio. Exige `contracts:read` / `contracts:write`.
    *
-   * Un contrato GOBIERNA facturas recurrentes: su periodo se vuelve los
-   * límites de la recurrente. El ciclo de vida va por sus acciones — el
-   * `PUT` no acepta `status`, y fuera de borrador solo toca lo descriptivo
-   * (el periodo se cambia con `renew`, que sí propaga).
+   * El ciclo de vida va por sus acciones — el `PUT` no acepta `status`, y
+   * fuera de borrador solo toca lo descriptivo (el periodo se cambia con
+   * `renew`, que sí propaga).
+   *
+   * ── El MODO manda sobre el resto de la ficha (#933) ──────────────────────
+   *
+   * Desde la decisión 11 hay cuatro {@link ContractBillingMode}, y no todos
+   * facturan:
+   *
+   * | modo           | qué lleva                    | al activar          |
+   * |----------------|------------------------------|---------------------|
+   * | `INSTALLMENTS` | `amount` + `billing_every`   | crea/adopta recurrente |
+   * | `MILESTONES`   | `total_amount?` + `milestones` | nada           |
+   * | `ONE_OFF`      | `total_amount?`              | nada                |
+   * | `NONE`         | nada económico               | nada                |
+   *
+   * Un campo ajeno al modo es un 422, no un dato que se ignore. `customer_id`
+   * sigue siendo obligatorio en los cuatro. Y un alta que no declara
+   * `billing_mode` se resuelve al persistido o a `INSTALLMENTS`: los contratos
+   * anteriores al #933 son de cuotas y siguen comportándose igual.
+   *
+   * ⛔ Solo `INSTALLMENTS` GOBIERNA facturas recurrentes. En los otros tres no
+   * hay recurrente NUNCA —`recurring_invoices: []` lo dice, y `[]` es
+   * «ninguna», no «no te lo cuento»— y los hitos son GUÍA: no emiten factura
+   * ni marcan cobro. La factura de un hito se crea a mano con `contract_id`
+   * (`invoices.create({ …, contract_id })`) y aparece bajo el contrato.
    */
   get contracts() {
     return {
@@ -533,6 +909,142 @@ export class PimiaClient {
         this.post<ResourceEnvelope<ContractResource>>('/contracts', body, options),
       update: (id: number | string, body: ContractRequest, options?: WriteOptions) =>
         this.put<ResourceEnvelope<ContractResource>>(`/contracts/${id}`, body, options),
+
+      /**
+       * El catálogo de clausulados de la empresa (#934).
+       *
+       * ⛔ Sus permisos son PROPIOS: poder editar o enviar un contrato no
+       * concede redactar ni publicar modelos (`view-contract-model`,
+       * `create-contract-model`, `edit-contract-model`,
+       * `publish-contract-model`, `archive-contract-model`). El scope sigue
+       * siendo `contracts:read` / `contracts:write`.
+       */
+      models: {
+        /**
+         * Los modelos de la empresa activa. Por defecto solo los `ACTIVE`,
+         * porque el listado sirve sobre todo para ELEGIR y un archivado no se
+         * puede elegir; `{ status: 'ALL' }` devuelve también los archivados y
+         * `{ limit: 'all' }`, la lista entera sin paginar.
+         *
+         * ⚠️ El spec no tipa la paginación, así que el tipo solo promete
+         * `data`: con `limit` numérico la respuesta trae además `links` y
+         * `meta` de Laravel.
+         */
+        list: (query?: RequestOptions['query'], options?: ReadOptions) =>
+          this.get<ContractModelListEnvelope>('/contract-models', query, options),
+        /**
+         * Un modelo con su borrador, su versión publicada y su historial.
+         *
+         * ⚠️ Los siete atajos devuelven {@link ContractModelResource}, que
+         * estrecha a mano lo que el spec deja en `unknown[]`, y no el tipo
+         * generado. En `show` y `publish` había además una segunda razón: su
+         * `200` sale del generador como objeto opaco, y usarlo tal cual
+         * afirmaría que `data` **no tiene propiedades**.
+         */
+        get: (id: number | string, options?: ReadOptions) =>
+          this.get<ResourceEnvelope<ContractModelResource>>(
+            `/contract-models/${id}`,
+            undefined,
+            options,
+          ),
+        create: (body: ContractModelRequest, options?: WriteOptions) =>
+          this.post<ResourceEnvelope<ContractModelResource>>('/contract-models', body, options),
+        /**
+         * Edita el nombre y el borrador. Mandar `content` exige la
+         * `draft_revision` que leíste: si otra edición guardó mientras tanto,
+         * el núcleo responde **409** con el porqué y no pisa su texto. Vuelve
+         * a leer el modelo y reaplica; no reintentes con el mismo número.
+         */
+        update: (id: number | string, body: ContractModelRequest, options?: WriteOptions) =>
+          this.put<ResourceEnvelope<ContractModelResource>>(
+            `/contract-models/${id}`,
+            body,
+            options,
+          ),
+        /**
+         * Publica el borrador como versión inmutable. Aquí SÍ se exige el
+         * bloque de firma, y los modos compatibles se DEDUCEN de los
+         * marcadores usados: no se declaran.
+         *
+         * ⛔ Publicar la v2 no toca la v1 ni los contratos que la eligieron.
+         * Nunca elijas «la última» en silencio: la versión es una decisión.
+         */
+        publish: (id: number | string, options?: WriteOptions) =>
+          this.post<ResourceEnvelope<ContractModelResource>>(
+            `/contract-models/${id}/publish`,
+            {},
+            options,
+          ),
+        /**
+         * Retira el modelo de las selecciones NUEVAS. No borra versiones ni
+         * contratos: los que ya apuntan a una de sus versiones siguen
+         * imprimiendo y firmando ese texto.
+         */
+        archive: (id: number | string, options?: WriteOptions) =>
+          this.post<ResourceEnvelope<ContractModelResource>>(
+            `/contract-models/${id}/archive`,
+            {},
+            options,
+          ),
+        /**
+         * El diccionario de marcadores, con etiqueta, tipo, formato,
+         * requisito, permiso y ejemplo. Con `billing_mode` devuelve solo lo
+         * que ESE modo tiene de verdad, que es lo que impide ofrecer «cuota
+         * mensual» al redactar el modelo de un contrato por hitos.
+         *
+         * `meta` trae los tipos de bloque, los de inline y los límites vivos
+         * del esquema: léelos de ahí en vez de clavarlos en el panel.
+         */
+        variables: (
+          query?: { billing_mode?: ContractBillingMode },
+          options?: ReadOptions,
+        ) =>
+          this.get<ContractModelVariablesResponse>(
+            '/contract-models/variables',
+            query,
+            options,
+          ),
+      },
+
+      /**
+       * Prepara el papel y devuelve su REVISIÓN: `reference`, hash, tamaño,
+       * si lleva ancla y dónde la espera. **No envía**: no crea envelope, no
+       * manda correos y no consume intento de firma.
+       *
+       * El recorrido es preparar → revisar los bytes con
+       * {@link documentPreviewDownload} → enviar con esa `reference` en
+       * `signature.send`.
+       *
+       * ⛔ Si falta un dato, el núcleo responde 422 con TODOS los motivos
+       * ({@link contractDocumentBlockers}). No lo reintentes solo: cada
+       * preparación hornea otro PDF y retira la revisión anterior.
+       */
+      documentPreview: (
+        id: number | string,
+        body?: ContractDocumentPreviewRequest,
+        options?: WriteOptions,
+      ) =>
+        this.post<ContractDocumentPreview>(
+          `/contracts/${id}/document-preview`,
+          body ?? {},
+          options,
+        ),
+
+      /**
+       * Los bytes EXACTOS que se enviarán a firmar, servidos del archivo y
+       * nunca regenerados. Devuelve un `Blob`; pásale la `reference` de la
+       * revisión (o la `download_url` que trae la preview, que es esta misma
+       * ruta).
+       *
+       * ⚠️ Puede ser 403 aunque la preview funcionara: los marcadores que
+       * exigen permiso sobre lo que nombran —hoy el nombre de la obra— se
+       * vuelven a comprobar al entregar el papel.
+       */
+      documentPreviewDownload: (
+        id: number | string,
+        reference: string,
+        options?: ReadOptions,
+      ) => this.download(`/contracts/${id}/document-preview/${reference}`, undefined, options),
 
       /**
        * Firma del cliente: `signingUrl` solo vuelve en `send` y es una
@@ -557,6 +1069,14 @@ export class PimiaClient {
        * Activa el contrato: DRAFT → ACTIVE, lo numera, y crea la recurrente
        * gobernada — o adopta la de `recurringInvoiceId` (misma empresa y
        * mismo cliente; sus líneas e impuestos no se tocan).
+       *
+       * ⚠️ **Solo en `INSTALLMENTS`.** Desde el #933, `MILESTONES`, `ONE_OFF`
+       * y `NONE` pasan a ACTIVE con las mismas guardas —numeración, firma
+       * vigente, bloqueo, idempotencia— y sin crear ni una recurrente ni una
+       * factura; `recurringInvoiceId` en esos modos es un 422, no una
+       * adopción silenciosa. El `invoices:write` es el máximo que declara el
+       * contrato público y solo se exige de verdad en el modo que factura,
+       * resuelto con el modo PERSISTIDO y no con el que mande el cliente.
        *
        * Exige `contracts:write` **e** `invoices:write`: la recurrente que
        * nace emitirá facturas por su cuenta. Manda `idempotencyKey` —una
