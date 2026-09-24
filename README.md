@@ -473,7 +473,15 @@ dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
 
-**v0.34.0, preparada (2026-09-23)**: contratos fase 2, `factSaas@57b3e03d` —
+**v0.35.0, publicada (2026-09-24)**: el correo de la empresa (módulo de pago
+`mail`, sobre Dead Simple Email), `factSaas@7d7df3a1` — **484 operaciones**.
+`client.mail` / `$client->mail`: conexión, buzones, mensajes y adjuntos,
+propuestas de Hermes, inventario administrativo y miembros (fase A), y
+borradores, adjuntos salientes, envío —⛔ con `Idempotency-Key` obligatoria— y
+su estado (fase B). `/mail/config` admite el driver `deadsimple` (solo tipos).
+Detalle en el [CHANGELOG](CHANGELOG.md).
+
+**v0.34.0, publicada (2026-09-23)**: contratos fase 2, `factSaas@57b3e03d` —
 **9 operaciones nuevas y 30 modificadas**. El catálogo de clausulados de la
 empresa (`client.contracts.models` / `$client->contracts->models`) con su
 diccionario de marcadores, la vista previa que devuelve la revisión exacta que

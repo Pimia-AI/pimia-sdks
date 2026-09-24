@@ -8,11 +8,32 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [Sin publicar]
+## [0.35.0] — 2026-09-24
 
 El correo de la empresa (módulo de pago `mail`, sobre Dead Simple Email),
-fases A y B del núcleo. **Sin versión todavía**: se sube y se publica al
-tagear, repitiendo antes el paso 0 contra `origin/main`.
+fases A y B del núcleo, y el envío de documentos por un buzón vinculado.
+
+Paso 0 repetido justo antes de tagear: contrato de instancia desde
+**`origin/main` del núcleo: factSaas@7d7df3a1 (2026-09-24) — 484 operaciones**
+(`7d7df3a175b1057bb9234d39e73341952822c9a2`). Comparado operación a operación
+con la sincronización de la fase B (`e2f5419c`): ninguna nueva, ninguna
+retirada, **2 modificadas**, las de la sección siguiente.
+
+### El envío de documentos por Dead Simple (factSaas#961)
+
+- `GET /mail/config` y `POST /mail/config` (reservadas al panel de Pimia,
+  `admin:*`) admiten el driver **`deadsimple`**: las facturas y los
+  presupuestos salen desde un buzón del módulo `mail`.
+  - La lectura trae siempre `deadsimple_available` (módulo `mail` y conexión
+    activos) y, con ese driver, `mail_mailbox_id` y `mail_mailbox`
+    (`{id, address, display_name}`).
+  - El guardado acepta `mail_driver: "deadsimple"` con `mail_mailbox_id`;
+    `from_mail` pasa a ser anulable y se ignora (el remitente es el buzón).
+    Con ese driver, `422` con `code` `mail_module_disabled`,
+    `mail_not_configured` o `mailbox_not_found`.
+- Solo cambian los tipos generados (`typescript/src/api.ts`): ninguno de los
+  dos SDKs tiene un recurso escrito a mano para `/mail/config`, que se llama
+  con `client.get`/`client.post` y sus tipos del spec.
 
 ### Fase B (factSaas#957): borradores, envío y propuestas
 
