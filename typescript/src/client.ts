@@ -1448,7 +1448,16 @@ export class PimiaClient {
    *
    * {@link mailAccessClosure} dice si un error CIERRA el acceso (hay que
    * retirar lo pintado) o es un fallo pasajero. Un fallo del proveedor es
-   * `502`/`503` y nunca un `200` con la lista vacía.
+   * `502`/`503` y nunca un `200` con la lista vacía; un adjunto que no llega
+   * entero es `502 attachment_incomplete` (o `attachment_too_large`, `503
+   * attachment_spool_failed`) ANTES del `200`: no hay descargas a medias.
+   *
+   * ⚠️ **`/mail` no usa el replay genérico de idempotencia** del resto de
+   * `/api/v1`: cada reintento se vuelve a autorizar y no se guardan
+   * respuestas, así que `meta.idempotentReplay` no dice nada aquí. Con
+   * `idempotencyKey`, el reintento de algo ya hecho devuelve el estado ACTUAL
+   * sin repetirlo; la misma clave con OTRO cuerpo es `422
+   * idempotency_key_reused`.
    *
    * ⚠️ Los ids de buzón, mensaje, adjunto y propuesta son `public_id`
    * opacos (cadenas); los de USUARIO son el id numérico de Pimia.
@@ -1458,7 +1467,12 @@ export class PimiaClient {
       connection: {
         /** La conexión de la INSTANCIA (una por proveedor). Sin conexión: `status: not_configured`, no un 404. */
         get: (options?: ReadOptions) => this.get<Ok<'mailConnection.show'>>('/mail/connection', undefined, options),
-        /** Conecta (o reconecta) Dead Simple. La clave viaja una vez y no vuelve en ninguna respuesta. */
+        /**
+         * Conecta (o reconecta) Dead Simple. La clave viaja una vez y no vuelve
+         * en ninguna respuesta. Con `idempotencyKey`, el reintento devuelve el
+         * estado actual sin repetir la conexión. Cambiar a OTRA cuenta con
+         * altas de buzón sin terminar es `409 connection_has_pending_operations`.
+         */
         connect: (body: components['schemas']['MailConnectionRequest'], options?: WriteOptions) =>
           this.post<Ok<'mailConnection.store'>>('/mail/connection', body, options),
         /** Desconecta la instancia entera. Idempotente: responde `not_configured`. */
@@ -1515,10 +1529,17 @@ export class PimiaClient {
             this.get<Ok<'mailAdminMailboxes.index'>>('/mail/admin/mailboxes', undefined, options),
           /**
            * Da de alta un buzón. **`idempotencyKey` es OBLIGATORIA** (el
-           * núcleo la exige y la reenvía al proveedor): una por alta, y la
-           * MISMA en el reintento tras un `502 provider_outcome_unknown`, o
-           * se crearían dos buzones. `personal` exige `owner_user_id`; un
-           * `shared` nace sin miembros (tampoco quien lo crea).
+           * núcleo la exige y reenvía al proveedor una clave derivada): una
+           * por alta, y la MISMA en el reintento tras un `502
+           * provider_outcome_unknown`, o se crearían dos buzones. `personal`
+           * exige `owner_user_id`; un `shared` nace sin miembros.
+           *
+           * El reintento de un alta que SÍ llegó responde **`200`** con el
+           * mismo buzón (la primera vez, `201`). La misma clave con otro
+           * cuerpo es `422 idempotency_key_reused`; una reserva de más de 24 h
+           * sin cerrar, `409 idempotency_key_expired`; y si la conexión cambió
+           * de cuenta entre medias, `409 idempotency_account_changed` (no se
+           * reintenta en la cuenta nueva).
            */
           create: (
             body: components['schemas']['MailboxStoreRequest'],
@@ -1548,18 +1569,26 @@ export class PimiaClient {
               undefined,
               options,
             ),
-          /** Un usuario de otra empresa es `422 user_not_in_company`; uno inexistente, `404`. */
+          /**
+           * Un usuario de otra empresa es `422 user_not_in_company`; uno
+           * inexistente, `404`. Con `idempotencyKey`, el reintento devuelve los
+           * miembros ACTUALES sin repetir el alta.
+           */
           add: (mailboxId: string, userId: number, options?: WriteOptions) =>
             this.post<Ok<'mailAdminMembers.store'>>(
               `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/members`,
               { user_id: userId } satisfies components['schemas']['MailboxMemberRequest'],
               options,
             ),
-          /** Revoca la membresía (no la borra: queda en el libro). */
-          remove: (mailboxId: string, userId: number, options?: ReadOptions) =>
-            this.delete<Ok<'mailAdminMembers.destroy'>>(
+          /**
+           * Revoca la membresía (no la borra: queda en el libro). Con
+           * `idempotencyKey`, un reintento VIEJO no revoca un alta posterior.
+           * (Va por `request` porque `delete()` no lleva clave.)
+           */
+          remove: (mailboxId: string, userId: number, options?: WriteOptions) =>
+            this.request<Ok<'mailAdminMembers.destroy'>>(
               `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/members/${userId}`,
-              options,
+              { ...options, method: 'DELETE' },
             ),
         },
       },

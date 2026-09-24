@@ -1048,7 +1048,10 @@ test('mailAccessClosure distingue los dos cierres de acceso de un fallo del prov
   const cuerpos = [
     [403, { message: 'x', code: 'module_not_installed', error: 'module_not_installed' }, 'module_disabled'],
     [403, { message: 'x', code: 'mailbox_access_revoked', error: 'mailbox_access_revoked' }, 'access_revoked'],
+    [403, { message: 'x', code: 'company_not_allowed', error: 'company_not_allowed' }, 'company_not_allowed'],
     [403, { message: 'x', code: 'configure_mail_required', error: 'configure_mail_required' }, null],
+    [502, { message: 'x', code: 'attachment_incomplete', error: 'attachment_incomplete' }, null],
+    [409, { message: 'x', code: 'idempotency_account_changed', error: 'idempotency_account_changed' }, null],
     [503, { message: 'x', code: 'provider_unavailable', error: 'provider_unavailable' }, null],
     [502, { message: 'x', code: 'provider_outcome_unknown', error: 'provider_outcome_unknown' }, null],
   ]
@@ -1057,4 +1060,18 @@ test('mailAccessClosure distingue los dos cierres de acceso de un fallo del prov
     const error = await client.mail.mailboxes().catch((e) => e)
     assert.equal(mailAccessClosure(error), esperado, `${status} ${cuerpo.code}`)
   }
+})
+
+test('miembros y conexión llevan su Idempotency-Key si se da, también el DELETE', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+  await client.mail.connection.connect({ api_key: 'clave-larga' }, { idempotencyKey: 'conectar-0001' })
+  await client.mail.admin.members.add('mb_1', 42, { idempotencyKey: 'alta-miembro-01' })
+  await client.mail.admin.members.remove('mb_1', 42, { idempotencyKey: 'baja-miembro-01' })
+  await client.mail.admin.members.remove('mb_1', 43)
+  const clave = (i) => new Headers(calls[i].init.headers).get('idempotency-key')
+  assert.equal(clave(0), 'conectar-0001')
+  assert.equal(clave(1), 'alta-miembro-01')
+  assert.equal(calls[2].init.method, 'DELETE')
+  assert.equal(clave(2), 'baja-miembro-01')
+  assert.equal(clave(3), null)
 })

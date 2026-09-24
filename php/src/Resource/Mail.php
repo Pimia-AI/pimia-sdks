@@ -42,13 +42,15 @@ final class Mail
 
     /**
      * Conecta (o reconecta) Dead Simple. La clave viaja una vez y no vuelve en
-     * ninguna respuesta.
+     * ninguna respuesta. Con `$idempotencyKey`, el reintento devuelve el estado
+     * actual sin repetir la conexión. Cambiar a OTRA cuenta con altas sin
+     * terminar es `409 connection_has_pending_operations`.
      *
      * @param  array{api_key: string, domain?: string|null}  $data
      */
-    public function connect(array $data): mixed
+    public function connect(array $data, ?string $idempotencyKey = null): mixed
     {
-        return $this->client->post('/mail/connection', $data);
+        return $this->client->post('/mail/connection', $data, $idempotencyKey);
     }
 
     /** Desconecta la instancia entera. Idempotente: responde `not_configured`. */
@@ -121,6 +123,12 @@ final class Mail
      * reintento tras un `502 provider_outcome_unknown`, o se crearían dos.
      * `personal` exige `owner_user_id`; un `shared` nace sin miembros.
      *
+     * `/mail` no usa el replay genérico: el reintento de un alta que SÍ llegó
+     * responde `200` con el mismo buzón (la primera vez, `201`). La misma clave
+     * con otro cuerpo es `422 idempotency_key_reused`; una reserva de más de
+     * 24 h, `409 idempotency_key_expired`; y si la conexión cambió de cuenta,
+     * `409 idempotency_account_changed`.
+     *
      * @param  array<string, mixed>  $data  `kind`, `mode`, `local_part`, `address`, `display_name`, `owner_user_id`
      */
     public function createMailbox(array $data, string $idempotencyKey): mixed
@@ -155,22 +163,34 @@ final class Mail
         return $this->client->get('/mail/admin/mailboxes/'.rawurlencode($mailboxId).'/member-candidates');
     }
 
-    /** Un usuario de otra empresa es `422 user_not_in_company`; uno inexistente, `404`. */
-    public function addMember(string $mailboxId, int $userId): mixed
+    /**
+     * Un usuario de otra empresa es `422 user_not_in_company`; uno inexistente,
+     * `404`. Con `$idempotencyKey`, el reintento devuelve los miembros ACTUALES.
+     */
+    public function addMember(string $mailboxId, int $userId, ?string $idempotencyKey = null): mixed
     {
-        return $this->client->post('/mail/admin/mailboxes/'.rawurlencode($mailboxId).'/members', ['user_id' => $userId]);
+        return $this->client->post('/mail/admin/mailboxes/'.rawurlencode($mailboxId).'/members', ['user_id' => $userId], $idempotencyKey);
     }
 
-    /** Revoca la membresía (no la borra: queda en el libro). */
-    public function removeMember(string $mailboxId, int $userId): mixed
+    /**
+     * Revoca la membresía (no la borra: queda en el libro). Con
+     * `$idempotencyKey`, un reintento VIEJO no revoca un alta posterior.
+     */
+    public function removeMember(string $mailboxId, int $userId, ?string $idempotencyKey = null): mixed
     {
-        return $this->client->delete('/mail/admin/mailboxes/'.rawurlencode($mailboxId).'/members/'.$userId);
+        return $this->client->request(
+            'DELETE',
+            '/mail/admin/mailboxes/'.rawurlencode($mailboxId).'/members/'.$userId,
+            idempotencyKey: $idempotencyKey,
+        );
     }
 
     /**
      * Si un error del correo CIERRA el acceso: `'module_disabled'`
-     * (`module_not_installed`), `'access_revoked'` (`mailbox_access_revoked`)
-     * o `null` —un fallo del proveedor no cierra nada: no se sabe qué hay—.
+     * (`module_not_installed`), `'access_revoked'` (`mailbox_access_revoked`),
+     * `'company_not_allowed'` (la cabecera `company` nombra una empresa a la
+     * que ya no se pertenece: se cierra el ámbito entero) o `null` —un fallo
+     * del proveedor no cierra nada: no se sabe qué hay—.
      */
     public static function accessClosure(\Throwable $error): ?string
     {
@@ -182,6 +202,7 @@ final class Mail
         return match ($code) {
             'module_not_installed' => 'module_disabled',
             'mailbox_access_revoked' => 'access_revoked',
+            'company_not_allowed' => 'company_not_allowed',
             default => null,
         };
     }

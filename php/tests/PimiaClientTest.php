@@ -776,6 +776,7 @@ final class PimiaClientTest extends TestCase
         $client->mail->createMailbox(['kind' => 'shared', 'local_part' => 'obras'], 'alta-obras-1');
         $client->mail->addMember('mb_1', 42);
         $client->mail->removeMember('mb_1', 42);
+        $client->mail->removeMember('mb_1', 43, 'baja-miembro-01');
 
         $this->assertSame(self::BASE.'/api/v1/mail/connection', $transport->calls[0]['url']);
         $this->assertSame(self::BASE.'/api/v1/mail/mailboxes', $transport->calls[1]['url']);
@@ -787,6 +788,9 @@ final class PimiaClientTest extends TestCase
         $this->assertSame(self::BASE.'/api/v1/mail/admin/mailboxes/mb_1/members', $transport->calls[6]['url']);
         $this->assertSame(self::BASE.'/api/v1/mail/admin/mailboxes/mb_1/members/42', $transport->calls[7]['url']);
         $this->assertSame('DELETE', $transport->calls[7]['method']);
+        $this->assertArrayNotHasKey('idempotency-key', $transport->calls[7]['headers']);
+        $this->assertSame('DELETE', $transport->calls[8]['method']);
+        $this->assertSame('baja-miembro-01', $transport->calls[8]['headers']['idempotency-key']);
     }
 
     /** Los dos cierres de acceso se distinguen de un fallo pasajero del proveedor. */
@@ -795,7 +799,9 @@ final class PimiaClientTest extends TestCase
         $casos = [
             [403, 'module_not_installed', 'module_disabled'],
             [403, 'mailbox_access_revoked', 'access_revoked'],
+            [403, 'company_not_allowed', 'company_not_allowed'],
             [403, 'configure_mail_required', null],
+            [502, 'attachment_incomplete', null],
             [503, 'provider_unavailable', null],
         ];
         foreach ($casos as [$status, $code, $esperado]) {

@@ -264,14 +264,21 @@ function abilityFrom(body: unknown): string | undefined {
  * - `module_not_installed` → `'module_disabled'`: el módulo `mail` está
  *   apagado en la empresa;
  * - `mailbox_access_revoked` → `'access_revoked'`: quien mira ya no es
- *   miembro del buzón (también un admin sin membresía que pide contenido).
+ *   miembro del buzón (también un admin sin membresía que pide contenido);
+ * - `company_not_allowed` → `'company_not_allowed'`: la cabecera `company`
+ *   nombra una empresa a la que el usuario ya no pertenece. En `/mail` NO se
+ *   sustituye en silencio por otra (el resto de `/api/v1` sí): hay que cerrar
+ *   el ámbito de esa empresa entero.
  *
  * Un `502`/`503` del proveedor NO cierra nada: no se sabe qué hay, y eso no es
  * «no hay nada». Devuelve `null`.
  */
-export function mailAccessClosure(error: unknown): 'module_disabled' | 'access_revoked' | null {
+export function mailAccessClosure(
+  error: unknown,
+): 'module_disabled' | 'access_revoked' | 'company_not_allowed' | null {
   if (!(error instanceof PimiaApiError) || error.status !== 403) return null
   if (error.code === 'module_not_installed') return 'module_disabled'
   if (error.code === 'mailbox_access_revoked') return 'access_revoked'
+  if (error.code === 'company_not_allowed') return 'company_not_allowed'
   return null
 }

@@ -3675,8 +3675,13 @@ export interface paths {
          *     `mode: create` EXIGE la cabecera `Idempotency-Key` (8–200 caracteres
          *     ASCII imprimibles): sin ella `422 idempotency_key_required`, inválida
          *     `422 idempotency_key_invalid`. El reintento de un alta que sí llegó
-         *     encuentra el mismo buzón y contesta `200` con él. Estas rutas no pasan
-         *     por el replay genérico de `api.idempotency`: cada intento se autoriza.
+         *     devuelve el mismo buzón con `200` (personal o compartido, crear o
+         *     vincular); la misma clave con otro cuerpo es `422
+         *     idempotency_key_reused`. Una reserva sin cerrar se reintenta con la
+         *     MISMA clave del proveedor, hasta 24 h (después `409
+         *     idempotency_key_expired`). Un alta DISTINTA que choca sigue siendo 409.
+         *     Estas rutas no pasan por el replay genérico de `api.idempotency`: cada
+         *     intento se autoriza de nuevo.
          */
         post: operations["mailAdminMailboxes.store"];
         delete?: never;
@@ -3750,6 +3755,11 @@ export interface paths {
          *
          *     Errores: `404` usuario inexistente; `422 user_not_in_company`; `422
          *     personal_mailbox_owner_only` (un personal solo admite a su dueño).
+         *
+         *     Con `Idempotency-Key`: el reintento devuelve los miembros ACTUALES sin
+         *     repetir el alta; otra petición con la misma clave es `422
+         *     idempotency_key_reused`. Quitar un miembro admite lo mismo: un
+         *     reintento viejo no revoca un alta posterior.
          */
         post: operations["mailAdminMembers.store"];
         delete?: never;
@@ -3953,6 +3963,11 @@ export interface paths {
          *
          *     Cambiar a la clave de OTRA cuenta con buzones ya vinculados es
          *     `409 connection_account_mismatch`: esos buzones son de la cuenta vieja.
+         *
+         *     Con `Idempotency-Key`, el reintento de una conexión ya hecha devuelve el
+         *     estado ACTUAL sin repetirla (tras un DELETE, `not_configured`); la misma
+         *     clave con otro cuerpo es `422 idempotency_key_reused`. Dos a la vez con la
+         *     misma clave: la segunda espera a la primera y no repite nada.
          */
         post: operations["mailConnection.store"];
         /**
