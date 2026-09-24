@@ -821,4 +821,94 @@ final class PimiaClientTest extends TestCase
             }
         }
     }
+
+    /**
+     * Fase B del correo (factSaas#957): borradores, adjuntos en multipart,
+     * envío con su Idempotency-Key, estado del envío y propuestas.
+     */
+    public function test_borradores_envio_y_propuestas_pegan_en_sus_rutas(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => []]),
+            new TokenSet('at-1'),
+        );
+
+        $client->mail->createDraft(['mailbox_id' => 'mb_1', 'to' => ['ana@vera.es'], 'in_reply_to_message_id' => 'msg_7'], 'borrador-0001');
+        $client->mail->draft('drf_1');
+        $client->mail->updateDraft('drf_1', ['version' => 3, 'subject' => 'Nuevo']);
+        $client->mail->attach('drf_1', "%PDF\x00\xff", 'presu"puesto.pdf', 4, 'application/pdf');
+        $client->mail->detach('drf_1', 'att 9', 5);
+        $client->mail->sendDraft('drf_1', 6, 'envio-0001');
+        $client->mail->sendOperation('op_1');
+        $client->mail->draftFromProposal('prp_1');
+        $client->mail->discardProposal('prp_1', 2);
+        $client->mail->deleteDraft('drf_1');
+        $client->mail->drafts('mb_1');
+        $client->mail->disconnect('baja-0001');
+
+        $c = $transport->calls;
+        $this->assertSame(self::BASE.'/api/v1/mail/drafts', $c[0]['url']);
+        $this->assertSame('POST', $c[0]['method']);
+        $this->assertSame('borrador-0001', $c[0]['headers']['idempotency-key']);
+        $this->assertSame('msg_7', json_decode((string) $c[0]['body'], true)['in_reply_to_message_id']);
+        $this->assertSame(self::BASE.'/api/v1/mail/drafts/drf_1', $c[1]['url']);
+        $this->assertSame('PUT', $c[2]['method']);
+        $this->assertSame(['version' => 3, 'subject' => 'Nuevo'], json_decode((string) $c[2]['body'], true));
+
+        $this->assertSame(self::BASE.'/api/v1/mail/drafts/drf_1/attachments', $c[3]['url']);
+        $this->assertMatchesRegularExpression('/^multipart\/form-data; boundary=(pimia-[0-9a-f]+)$/', $c[3]['headers']['content-type']);
+        preg_match('/boundary=(.+)$/', $c[3]['headers']['content-type'], $m);
+        $body = (string) $c[3]['body'];
+        $this->assertStringContainsString("--{$m[1]}\r\nContent-Disposition: form-data; name=\"version\"\r\n\r\n4\r\n", $body);
+        $this->assertStringContainsString("Content-Disposition: form-data; name=\"file\"; filename=\"presu%22puesto.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF\x00\xff\r\n", $body);
+        $this->assertStringEndsWith("--{$m[1]}--\r\n", $body);
+
+        $this->assertSame(self::BASE.'/api/v1/mail/drafts/drf_1/attachments/att%209?version=5', $c[4]['url']);
+        $this->assertSame('DELETE', $c[4]['method']);
+        $this->assertSame(self::BASE.'/api/v1/mail/drafts/drf_1/send', $c[5]['url']);
+        $this->assertSame(['version' => 6], json_decode((string) $c[5]['body'], true));
+        $this->assertSame('envio-0001', $c[5]['headers']['idempotency-key']);
+        $this->assertSame(self::BASE.'/api/v1/mail/send-operations/op_1', $c[6]['url']);
+        $this->assertSame(self::BASE.'/api/v1/mail/proposals/prp_1/draft', $c[7]['url']);
+        $this->assertSame('POST', $c[7]['method']);
+        $this->assertSame(self::BASE.'/api/v1/mail/proposals/prp_1/discard', $c[8]['url']);
+        $this->assertSame(['version' => 2], json_decode((string) $c[8]['body'], true));
+        $this->assertSame('DELETE', $c[9]['method']);
+        $this->assertSame(self::BASE.'/api/v1/mail/mailboxes/mb_1/messages?folder=drafts', $c[10]['url']);
+        $this->assertSame('DELETE', $c[11]['method']);
+        $this->assertSame('baja-0001', $c[11]['headers']['idempotency-key']);
+    }
+
+    public function test_adjuntar_sin_version_no_manda_el_campo(): void
+    {
+        [$client, $transport] = $this->client(static fn () => FakeTransport::json(['data' => []]), new TokenSet('at-1'));
+        $client->mail->attach('drf_1', 'x', 'a.txt');
+        $this->assertStringNotContainsString('name="version"', (string) $transport->calls[0]['body']);
+    }
+
+    public function test_el_codigo_del_envio_se_reconoce_y_nada_mas(): void
+    {
+        $casos = [
+            [409, 'draft_changed', 'draft_changed'],
+            [409, 'draft_locked', 'draft_locked'],
+            [409, 'send_in_progress', 'send_in_progress'],
+            [409, 'proposal_changed', 'proposal_changed'],
+            [409, 'connection_disconnecting', 'connection_disconnecting'],
+            [422, 'idempotency_key_reused', 'idempotency_key_reused'],
+            [403, 'mailbox_access_revoked', null],
+            [502, 'provider_outcome_unknown', null],
+        ];
+        foreach ($casos as [$status, $code, $esperado]) {
+            [$client] = $this->client(
+                static fn () => FakeTransport::json(['message' => 'x', 'code' => $code, 'error' => $code], $status),
+                new TokenSet('at-1'),
+            );
+            try {
+                $client->mail->sendDraft('drf_1', 1, 'envio-0003');
+                $this->fail("{$status} {$code} debía lanzar");
+            } catch (\Throwable $e) {
+                $this->assertSame($esperado, Mail::sendingError($e), "{$status} {$code}");
+            }
+        }
+    }
 }

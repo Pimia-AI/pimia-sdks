@@ -128,6 +128,7 @@ export {
   MissingAbilityError,
   MissingScopeError,
   mailAccessClosure,
+  mailSendingError,
   NotAuthenticatedError,
   NotFoundError,
   OAuthError,
@@ -137,6 +138,7 @@ export {
   UnauthorizedError,
   ValidationError,
 } from './errors.js'
+export type { MailSendingErrorCode } from './errors.js'
 
 export {
   WEBHOOK_DEFAULT_TOLERANCE_SECONDS,

@@ -35,3 +35,16 @@ void mensaje.data.html_body
 declare const pagina: Awaited<ReturnType<typeof client.mail.messages.list>>
 pagina.meta.next_cursor satisfies string | null
 pagina.meta.history_complete satisfies boolean
+
+// Fase B: el envío EXIGE su Idempotency-Key; el borrador lleva su versión.
+// @ts-expect-error `idempotencyKey` es obligatoria al enviar.
+void client.mail.drafts.send('drf_1', 1, {})
+// @ts-expect-error Y sin opciones tampoco compila.
+void client.mail.drafts.send('drf_1', 1)
+void client.mail.drafts.send('drf_1', 1, { idempotencyKey: 'k' })
+// @ts-expect-error Guardar sin `version` no compila.
+void client.mail.drafts.update('drf_1', { subject: 'x' })
+declare const borrador: Awaited<ReturnType<typeof client.mail.drafts.get>>
+borrador.data.version satisfies number
+declare const operacion: Awaited<ReturnType<typeof client.mail.sendOperations.get>>
+operacion.data.status satisfies string

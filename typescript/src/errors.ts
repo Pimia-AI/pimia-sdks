@@ -274,6 +274,50 @@ function abilityFrom(body: unknown): string | undefined {
  * Un `502`/`503` del proveedor NO cierra nada: no se sabe qué hay, y eso no es
  * «no hay nada». Devuelve `null`.
  */
+/**
+ * Los códigos estables del ENVÍO en `/mail` (fase B), para decidir qué ofrecer
+ * sin leer el mensaje:
+ *
+ * - `draft_changed`: la versión que tenías delante es vieja: recarga el borrador;
+ * - `draft_locked`: hay un envío sin resolver: ni se edita ni se borra;
+ * - `draft_not_editable`: el borrador ya salió;
+ * - `send_in_progress`: otra clave con un envío sin resolver: sigue la operación;
+ * - `proposal_changed`: la propuesta cambió o ya no está pendiente;
+ * - `mail_not_configured` / `connection_disconnecting`: la conexión no está
+ *   activa (o se está dando de baja);
+ * - `idempotency_key_required` / `_invalid` / `_reused`: la clave del envío.
+ */
+export type MailSendingErrorCode =
+  | 'draft_changed'
+  | 'draft_locked'
+  | 'draft_not_editable'
+  | 'send_in_progress'
+  | 'proposal_changed'
+  | 'mail_not_configured'
+  | 'connection_disconnecting'
+  | 'idempotency_key_required'
+  | 'idempotency_key_invalid'
+  | 'idempotency_key_reused'
+
+const MAIL_SENDING_CODES: ReadonlySet<string> = new Set<MailSendingErrorCode>([
+  'draft_changed',
+  'draft_locked',
+  'draft_not_editable',
+  'send_in_progress',
+  'proposal_changed',
+  'mail_not_configured',
+  'connection_disconnecting',
+  'idempotency_key_required',
+  'idempotency_key_invalid',
+  'idempotency_key_reused',
+])
+
+/** El código del envío de un error de `/mail`, o `null` si no es uno de ellos. */
+export function mailSendingError(error: unknown): MailSendingErrorCode | null {
+  if (!(error instanceof PimiaApiError) || typeof error.code !== 'string') return null
+  return MAIL_SENDING_CODES.has(error.code) ? (error.code as MailSendingErrorCode) : null
+}
+
 export function mailAccessClosure(
   error: unknown,
 ): 'module_disabled' | 'access_revoked' | 'company_not_allowed' | null {
