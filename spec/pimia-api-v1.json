@@ -24018,7 +24018,7 @@
         "/mail/config": {
             "get": {
                 "operationId": "mailConfiguration.getMailEnvironment",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDe cada secreto solo sale si existe (`mail_password_set`), nunca el valor:\nantes esta ruta devolv\u00eda la contrase\u00f1a SMTP en claro a cualquiera con\npermiso para abrir la pantalla.\n\nLas claves que salen dependen del driver guardado \u2014las de `smtp` o las de\n`ses`\u2014, por eso todas menos las cuatro comunes son opcionales en el\ncontrato. El `@response` es lo que las publica: el array se arma en\ntiempo de ejecuci\u00f3n y sin \u00e9l la respuesta sal\u00eda como un objeto opaco.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nDe cada secreto solo sale si existe (`mail_password_set`), nunca el valor:\nantes esta ruta devolv\u00eda la contrase\u00f1a SMTP en claro a cualquiera con\npermiso para abrir la pantalla.\n\nLas claves que salen dependen del driver guardado \u2014las de `smtp` o las de\n`ses`\u2014, por eso todas menos las cuatro comunes son opcionales en el\ncontrato. El `@response` es lo que las publica: el array se arma en\ntiempo de ejecuci\u00f3n y sin \u00e9l la respuesta sal\u00eda como un objeto opaco.\n\nCon `mail_driver: deadsimple` (los documentos salen desde un buz\u00f3n del\nm\u00f3dulo `mail`) van `mail_mailbox_id` y `mail_mailbox`. Siempre va\n`deadsimple_available`: m\u00f3dulo `mail` activo y conexi\u00f3n activa, para que\nla pantalla sepa si ofrecer esa opci\u00f3n.",
                 "summary": "Configuraci\u00f3n de correo de la instancia, sin secretos",
                 "tags": [
                     "MailConfiguration"
@@ -24052,6 +24052,40 @@
                                         },
                                         "is_configured": {
                                             "type": "boolean"
+                                        },
+                                        "deadsimple_available": {
+                                            "type": "boolean"
+                                        },
+                                        "mail_mailbox_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "mail_mailbox": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "address": {
+                                                    "type": "string"
+                                                },
+                                                "display_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "address",
+                                                "display_name"
+                                            ]
                                         },
                                         "mail_host": {
                                             "type": "string"
@@ -24098,7 +24132,8 @@
                                         "mail_driver",
                                         "from_name",
                                         "from_mail",
-                                        "is_configured"
+                                        "is_configured",
+                                        "deadsimple_available"
                                     ]
                                 }
                             }
@@ -24122,7 +24157,7 @@
             },
             "post": {
                 "operationId": "mailConfiguration.saveMailEnvironment",
-                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLos campos que hacen falta dependen del `mail_driver`: `smtp` pide\nservidor y puerto, `ses` pide la clave. Los secretos \u2014la contrase\u00f1a SMTP\ny el secret de SES\u2014 son OPCIONALES por dise\u00f1o: omitirlos significa \u00abdeja\nel que hay\u00bb, porque la lectura no los devuelve y el panel no puede\nreenviar lo que no puede leer.\n\nEl servidor (`mail_host`) tiene que ser un nombre o una IP p\u00fablica: uno que\nresuelva a una direcci\u00f3n privada, local o reservada, o que no resuelva, se\nrechaza con `422` y `code: mail_host_not_allowed`. El puerto, uno de 25,\n465, 587 o 2525.",
+                "description": "**Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLos campos que hacen falta dependen del `mail_driver`: `smtp` pide\nservidor y puerto, `ses` pide la clave, `deadsimple` pide `mail_mailbox_id`\n(el `public_id` de un buz\u00f3n activo de la empresa activa; `from_mail` se\nignora y el remitente es el buz\u00f3n). Con `deadsimple`, `422` con `code`\n`mail_module_disabled`, `mail_not_configured` o `mailbox_not_found`. Los secretos \u2014la contrase\u00f1a SMTP\ny el secret de SES\u2014 son OPCIONALES por dise\u00f1o: omitirlos significa \u00abdeja\nel que hay\u00bb, porque la lectura no los devuelve y el panel no puede\nreenviar lo que no puede leer.\n\nEl servidor (`mail_host`) tiene que ser un nombre o una IP p\u00fablica: uno que\nresuelva a una direcci\u00f3n privada, local o reservada, o que no resuelva, se\nrechaza con `422` y `code: mail_host_not_allowed`. El puerto, uno de 25,\n465, 587 o 2525.",
                 "summary": "Guarda la configuraci\u00f3n de correo de la instancia",
                 "tags": [
                     "MailConfiguration"
@@ -64787,15 +64822,28 @@
                         "type": "string",
                         "enum": [
                             "smtp",
-                            "ses"
+                            "ses",
+                            "deadsimple"
                         ]
                     },
                     "from_name": {
                         "type": "string"
                     },
                     "from_mail": {
-                        "type": "string",
-                        "format": "email"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "description": "Con `deadsimple` el remitente es la direcci\u00f3n del buz\u00f3n: se ignora."
+                    },
+                    "mail_mailbox_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "El `public_id` de un buz\u00f3n activo de la empresa activa (lo comprueba el controlador).",
+                        "maxLength": 64
                     },
                     "mail_host": {
                         "type": "string"
@@ -64884,8 +64932,7 @@
                 },
                 "required": [
                     "mail_driver",
-                    "from_name",
-                    "from_mail"
+                    "from_name"
                 ],
                 "title": "MailEnvironmentRequest"
             },

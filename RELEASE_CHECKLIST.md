@@ -1,5 +1,14 @@
 # Checklist de release
 
+**v0.35.0 — 2026-09-24**: el correo de la empresa (módulo de pago `mail`, sobre
+Dead Simple Email) en TS y PHP, fases A (factSaas#954) y B (factSaas#957) —
+conexión, buzones, mensajes, adjuntos, propuestas, inventario administrativo,
+borradores, envío con `Idempotency-Key` obligatoria y su estado—, y el driver
+`deadsimple` de `/mail/config` (factSaas#961, solo tipos). Paso 0 repetido
+justo antes del tag: `factSaas@7d7df3a1`, **484 operaciones**, 2 modificadas
+frente a la sincronización de la fase B y ninguna retirada. SDK y design tokens
+versionan 0.35.0; PHP hereda el tag del espejo. Tras publicar, paso 4.
+
 **v0.34.0 preparada — 2026-09-23**: contratos fase 2 en TS y PHP —catálogo de
 clausulados, diccionario de marcadores, vista previa con referencia de
 revisión, los cuatro modos de facturación con hitos y proyecto, y la factura
@@ -171,7 +180,9 @@ que es lo único que se puede comprobar hoy.
 | 0.30.1 | 2026-09-15 | Documentación del origen baseUrl y rechazo temprano de /api y /api/v1 en TS/PHP. Sin cambios de spec. | — |
 | 0.31.0 | 2026-09-16 | Contrato de instancia **1.4.0, 442 operaciones** (`factSaas@ae2a4088`): composición efectiva y resumen fiscal JSON. Central sube a 1.17.0. | — |
 | 0.32.0 | 2026-09-22 | La firma del cliente en contratos, TS y PHP. Instancia **1.4.3, 446 operaciones** (`factSaas@0ca763c6`). | — |
-| 0.33.0 | *preparada, sin publicar* | Contrato del plano central **1.19.0, 65 operaciones** (`factSaas@e21d6d74`), con lo que la 1.18.0 dejó sin publicar: moneda y desglose de asientos en `anadidos`, `cartera[].activaciones` con nombre, el precio inicial de cada activación y el tramo mayorista del catálogo. ⚠️ Dos enums estrechados. Sólo TypeScript. | Pendiente de publicación |
+| 0.33.0 | *sin tag propio* (dentro de la 0.34.0) | Contrato del plano central **1.19.0, 65 operaciones** (`factSaas@e21d6d74`), con lo que la 1.18.0 dejó sin publicar: moneda y desglose de asientos en `anadidos`, `cartera[].activaciones` con nombre, el precio inicial de cada activación y el tramo mayorista del catálogo. ⚠️ Dos enums estrechados. Sólo TypeScript. | Pendiente de publicación |
+| 0.34.0 | 2026-09-23 | Contratos fase 2 en TS y PHP: instancia **455 operaciones** (`factSaas@57b3e03d`). Arrastra la 0.33.0. | — |
+| 0.35.0 | 2026-09-24 | El correo de la empresa (fases A y B) en TS y PHP y el driver `deadsimple` de `/mail/config`. Instancia **484 operaciones** (`factSaas@7d7df3a1`). | Pendiente tras publicar |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,

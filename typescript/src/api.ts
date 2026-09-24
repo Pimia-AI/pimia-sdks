@@ -3875,6 +3875,11 @@ export interface paths {
          *     `ses`—, por eso todas menos las cuatro comunes son opcionales en el
          *     contrato. El `@response` es lo que las publica: el array se arma en
          *     tiempo de ejecución y sin él la respuesta salía como un objeto opaco.
+         *
+         *     Con `mail_driver: deadsimple` (los documentos salen desde un buzón del
+         *     módulo `mail`) van `mail_mailbox_id` y `mail_mailbox`. Siempre va
+         *     `deadsimple_available`: módulo `mail` activo y conexión activa, para que
+         *     la pantalla sepa si ofrecer esa opción.
          */
         get: operations["mailConfiguration.getMailEnvironment"];
         put?: never;
@@ -3883,7 +3888,10 @@ export interface paths {
          * @description **Reservada al panel de Pimia.** Exige `admin:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Los campos que hacen falta dependen del `mail_driver`: `smtp` pide
-         *     servidor y puerto, `ses` pide la clave. Los secretos —la contraseña SMTP
+         *     servidor y puerto, `ses` pide la clave, `deadsimple` pide `mail_mailbox_id`
+         *     (el `public_id` de un buzón activo de la empresa activa; `from_mail` se
+         *     ignora y el remitente es el buzón). Con `deadsimple`, `422` con `code`
+         *     `mail_module_disabled`, `mail_not_configured` o `mailbox_not_found`. Los secretos —la contraseña SMTP
          *     y el secret de SES— son OPCIONALES por diseño: omitirlos significa «deja
          *     el que hay», porque la lectura no los devuelve y el panel no puede
          *     reenviar lo que no puede leer.
@@ -10695,10 +10703,15 @@ export interface components {
          */
         MailEnvironmentRequest: {
             /** @enum {string} */
-            mail_driver: "smtp" | "ses";
+            mail_driver: "smtp" | "ses" | "deadsimple";
             from_name: string;
-            /** Format: email */
-            from_mail: string;
+            /**
+             * Format: email
+             * @description Con `deadsimple` el remitente es la dirección del buzón: se ignora.
+             */
+            from_mail?: string | null;
+            /** @description El `public_id` de un buzón activo de la empresa activa (lo comprueba el controlador). */
+            mail_mailbox_id?: string | null;
             mail_host?: string;
             /**
              * @description 25, 465, 587 o 2525.
@@ -22033,6 +22046,13 @@ export interface operations {
                         from_name: string;
                         from_mail: string;
                         is_configured: boolean;
+                        deadsimple_available: boolean;
+                        mail_mailbox_id?: string | null;
+                        mail_mailbox?: {
+                            id: string;
+                            address: string;
+                            display_name: string | null;
+                        } | null;
                         mail_host?: string;
                         mail_port?: string;
                         mail_username?: string;
