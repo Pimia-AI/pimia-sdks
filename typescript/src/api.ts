@@ -3644,6 +3644,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mail/admin/mailboxes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Todos los buzones de la empresa activa, con su número de miembros vivos.
+         *     Sin `configure-mail`, `403 configure_mail_required`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailAdminMailboxes.index"];
+        put?: never;
+        /**
+         * Crea un buzón en el proveedor (`mode: create`) o vincula uno que ya
+         *     existe en la cuenta (`mode: link`, por `address`), y lo da de alta en la
+         *     empresa activa. `201` con la entrada del inventario
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Errores: `409 mail_not_configured` sin conexión activa; `409
+         *     mailbox_already_linked` si ese buzón ya está en esta instancia; `409
+         *     personal_mailbox_exists` si el dueño ya tiene su personal en la empresa;
+         *     `422 user_not_in_company` si el dueño no es de la empresa; `422
+         *     provider_mailbox_not_found` si la cuenta no tiene esa dirección;
+         *     `502 provider_outcome_unknown` (reintentar con la MISMA
+         *     `Idempotency-Key`); `503 provider_unavailable`.
+         *
+         *     `mode: create` EXIGE la cabecera `Idempotency-Key` (8–200 caracteres
+         *     ASCII imprimibles): sin ella `422 idempotency_key_required`, inválida
+         *     `422 idempotency_key_invalid`. El reintento de un alta que sí llegó
+         *     devuelve el mismo buzón con `200` (personal o compartido, crear o
+         *     vincular); la misma clave con otro cuerpo es `422
+         *     idempotency_key_reused`. Una reserva sin cerrar se reintenta con la
+         *     MISMA clave del proveedor, hasta 24 h (después `409
+         *     idempotency_key_expired`). Un alta DISTINTA que choca sigue siendo 409.
+         *     Estas rutas no pasan por el replay genérico de `api.idempotency`: cada
+         *     intento se autoriza de nuevo.
+         */
+        post: operations["mailAdminMailboxes.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/admin/provider-mailboxes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los buzones que tiene la CUENTA del proveedor, para elegir cuál vincular
+         *     (`mode: link`). `linked` dice si ya está vinculado a una empresa de esta
+         *     instancia. No lleva el id del proveedor: se vincula por `address`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     ⛔ Un fallo del proveedor es `502/503`, nunca una lista vacía.
+         */
+        get: operations["mailAdminMailboxes.providerMailboxes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/admin/mailboxes/{mailbox}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambia el nombre visible o el estado (`active`/`disabled`) de un buzón
+         *     de la empresa activa. Solo en Pimia: el proveedor no se toca
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        patch: operations["mailAdminMailboxes.update"];
+        trace?: never;
+    };
+    "/mail/admin/mailboxes/{mailbox}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los miembros VIVOS del buzón
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailAdminMembers.index"];
+        put?: never;
+        /**
+         * Añade un miembro (idempotente: si ya lo era, no cambia nada) y devuelve
+         *     la lista de miembros
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Errores: `404` usuario inexistente; `422 user_not_in_company`; `422
+         *     personal_mailbox_owner_only` (un personal solo admite a su dueño).
+         *
+         *     Con `Idempotency-Key`: el reintento devuelve los miembros ACTUALES sin
+         *     repetir el alta; otra petición con la misma clave es `422
+         *     idempotency_key_reused`. Quitar un miembro admite lo mismo: un
+         *     reintento viejo no revoca un alta posterior.
+         */
+        post: operations["mailAdminMembers.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/admin/mailboxes/{mailbox}/member-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A quién se puede añadir: usuarios de la empresa del buzón que no son ya
+         *     miembros vivos. En un buzón personal, solo su dueño
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailAdminMembers.candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/admin/mailboxes/{mailbox}/members/{user}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Quita a un miembro: revoca su membresía SIN borrar nada (el correo sigue
+         *     para los demás). Idempotente. Devuelve la lista de miembros
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["mailAdminMembers.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/mailboxes/{mailbox}/attachments/{attachment}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los bytes del adjunto, `Content-Disposition: attachment`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Errores: `404` si el adjunto no es de un mensaje de ESTE buzón (o el
+         *     buzón no es de la empresa activa); `403 mailbox_access_revoked` sin
+         *     membresía viva; `409 mail_not_configured` si hay que pedirlo al
+         *     proveedor y la instancia está desconectada; `502/503` si el proveedor
+         *     falla.
+         */
+        get: operations["mail.mailAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mail/drivers": {
         parameters: {
             query?: never;
@@ -3737,6 +3929,173 @@ export interface paths {
          *     contestó el servidor al que se conectó la caja; ya no se devuelve.
          */
         post: operations["mailConfiguration.testEmailConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El estado de la conexión. Sin conexión, `200` con
+         *     `status: "not_configured"` (no un 404): la web distingue «sin
+         *     configurar» de «error»
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `capabilities.can_configure` es `configure-mail` en la empresa activa:
+         *     conectar, crear buzones y asignar miembros. No concede contenido.
+         */
+        get: operations["mailConnection.show"];
+        put?: never;
+        /**
+         * Conecta la instancia con su cuenta del proveedor, o cambia la clave
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     La clave se VERIFICA contra el proveedor antes de guardarla (cifrada).
+         *     Una clave rechazada es `422 invalid_api_key`; un proveedor caído,
+         *     `503 provider_unavailable` — y en los dos casos no se guarda nada.
+         *
+         *     Cambiar a la clave de OTRA cuenta con buzones ya vinculados es
+         *     `409 connection_account_mismatch`: esos buzones son de la cuenta vieja.
+         *
+         *     Con `Idempotency-Key`, el reintento de una conexión ya hecha devuelve el
+         *     estado ACTUAL sin repetirla (tras un DELETE, `not_configured`); la misma
+         *     clave con otro cuerpo es `422 idempotency_key_reused`. Dos a la vez con la
+         *     misma clave: la segunda espera a la primera y no repite nada.
+         */
+        post: operations["mailConnection.store"];
+        /**
+         * Desconecta la instancia: borra la clave (y el secreto del webhook) y
+         *     deja la conexión `revoked`. ⛔ No borra buzones, mensajes ni miembros:
+         *     vuelven a servir al reconectar con la misma cuenta. Idempotente: sin
+         *     conexión responde igual, `not_configured`
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["mailConnection.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/mailboxes/{mailbox}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Una página de mensajes de una carpeta (`inbox` o `sent`), con búsqueda
+         *     `q` en el servidor (remitente, destinatarios, asunto y cuerpo) y
+         *     paginación por cursor (`meta.next_cursor`, `null` en la última)
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `unread` es POR USUARIO. `send_status` es el estado del envío que
+         *     produjo un saliente (`null` en los entrantes).
+         *
+         *     Errores: `404` buzón de otra empresa o inexistente; `403
+         *     mailbox_access_revoked` sin membresía viva (también un administrador);
+         *     `422 invalid_cursor`.
+         */
+        get: operations["mailMessages.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/mailboxes/{mailbox}/messages/{message}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Un mensaje en texto plano, con sus adjuntos (metadatos; los bytes, por
+         *     `GET /mail/mailboxes/{mailbox}/attachments/{attachment}`). Leerlo NO lo
+         *     marca como leído: eso es el `PATCH`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailMessages.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Marca el mensaje leído (`read: true`) o no leído (`read: false`) para
+         *     QUIEN MIRA. Idempotente. `204` sin cuerpo
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        patch: operations["mailMessages.update"];
+        trace?: never;
+    };
+    "/mail/mailboxes/{mailbox}/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Las propuestas PENDIENTES de un buzón (también las aprobadas que aún no
+         *     han salido), la más reciente primero, paginadas por cursor
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailProposals.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/proposals/{proposal}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Una propuesta por su id, en cualquier estado. De otra empresa, `404`;
+         *     de un buzón del que no se es miembro, `403 mailbox_access_revoked`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailProposals.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/mailboxes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `unread_count` es POR USUARIO (entrantes sin marcar como leídos por quien
+         *     mira) y `pending_proposals` cuenta las propuestas de Hermes pendientes
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailboxes.index"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9985,6 +10344,20 @@ export interface components {
             } | null;
         };
         /**
+         * MailConnectionRequest
+         * @description Conectar (o cambiar la clave de) la cuenta del proveedor de correo de la
+         *     INSTANCIA (`POST /api/v1/mail/connection`).
+         *
+         *     ⛔ `api_key` entra y no sale nunca: ni en la respuesta, ni en el log, ni en
+         *     el mensaje de un error (el 422 de la clave rechazada no la repite).
+         *     `domain` es el dominio con el que se crean los buzones nuevos; sin él, el
+         *     proveedor usa su dominio compartido.
+         */
+        MailConnectionRequest: {
+            api_key: string;
+            domain?: string | null;
+        };
+        /**
          * MailEnvironmentRequest
          * @description Validación de la pantalla de configuración de correo.
          *
@@ -10043,6 +10416,61 @@ export interface components {
             mail_ses_secret?: string | null;
             /** @description Una región de AWS, como `eu-west-1`. */
             mail_ses_region?: string | null;
+        };
+        /**
+         * MailMessageUpdateRequest
+         * @description Marcar un mensaje leído o no leído (`PATCH /api/v1/mail/mailboxes/{mailbox}/messages/{message}`).
+         *     Es POR USUARIO: marcarlo no cambia lo que ven los demás miembros.
+         */
+        MailMessageUpdateRequest: {
+            read: boolean;
+        };
+        /**
+         * MailboxMemberRequest
+         * @description Añadir un miembro a un buzón (`POST /api/v1/mail/admin/mailboxes/{mailbox}/members`).
+         *     La membresía da leer y enviar; no hay papeles.
+         */
+        MailboxMemberRequest: {
+            user_id: number;
+        };
+        /**
+         * MailboxStoreRequest
+         * @description Dar de alta un buzón en la empresa activa (`POST /api/v1/mail/admin/mailboxes`).
+         *
+         *     Dos modos:
+         *      - `create` (por defecto): el proveedor crea el buzón (`local_part` opcional;
+         *        sin él, uno aleatorio) con el dominio de la conexión;
+         *      - `link`: se vincula un buzón que YA existe en la cuenta, por su
+         *        `address` (la lista sale de `GET /mail/admin/provider-mailboxes`).
+         *
+         *     `kind`: `shared` nace SIN miembros (tampoco quien lo crea); `personal`
+         *     exige `owner_user_id`, un usuario de la empresa, que recibe su membresía.
+         *
+         *     `create` exige la cabecera `Idempotency-Key` (8–200 caracteres ASCII
+         *     imprimibles), que es la que viaja al proveedor: un reintento tras un 502
+         *     `provider_outcome_unknown` se hace con la MISMA.
+         */
+        MailboxStoreRequest: {
+            /** @enum {string} */
+            mode?: "create" | "link";
+            /** @enum {string} */
+            kind: "personal" | "shared";
+            local_part?: string | null;
+            /** Format: email */
+            address?: string | null;
+            display_name?: string | null;
+            owner_user_id?: number | null;
+        };
+        /**
+         * MailboxUpdateRequest
+         * @description Cambiar los metadatos LOCALES de un buzón (`PATCH /api/v1/mail/admin/mailboxes/{mailbox}`):
+         *     el nombre visible y si está activo. Un buzón desactivado se sigue leyendo
+         *     pero no envía. No toca nada en el proveedor.
+         */
+        MailboxUpdateRequest: {
+            display_name?: string | null;
+            /** @enum {string} */
+            status?: "active" | "disabled";
         };
         /** Note */
         Note: {
@@ -10715,7 +11143,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "configure-mail" | "view-mail" | "send-mail")[];
         };
         /**
          * RoleRequest
@@ -10740,7 +11168,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "configure-mail" | "view-mail" | "send-mail";
             }[] | null;
         };
         /** RoleResource */
@@ -14144,7 +14572,7 @@ export interface operations {
              *
              *     `ContractDocumentVersionResource`
              */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14246,15 +14674,17 @@ export interface operations {
                             ];
                             limits: {
                                 /** @constant */
-                                max_blocks: 300;
+                                max_blocks: 1000;
                                 /** @constant */
                                 max_inlines: 300;
                                 /** @constant */
                                 max_list_items: 200;
                                 /** @constant */
-                                max_text_length: 5000;
+                                max_text_length: 400000;
                                 /** @constant */
-                                max_bytes: 200000;
+                                max_text_chars: 400000;
+                                /** @constant */
+                                max_bytes: 1000000;
                                 /** @constant */
                                 max_heading_level: 3;
                             };
@@ -14388,7 +14818,7 @@ export interface operations {
         };
         responses: {
             /** @description `ContractModelResource` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20952,6 +21382,302 @@ export interface operations {
             };
         };
     };
+    "mailAdminMailboxes.index": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            kind: string;
+                            address: string;
+                            display_name: string | null;
+                            status: string;
+                            member_count: number;
+                            owner: {
+                                user_id: number;
+                                name: string | null;
+                            } | null;
+                            created_at: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "mailAdminMailboxes.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailboxStoreRequest"];
+            };
+        };
+        responses: {
+            /** @description El recurso recién creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 201;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailAdminMailboxes.providerMailboxes": {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            address: string;
+                            display_name: string | null;
+                            linked: boolean;
+                        }[];
+                        meta: {
+                            next_cursor: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailAdminMailboxes.update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MailboxUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            kind: string;
+                            address: string;
+                            display_name: string | null;
+                            status: string;
+                            member_count: number;
+                            owner: {
+                                user_id: number;
+                                name: string | null;
+                            } | null;
+                            created_at: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailAdminMembers.index": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            user_id: number;
+                            name: string | null;
+                            email: string | null;
+                            added_at: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "mailAdminMembers.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailboxMemberRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            user_id: number;
+                            name: string | null;
+                            email: string | null;
+                            added_at: string | null;
+                        }[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailAdminMembers.candidates": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            user_id: number;
+                            name: string | null;
+                            email: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "mailAdminMembers.destroy": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            user_id: number;
+                            name: string | null;
+                            email: string | null;
+                            added_at: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "mail.mailAttachment": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+                attachment: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": Blob;
+                };
+            };
+        };
+    };
     "mailConfiguration.getMailDrivers": {
         parameters: {
             query?: never;
@@ -21079,6 +21805,407 @@ export interface operations {
             };
             403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailConnection.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string | null;
+                            provider: string;
+                            status: string;
+                            domain: string | null;
+                            account_label: string | null;
+                            checked_at: string | null;
+                            limits: {
+                                max_attachment_bytes: number;
+                                max_message_bytes: number;
+                            };
+                            capabilities: {
+                                can_configure: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailConnection.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailConnectionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string | null;
+                            provider: string;
+                            status: string;
+                            domain: string | null;
+                            account_label: string | null;
+                            checked_at: string | null;
+                            limits: {
+                                max_attachment_bytes: number;
+                                max_message_bytes: number;
+                            };
+                            capabilities: {
+                                can_configure: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailConnection.destroy": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string | null;
+                            provider: string;
+                            status: string;
+                            domain: string | null;
+                            account_label: string | null;
+                            checked_at: string | null;
+                            limits: {
+                                max_attachment_bytes: number;
+                                max_message_bytes: number;
+                            };
+                            capabilities: {
+                                can_configure: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailMessages.index": {
+        parameters: {
+            query?: {
+                folder?: "inbox" | "sent";
+                q?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            folder: string;
+                            from: {
+                                name: string | null;
+                                address: string | null;
+                            };
+                            to: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            subject: string;
+                            snippet: string;
+                            received_at: string | null;
+                            unread: boolean;
+                            attachment_count: number;
+                            send_status: string | null;
+                        }[];
+                        meta: {
+                            next_cursor: string | null;
+                            history_complete: boolean;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailMessages.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+                message: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            folder: string;
+                            from: {
+                                name: string | null;
+                                address: string | null;
+                            };
+                            to: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            subject: string;
+                            snippet: string;
+                            received_at: string | null;
+                            unread: boolean;
+                            attachment_count: number;
+                            send_status: string | null;
+                            cc: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            reply_to: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            text_body: string;
+                            had_html: boolean;
+                            blocked_remote_images: boolean;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            thread_id: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailMessages.update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+                message: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailMessageUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailProposals.index": {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            version: number;
+                            status: string;
+                            content_hash: string | null;
+                            to: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            cc: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            subject: string;
+                            text_body: string;
+                            rationale: string | null;
+                            in_reply_to_message_id: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        }[];
+                        meta: {
+                            next_cursor: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailProposals.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                proposal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            version: number;
+                            status: string;
+                            content_hash: string | null;
+                            to: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            cc: {
+                                name: string | null;
+                                address: string | null;
+                            }[];
+                            subject: string;
+                            text_body: string;
+                            rationale: string | null;
+                            in_reply_to_message_id: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailboxes.index": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            kind: string;
+                            address: string;
+                            display_name: string | null;
+                            status: string;
+                            unread_count: number;
+                            pending_proposals: number;
+                            capabilities: {
+                                can_read: boolean;
+                                can_send: boolean;
+                            };
+                        }[];
+                    };
+                };
+            };
         };
     };
     "general.nextNumber": {

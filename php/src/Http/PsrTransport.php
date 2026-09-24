@@ -46,10 +46,15 @@ final class PsrTransport implements Transport
             $normalized[strtolower((string) $name)] = implode(', ', $values);
         }
 
+        $raw = (string) $response->getBody();
+
         return new Response(
             $response->getStatusCode(),
-            self::decode((string) $response->getBody(), $normalized['content-type'] ?? ''),
+            self::decode($raw, $normalized['content-type'] ?? ''),
             $normalized,
+            // Los bytes originales, para las descargas: un fichero que ES JSON
+            // (o `+json`, o vacío) no puede volver decodificado.
+            $raw,
         );
     }
 

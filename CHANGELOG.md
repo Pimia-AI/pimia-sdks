@@ -8,6 +8,72 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [Sin publicar]
+
+El correo de la empresa (módulo de pago `mail`, sobre Dead Simple Email), fase
+A del núcleo. **Sin versión todavía**: se sube y se publica al tagear,
+repitiendo antes el paso 0 contra `origin/main`.
+
+Contrato de instancia sincronizado desde **`origin/main` del núcleo:
+factSaas@025a5b84 (2026-09-24) — 473 operaciones**
+(`025a5b84dd6849009ac8fc9cb4d3f3aecf6b6e8e` es el merge del PR #954, head
+`e2a3738d`). Comparado operación a operación y resolviendo los schemas
+compartidos:
+
+- **frente a la 0.34.0**: 18 nuevas, 6 modificadas, ninguna retirada;
+- **frente al head `25d0b375`** de la rama del #954, contra el que se preparó
+  esta entrada: **solo cambian 3 descripciones**, las del alta de buzón, del
+  alta de miembro y de la conexión, con la idempotencia final. Ninguna forma
+  de petición ni de respuesta cambia.
+
+- **Nuevas**: las 18 de `/mail/*` (conexión, buzones, mensajes, adjunto,
+  propuestas, inventario administrativo, buzones del proveedor y miembros).
+- **Las 6 modificadas NO son del #954**: ya estaban en el `main` del núcleo
+  después de la 0.34.0. Son las abilities `configure-mail`, `view-mail` y
+  `send-mail` en `POST /roles`, `PUT /roles/{role}` y
+  `PUT /roles/{role}/abilities`; los límites nuevos del clausulado (#942) en
+  `GET /contract-models/variables` y `POST /contract-models`; y el `201` de
+  `POST /contracts/{contract}/document-preview`.
+
+### Añadido
+
+- `client.mail` (TypeScript) y `$client->mail` (PHP): conexión, buzones
+  legibles, mensajes (por cursor, con `meta.history_complete`), marcar leído,
+  adjunto como binario, propuestas en lectura, e inventario administrativo con
+  miembros y candidatos.
+- **El alta de buzón exige su `Idempotency-Key`**: en TypeScript es obligatoria
+  en el tipo (`{ idempotencyKey: string }`), y en PHP es un parámetro sin
+  valor por defecto. Una por alta, y la MISMA al reintentar tras un
+  `502 provider_outcome_unknown`.
+- `mailAccessClosure(error)` (TS) y `Mail::accessClosure($e)` (PHP): distinguen
+  los tres cierres de acceso de un fallo pasajero (`502`/`503` → `null`):
+  - `module_not_installed` → `'module_disabled'`;
+  - `mailbox_access_revoked` → `'access_revoked'`;
+  - `company_not_allowed` → `'company_not_allowed'`: en `/mail`, una cabecera
+    `company` ajena NO se sustituye en silencio.
+- **Idempotencia del correo**: `/mail` **no usa el replay genérico** del resto
+  de `/api/v1`, y `meta.idempotentReplay` no dice nada ahí.
+  - El reintento de un alta que llegó responde `200` con el mismo buzón.
+  - La conexión y la alta/baja de miembros aceptan una `idempotencyKey`
+    opcional. `members.remove` va por `request` porque `delete()` no lleva
+    clave.
+  - Códigos documentados: `422 idempotency_key_reused`, `409
+    idempotency_key_expired`, `409 idempotency_account_changed` y `409
+    connection_has_pending_operations`.
+- Los adjuntos no se sirven a medias: un corte es `502 attachment_incomplete`,
+  (o `attachment_too_large`, o `503 attachment_spool_failed`), siempre ANTES
+  del `200`.
+- `MailAdminMailboxResource`: el `201` del alta sale del generador como el
+  literal `201`, así que el sobre se escribe a mano con la forma del `PATCH`,
+  que es la misma (`MailPresenter::adminMailbox` en el núcleo).
+
+### Scopes
+
+`mail:read` y `mail:write` son `first_party_only`, y `mail` es además dominio
+restringido. Por eso **no entran en `SCOPES`**, que es lo que un integrador
+puede pedir, y se añaden a la lista de reservados a la primera parte del test
+de deriva, como `verifactu:*` y `billing:*`.
+
 ## [0.34.0] — 2026-09-23
 
 Contratos, fase 2: el clausulado propio de la empresa, los cuatro modos de

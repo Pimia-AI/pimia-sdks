@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia API v1 \u2014 contrato de partner",
-        "version": "1.4.3",
+        "version": "1.5.0",
         "description": "Contrato p\u00fablico de la API de Pimia para apps de partner (superficie curada por scopes: facturaci\u00f3n, presupuestos, clientes, gastos, pagos, art\u00edculos, banca, CRM, agenda, informes y cat\u00e1logos meta). Autenticaci\u00f3n: OAuth 2.0 del Authorization Server de Pimia (PKCE o client confidencial) \u2014 ver docs/guia-integradores.md."
     },
     "servers": [
@@ -6298,7 +6298,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "\u26d4 Sin `route()`: la ruta cuelga del prefijo de instancia, que lleva su\npropio `{tenant}`, y el generador exige ese par\u00e1metro \u2014medido: 500\n\u00abMissing parameter: tenant\u00bb\u2014. La URL de descarga es esta misma m\u00e1s la\nreferencia, as\u00ed que se compone de lo que ya se est\u00e1 sirviendo y no\ndepende de c\u00f3mo se prefije la API.\n\n\n\n`ContractDocumentVersionResource`",
                         "content": {
                             "application/json": {
@@ -6541,7 +6541,7 @@
                                                     "properties": {
                                                         "max_blocks": {
                                                             "type": "integer",
-                                                            "const": 300
+                                                            "const": 1000
                                                         },
                                                         "max_inlines": {
                                                             "type": "integer",
@@ -6553,11 +6553,15 @@
                                                         },
                                                         "max_text_length": {
                                                             "type": "integer",
-                                                            "const": 5000
+                                                            "const": 400000
+                                                        },
+                                                        "max_text_chars": {
+                                                            "type": "integer",
+                                                            "const": 400000
                                                         },
                                                         "max_bytes": {
                                                             "type": "integer",
-                                                            "const": 200000
+                                                            "const": 1000000
                                                         },
                                                         "max_heading_level": {
                                                             "type": "integer",
@@ -6569,6 +6573,7 @@
                                                         "max_inlines",
                                                         "max_list_items",
                                                         "max_text_length",
+                                                        "max_text_chars",
                                                         "max_bytes",
                                                         "max_heading_level"
                                                     ]
@@ -6859,7 +6864,7 @@
                     }
                 },
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "`ContractModelResource`",
                         "content": {
                             "application/json": {
@@ -23114,6 +23119,853 @@
                 ]
             }
         },
+        "/mail/admin/mailboxes": {
+            "get": {
+                "operationId": "mailAdminMailboxes.index",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Todos los buzones de la empresa activa, con su n\u00famero de miembros vivos.\nSin `configure-mail`, `403 configure_mail_required`",
+                "tags": [
+                    "MailAdminMailboxes"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "kind": {
+                                                        "type": "string"
+                                                    },
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "display_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "member_count": {
+                                                        "type": "integer"
+                                                    },
+                                                    "owner": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "user_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "user_id",
+                                                            "name"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "kind",
+                                                    "address",
+                                                    "display_name",
+                                                    "status",
+                                                    "member_count",
+                                                    "owner",
+                                                    "created_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            },
+            "post": {
+                "operationId": "mailAdminMailboxes.store",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nErrores: `409 mail_not_configured` sin conexi\u00f3n activa; `409\nmailbox_already_linked` si ese buz\u00f3n ya est\u00e1 en esta instancia; `409\npersonal_mailbox_exists` si el due\u00f1o ya tiene su personal en la empresa;\n`422 user_not_in_company` si el due\u00f1o no es de la empresa; `422\nprovider_mailbox_not_found` si la cuenta no tiene esa direcci\u00f3n;\n`502 provider_outcome_unknown` (reintentar con la MISMA\n`Idempotency-Key`); `503 provider_unavailable`.\n\n`mode: create` EXIGE la cabecera `Idempotency-Key` (8\u2013200 caracteres\nASCII imprimibles): sin ella `422 idempotency_key_required`, inv\u00e1lida\n`422 idempotency_key_invalid`. El reintento de un alta que s\u00ed lleg\u00f3\ndevuelve el mismo buz\u00f3n con `200` (personal o compartido, crear o\nvincular); la misma clave con otro cuerpo es `422\nidempotency_key_reused`. Una reserva sin cerrar se reintenta con la\nMISMA clave del proveedor, hasta 24 h (despu\u00e9s `409\nidempotency_key_expired`). Un alta DISTINTA que choca sigue siendo 409.\nEstas rutas no pasan por el replay gen\u00e9rico de `api.idempotency`: cada\nintento se autoriza de nuevo.",
+                "summary": "Crea un buz\u00f3n en el proveedor (`mode: create`) o vincula uno que ya\nexiste en la cuenta (`mode: link`, por `address`), y lo da de alta en la\nempresa activa. `201` con la entrada del inventario",
+                "tags": [
+                    "MailAdminMailboxes"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailboxStoreRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 201
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/admin/provider-mailboxes": {
+            "get": {
+                "operationId": "mailAdminMailboxes.providerMailboxes",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n\u26d4 Un fallo del proveedor es `502/503`, nunca una lista vac\u00eda.",
+                "summary": "Los buzones que tiene la CUENTA del proveedor, para elegir cu\u00e1l vincular\n(`mode: link`). `linked` dice si ya est\u00e1 vinculado a una empresa de esta\ninstancia. No lleva el id del proveedor: se vincula por `address`",
+                "tags": [
+                    "MailAdminMailboxes"
+                ],
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 512
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "display_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "linked": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "address",
+                                                    "display_name",
+                                                    "linked"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "next_cursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "next_cursor"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/admin/mailboxes/{mailbox}": {
+            "patch": {
+                "operationId": "mailAdminMailboxes.update",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Cambia el nombre visible o el estado (`active`/`disabled`) de un buz\u00f3n\nde la empresa activa. Solo en Pimia: el proveedor no se toca",
+                "tags": [
+                    "MailAdminMailboxes"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailboxUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
+                                                "address": {
+                                                    "type": "string"
+                                                },
+                                                "display_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "member_count": {
+                                                    "type": "integer"
+                                                },
+                                                "owner": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "user_id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "user_id",
+                                                        "name"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "kind",
+                                                "address",
+                                                "display_name",
+                                                "status",
+                                                "member_count",
+                                                "owner",
+                                                "created_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/admin/mailboxes/{mailbox}/members": {
+            "get": {
+                "operationId": "mailAdminMembers.index",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Los miembros VIVOS del buz\u00f3n",
+                "tags": [
+                    "MailAdminMembers"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "user_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "email": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "added_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "user_id",
+                                                    "name",
+                                                    "email",
+                                                    "added_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            },
+            "post": {
+                "operationId": "mailAdminMembers.store",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nErrores: `404` usuario inexistente; `422 user_not_in_company`; `422\npersonal_mailbox_owner_only` (un personal solo admite a su due\u00f1o).\n\nCon `Idempotency-Key`: el reintento devuelve los miembros ACTUALES sin\nrepetir el alta; otra petici\u00f3n con la misma clave es `422\nidempotency_key_reused`. Quitar un miembro admite lo mismo: un\nreintento viejo no revoca un alta posterior.",
+                "summary": "A\u00f1ade un miembro (idempotente: si ya lo era, no cambia nada) y devuelve\nla lista de miembros",
+                "tags": [
+                    "MailAdminMembers"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailboxMemberRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "user_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "email": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "added_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "user_id",
+                                                    "name",
+                                                    "email",
+                                                    "added_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/admin/mailboxes/{mailbox}/member-candidates": {
+            "get": {
+                "operationId": "mailAdminMembers.candidates",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "A qui\u00e9n se puede a\u00f1adir: usuarios de la empresa del buz\u00f3n que no son ya\nmiembros vivos. En un buz\u00f3n personal, solo su due\u00f1o",
+                "tags": [
+                    "MailAdminMembers"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "user_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "email": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "user_id",
+                                                    "name",
+                                                    "email"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/admin/mailboxes/{mailbox}/members/{user}": {
+            "delete": {
+                "operationId": "mailAdminMembers.destroy",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Quita a un miembro: revoca su membres\u00eda SIN borrar nada (el correo sigue\npara los dem\u00e1s). Idempotente. Devuelve la lista de miembros",
+                "tags": [
+                    "MailAdminMembers"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "user_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "email": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "added_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "user_id",
+                                                    "name",
+                                                    "email",
+                                                    "added_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/mailboxes/{mailbox}/attachments/{attachment}": {
+            "get": {
+                "operationId": "mail.mailAttachment",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nErrores: `404` si el adjunto no es de un mensaje de ESTE buz\u00f3n (o el\nbuz\u00f3n no es de la empresa activa); `403 mailbox_access_revoked` sin\nmembres\u00eda viva; `409 mail_not_configured` si hay que pedirlo al\nproveedor y la instancia est\u00e1 desconectada; `502/503` si el proveedor\nfalla.",
+                "summary": "Los bytes del adjunto, `Content-Disposition: attachment`",
+                "tags": [
+                    "MailAttachment"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "attachment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
         "/mail/drivers": {
             "get": {
                 "operationId": "mailConfiguration.getMailDrivers",
@@ -23421,6 +24273,1410 @@
                 "x-pimia-partner-availability": "first-party-only",
                 "x-pimia-required-scopes": [
                     "admin:write"
+                ]
+            }
+        },
+        "/mail/connection": {
+            "get": {
+                "operationId": "mailConnection.show",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`capabilities.can_configure` es `configure-mail` en la empresa activa:\nconectar, crear buzones y asignar miembros. No concede contenido.",
+                "summary": "El estado de la conexi\u00f3n. Sin conexi\u00f3n, `200` con\n`status: \"not_configured\"` (no un 404): la web distingue \u00absin\nconfigurar\u00bb de \u00aberror\u00bb",
+                "tags": [
+                    "MailConnection"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "provider": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "domain": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "account_label": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "max_attachment_bytes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_message_bytes": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "max_attachment_bytes",
+                                                        "max_message_bytes"
+                                                    ]
+                                                },
+                                                "capabilities": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "can_configure": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "can_configure"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "provider",
+                                                "status",
+                                                "domain",
+                                                "account_label",
+                                                "checked_at",
+                                                "limits",
+                                                "capabilities"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            },
+            "post": {
+                "operationId": "mailConnection.store",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nLa clave se VERIFICA contra el proveedor antes de guardarla (cifrada).\nUna clave rechazada es `422 invalid_api_key`; un proveedor ca\u00eddo,\n`503 provider_unavailable` \u2014 y en los dos casos no se guarda nada.\n\nCambiar a la clave de OTRA cuenta con buzones ya vinculados es\n`409 connection_account_mismatch`: esos buzones son de la cuenta vieja.\n\nCon `Idempotency-Key`, el reintento de una conexi\u00f3n ya hecha devuelve el\nestado ACTUAL sin repetirla (tras un DELETE, `not_configured`); la misma\nclave con otro cuerpo es `422 idempotency_key_reused`. Dos a la vez con la\nmisma clave: la segunda espera a la primera y no repite nada.",
+                "summary": "Conecta la instancia con su cuenta del proveedor, o cambia la clave",
+                "tags": [
+                    "MailConnection"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailConnectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "provider": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "domain": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "account_label": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "max_attachment_bytes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_message_bytes": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "max_attachment_bytes",
+                                                        "max_message_bytes"
+                                                    ]
+                                                },
+                                                "capabilities": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "can_configure": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "can_configure"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "provider",
+                                                "status",
+                                                "domain",
+                                                "account_label",
+                                                "checked_at",
+                                                "limits",
+                                                "capabilities"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            },
+            "delete": {
+                "operationId": "mailConnection.destroy",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Desconecta la instancia: borra la clave (y el secreto del webhook) y\ndeja la conexi\u00f3n `revoked`. \u26d4 No borra buzones, mensajes ni miembros:\nvuelven a servir al reconectar con la misma cuenta. Idempotente: sin\nconexi\u00f3n responde igual, `not_configured`",
+                "tags": [
+                    "MailConnection"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "provider": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "domain": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "account_label": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "max_attachment_bytes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_message_bytes": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "max_attachment_bytes",
+                                                        "max_message_bytes"
+                                                    ]
+                                                },
+                                                "capabilities": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "can_configure": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "can_configure"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "provider",
+                                                "status",
+                                                "domain",
+                                                "account_label",
+                                                "checked_at",
+                                                "limits",
+                                                "capabilities"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/mailboxes/{mailbox}/messages": {
+            "get": {
+                "operationId": "mailMessages.index",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`unread` es POR USUARIO. `send_status` es el estado del env\u00edo que\nprodujo un saliente (`null` en los entrantes).\n\nErrores: `404` buz\u00f3n de otra empresa o inexistente; `403\nmailbox_access_revoked` sin membres\u00eda viva (tambi\u00e9n un administrador);\n`422 invalid_cursor`.",
+                "summary": "Una p\u00e1gina de mensajes de una carpeta (`inbox` o `sent`), con b\u00fasqueda\n`q` en el servidor (remitente, destinatarios, asunto y cuerpo) y\npaginaci\u00f3n por cursor (`meta.next_cursor`, `null` en la \u00faltima)",
+                "tags": [
+                    "MailMessages"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "folder",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "inbox",
+                                "sent"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 200
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 512
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "mailbox_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "folder": {
+                                                        "type": "string"
+                                                    },
+                                                    "from": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    },
+                                                    "to": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "address": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name",
+                                                                "address"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "subject": {
+                                                        "type": "string"
+                                                    },
+                                                    "snippet": {
+                                                        "type": "string"
+                                                    },
+                                                    "received_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "unread": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "attachment_count": {
+                                                        "type": "integer"
+                                                    },
+                                                    "send_status": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "mailbox_id",
+                                                    "folder",
+                                                    "from",
+                                                    "to",
+                                                    "subject",
+                                                    "snippet",
+                                                    "received_at",
+                                                    "unread",
+                                                    "attachment_count",
+                                                    "send_status"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "next_cursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "history_complete": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "next_cursor",
+                                                "history_complete"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/mailboxes/{mailbox}/messages/{message}": {
+            "get": {
+                "operationId": "mailMessages.show",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Un mensaje en texto plano, con sus adjuntos (metadatos; los bytes, por\n`GET /mail/mailboxes/{mailbox}/attachments/{attachment}`). Leerlo NO lo\nmarca como le\u00eddo: eso es el `PATCH`",
+                "tags": [
+                    "MailMessages"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "message",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "folder": {
+                                                    "type": "string"
+                                                },
+                                                "from": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "address": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "address"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "snippet": {
+                                                    "type": "string"
+                                                },
+                                                "received_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "unread": {
+                                                    "type": "boolean"
+                                                },
+                                                "attachment_count": {
+                                                    "type": "integer"
+                                                },
+                                                "send_status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    }
+                                                },
+                                                "reply_to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    }
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "had_html": {
+                                                    "type": "boolean"
+                                                },
+                                                "blocked_remote_images": {
+                                                    "type": "boolean"
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "thread_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "folder",
+                                                "from",
+                                                "to",
+                                                "subject",
+                                                "snippet",
+                                                "received_at",
+                                                "unread",
+                                                "attachment_count",
+                                                "send_status",
+                                                "cc",
+                                                "reply_to",
+                                                "text_body",
+                                                "had_html",
+                                                "blocked_remote_images",
+                                                "attachments",
+                                                "thread_id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            },
+            "patch": {
+                "operationId": "mailMessages.update",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Marca el mensaje le\u00eddo (`read: true`) o no le\u00eddo (`read: false`) para\nQUIEN MIRA. Idempotente. `204` sin cuerpo",
+                "tags": [
+                    "MailMessages"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "message",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailMessageUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/mailboxes/{mailbox}/proposals": {
+            "get": {
+                "operationId": "mailProposals.index",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Las propuestas PENDIENTES de un buz\u00f3n (tambi\u00e9n las aprobadas que a\u00fan no\nhan salido), la m\u00e1s reciente primero, paginadas por cursor",
+                "tags": [
+                    "MailProposals"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 512
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "mailbox_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "version": {
+                                                        "type": "integer"
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "content_hash": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "to": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "address": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name",
+                                                                "address"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "cc": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "address": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name",
+                                                                "address"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "subject": {
+                                                        "type": "string"
+                                                    },
+                                                    "text_body": {
+                                                        "type": "string"
+                                                    },
+                                                    "rationale": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "in_reply_to_message_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "updated_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "mailbox_id",
+                                                    "version",
+                                                    "status",
+                                                    "content_hash",
+                                                    "to",
+                                                    "cc",
+                                                    "subject",
+                                                    "text_body",
+                                                    "rationale",
+                                                    "in_reply_to_message_id",
+                                                    "created_at",
+                                                    "updated_at"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "next_cursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "next_cursor"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/proposals/{proposal}": {
+            "get": {
+                "operationId": "mailProposals.show",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Una propuesta por su id, en cualquier estado. De otra empresa, `404`;\nde un buz\u00f3n del que no se es miembro, `403 mailbox_access_revoked`",
+                "tags": [
+                    "MailProposals"
+                ],
+                "parameters": [
+                    {
+                        "name": "proposal",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "content_hash": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "address": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "address"
+                                                        ]
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "rationale": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "version",
+                                                "status",
+                                                "content_hash",
+                                                "to",
+                                                "cc",
+                                                "subject",
+                                                "text_body",
+                                                "rationale",
+                                                "in_reply_to_message_id",
+                                                "created_at",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/mailboxes": {
+            "get": {
+                "operationId": "mailboxes.index",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "`unread_count` es POR USUARIO (entrantes sin marcar como le\u00eddos por quien\nmira) y `pending_proposals` cuenta las propuestas de Hermes pendientes",
+                "tags": [
+                    "Mailboxes"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "kind": {
+                                                        "type": "string"
+                                                    },
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "display_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "unread_count": {
+                                                        "type": "integer"
+                                                    },
+                                                    "pending_proposals": {
+                                                        "type": "integer"
+                                                    },
+                                                    "capabilities": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "can_read": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "can_send": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "can_read",
+                                                            "can_send"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "kind",
+                                                    "address",
+                                                    "display_name",
+                                                    "status",
+                                                    "unread_count",
+                                                    "pending_proposals",
+                                                    "capabilities"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
                 ]
             }
         },
@@ -50876,6 +53132,8 @@
                             "approvals:submit": "proponerte cambios para aprobar",
                             "admin:read": "(solo el panel de Pimia) ver la administraci\u00f3n de tu empresa",
                             "admin:write": "(solo el panel de Pimia) administrar tu empresa",
+                            "mail:read": "(solo el panel de Pimia) leer el correo de tus buzones",
+                            "mail:write": "(solo el panel de Pimia) usar y administrar el correo de tus buzones",
                             "verifactu:read": "(solo el panel de Pimia) ver tu conexi\u00f3n con VeriFactu",
                             "verifactu:write": "(solo el panel de Pimia) configurar tu conexi\u00f3n con VeriFactu",
                             "delegation:read": "(solo el panel de Pimia) ver lo que delegas a tu agente",
@@ -60160,6 +62418,30 @@
                 ],
                 "title": "LeadResource"
             },
+            "MailConnectionRequest": {
+                "type": "object",
+                "description": "Conectar (o cambiar la clave de) la cuenta del proveedor de correo de la\nINSTANCIA (`POST /api/v1/mail/connection`).\n\n\u26d4 `api_key` entra y no sale nunca: ni en la respuesta, ni en el log, ni en\nel mensaje de un error (el 422 de la clave rechazada no la repite).\n`domain` es el dominio con el que se crean los buzones nuevos; sin \u00e9l, el\nproveedor usa su dominio compartido.",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "pattern": "^[\\x21-\\x7E]+$",
+                        "minLength": 8,
+                        "maxLength": 512
+                    },
+                    "domain": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$",
+                        "maxLength": 253
+                    }
+                },
+                "required": [
+                    "api_key"
+                ],
+                "title": "MailConnectionRequest"
+            },
             "MailEnvironmentRequest": {
                 "type": "object",
                 "description": "Validaci\u00f3n de la pantalla de configuraci\u00f3n de correo.\n\nEl driver se valida contra `TenantMailSettings::DRIVERS`, que son los que\nesta imagen puede usar de verdad. Antes el `default` del switch dejaba pasar\ncualquier cadena con solo remitente y nombre: se pod\u00eda guardar `mailgun` sin\ncredenciales, o un driver inexistente, y el fallo aparec\u00eda \u2014si acaso\u2014 al\nenviar.\n\nLos secretos son opcionales por dise\u00f1o: el panel no puede reenviar lo que no\npuede leer, as\u00ed que omitirlos significa \u00abdeja la que hay\u00bb. Ver\n`TenantMailSettings::save()`.\n\n`mail_timeout` est\u00e1 acotado por arriba para que un SMTP colgado no se coma el\n`$timeout = 60` de `App\\Jobs\\SendDocumentMail`. (Va aqu\u00ed y no junto a la\nclave: un comentario pegado a un campo de `rules()` se PUBLICA como su\n`description` en el contrato, y esto es una nota para quien mantiene el\nc\u00f3digo, no para el integrador.)\n\n\u2500\u2500 Por qu\u00e9 las reglas son UNA lista y no un `match` por driver \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nLo eran, y el efecto no se ve\u00eda aqu\u00ed sino en el contrato: el generador del\nOpenAPI ejecuta `rules()` EN FR\u00cdO, sin petici\u00f3n, as\u00ed que `$this->get('mail_driver')`\nes `null`, el `match` ca\u00eda en su rama `default` y el cuerpo publicado de\n`POST /mail/config` eran TRES campos \u2014driver, remitente y nombre\u2014. Ni el\nservidor, ni el puerto, ni la clave de SES: justo lo que hay que mandar para\nque la llamada haga algo. Quien la implementara desde el SDK no ten\u00eda de d\u00f3nde\nsacarlos.\n\nCon la lista plana y `required_if`, la condici\u00f3n viaja al documento en vez de\ndesaparecer. Y la validaci\u00f3n no se afloja: lo que era `required` para un\ndriver sigue si\u00e9ndolo para ese driver. Lo \u00fanico que cambia es que un campo del\nOTRO driver, si llega, se valida en vez de ignorarse \u2014 y `save()` solo\npersiste los del driver elegido, as\u00ed que no acaba en la base de datos.",
@@ -60269,6 +62551,107 @@
                     "from_mail"
                 ],
                 "title": "MailEnvironmentRequest"
+            },
+            "MailMessageUpdateRequest": {
+                "type": "object",
+                "description": "Marcar un mensaje le\u00eddo o no le\u00eddo (`PATCH /api/v1/mail/mailboxes/{mailbox}/messages/{message}`).\nEs POR USUARIO: marcarlo no cambia lo que ven los dem\u00e1s miembros.",
+                "properties": {
+                    "read": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "read"
+                ],
+                "title": "MailMessageUpdateRequest"
+            },
+            "MailboxMemberRequest": {
+                "type": "object",
+                "description": "A\u00f1adir un miembro a un buz\u00f3n (`POST /api/v1/mail/admin/mailboxes/{mailbox}/members`).\nLa membres\u00eda da leer y enviar; no hay papeles.",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "user_id"
+                ],
+                "title": "MailboxMemberRequest"
+            },
+            "MailboxStoreRequest": {
+                "type": "object",
+                "description": "Dar de alta un buz\u00f3n en la empresa activa (`POST /api/v1/mail/admin/mailboxes`).\n\nDos modos:\n - `create` (por defecto): el proveedor crea el buz\u00f3n (`local_part` opcional;\n   sin \u00e9l, uno aleatorio) con el dominio de la conexi\u00f3n;\n - `link`: se vincula un buz\u00f3n que YA existe en la cuenta, por su\n   `address` (la lista sale de `GET /mail/admin/provider-mailboxes`).\n\n`kind`: `shared` nace SIN miembros (tampoco quien lo crea); `personal`\nexige `owner_user_id`, un usuario de la empresa, que recibe su membres\u00eda.\n\n`create` exige la cabecera `Idempotency-Key` (8\u2013200 caracteres ASCII\nimprimibles), que es la que viaja al proveedor: un reintento tras un 502\n`provider_outcome_unknown` se hace con la MISMA.",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "create",
+                            "link"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "shared"
+                        ]
+                    },
+                    "local_part": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$",
+                        "maxLength": 64
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "maxLength": 320
+                    },
+                    "display_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 190
+                    },
+                    "owner_user_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "kind"
+                ],
+                "title": "MailboxStoreRequest"
+            },
+            "MailboxUpdateRequest": {
+                "type": "object",
+                "description": "Cambiar los metadatos LOCALES de un buz\u00f3n (`PATCH /api/v1/mail/admin/mailboxes/{mailbox}`):\nel nombre visible y si est\u00e1 activo. Un buz\u00f3n desactivado se sigue leyendo\npero no env\u00eda. No toca nada en el proveedor.",
+                "properties": {
+                    "display_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 190
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "disabled"
+                        ]
+                    }
+                },
+                "title": "MailboxUpdateRequest"
             },
             "Note": {
                 "type": "object",
@@ -62489,7 +64872,10 @@
                                 "view-stock-count",
                                 "create-stock-count",
                                 "edit-stock-count",
-                                "delete-stock-count"
+                                "delete-stock-count",
+                                "configure-mail",
+                                "view-mail",
+                                "send-mail"
                             ]
                         }
                     }
@@ -62660,7 +65046,10 @@
                                         "view-stock-count",
                                         "create-stock-count",
                                         "edit-stock-count",
-                                        "delete-stock-count"
+                                        "delete-stock-count",
+                                        "configure-mail",
+                                        "view-mail",
+                                        "send-mail"
                                     ]
                                 }
                             },

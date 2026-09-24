@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import {
+import { mailAccessClosure,
   DuplicateExternalRefError,
   MemoryTokenStore,
   MissingScopeError,
@@ -979,4 +979,103 @@ test('una lectura normal sigue pidiendo JSON', async () => {
   await client.get('/invoices')
 
   assert.equal(calls[0].init.headers.accept, 'application/json')
+})
+
+// El correo (factSaas#954, fase A): rutas, ids opacos escapados, el alta de
+// buzón con su Idempotency-Key obligatoria, el adjunto como binario y los dos
+// cierres de acceso que el cliente tiene que distinguir de un fallo pasajero.
+test('el correo pega en sus rutas de /mail y el alta lleva su Idempotency-Key', async () => {
+  const { client, calls } = clientWith(() => json({ data: {}, meta: {} }), { accessToken: 'at-1' })
+
+  await client.mail.connection.get()
+  await client.mail.connection.connect({ api_key: 'clave-larga', domain: 'vera.es' })
+  await client.mail.connection.disconnect()
+  await client.mail.mailboxes()
+  await client.mail.messages.list('mb_1', { folder: 'inbox', cursor: 'c/2', limit: 25 })
+  await client.mail.messages.get('mb_1', 'msg 7')
+  await client.mail.proposals.list('mb_1')
+  await client.mail.proposals.get('prp_1')
+  await client.mail.admin.mailboxes.list()
+  await client.mail.admin.mailboxes.create({ kind: 'shared', local_part: 'obras' }, { idempotencyKey: 'alta-obras-1' })
+  await client.mail.admin.mailboxes.update('mb_1', { display_name: 'Obras' })
+  await client.mail.admin.mailboxes.providerMailboxes()
+  await client.mail.admin.members.list('mb_1')
+  await client.mail.admin.members.candidates('mb_1')
+  await client.mail.admin.members.add('mb_1', 42)
+  await client.mail.admin.members.remove('mb_1', 42)
+
+  const url = (i) => calls[i].url
+  const method = (i) => calls[i].init.method
+  assert.equal(url(0), `${BASE}/api/v1/mail/connection`)
+  assert.equal(method(1), 'POST')
+  assert.equal(method(2), 'DELETE')
+  assert.equal(url(3), `${BASE}/api/v1/mail/mailboxes`)
+  assert.equal(url(4), `${BASE}/api/v1/mail/mailboxes/mb_1/messages?folder=inbox&cursor=c%2F2&limit=25`)
+  assert.equal(url(5), `${BASE}/api/v1/mail/mailboxes/mb_1/messages/msg%207`)
+  assert.equal(url(6), `${BASE}/api/v1/mail/mailboxes/mb_1/proposals`)
+  assert.equal(url(7), `${BASE}/api/v1/mail/proposals/prp_1`)
+  assert.equal(url(8), `${BASE}/api/v1/mail/admin/mailboxes`)
+  assert.equal(method(9), 'POST')
+  assert.equal(new Headers(calls[9].init.headers).get('idempotency-key'), 'alta-obras-1')
+  assert.deepEqual(JSON.parse(calls[9].init.body), { kind: 'shared', local_part: 'obras' })
+  assert.equal(method(10), 'PATCH')
+  assert.equal(url(11), `${BASE}/api/v1/mail/admin/provider-mailboxes`)
+  assert.equal(url(13), `${BASE}/api/v1/mail/admin/mailboxes/mb_1/member-candidates`)
+  assert.deepEqual(JSON.parse(calls[14].init.body), { user_id: 42 })
+  assert.equal(url(15), `${BASE}/api/v1/mail/admin/mailboxes/mb_1/members/42`)
+  assert.equal(method(15), 'DELETE')
+})
+
+test('marcar leído es un PATCH con {read} y su 204 no se parsea', async () => {
+  const { client, calls } = clientWith(() => new Response(null, { status: 204 }), { accessToken: 'at-1' })
+  await client.mail.messages.markRead('mb_1', 'msg_1', true)
+  assert.equal(calls[0].init.method, 'PATCH')
+  assert.deepEqual(JSON.parse(calls[0].init.body), { read: true })
+})
+
+test('el adjunto llega como Blob con sus bytes intactos', async () => {
+  const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0xff, 0x00])
+  const { client, calls } = clientWith(
+    () => new Response(bytes, { status: 200, headers: { 'content-type': 'application/octet-stream' } }),
+    { accessToken: 'at-1' },
+  )
+  const blob = await client.mail.attachment('mb_1', 'att_1')
+  assert.equal(calls[0].url, `${BASE}/api/v1/mail/mailboxes/mb_1/attachments/att_1`)
+  assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), bytes)
+})
+
+test('mailAccessClosure distingue los dos cierres de acceso de un fallo del proveedor', async () => {
+  const cuerpos = [
+    // TODO 402 cierra el módulo, con cualquier código o sin ninguno.
+    [402, { message: 'x', code: 'subscription_required', error: 'subscription_required' }, 'module_disabled'],
+    [402, { message: 'x', error: 'tenant_suspended' }, 'module_disabled'],
+    [402, { message: 'x' }, 'module_disabled'],
+    [403, { message: 'x', code: 'module_not_installed', error: 'module_not_installed' }, 'module_disabled'],
+    [403, { message: 'x', code: 'mailbox_access_revoked', error: 'mailbox_access_revoked' }, 'access_revoked'],
+    [403, { message: 'x', code: 'company_not_allowed', error: 'company_not_allowed' }, 'company_not_allowed'],
+    [403, { message: 'x', code: 'configure_mail_required', error: 'configure_mail_required' }, null],
+    [502, { message: 'x', code: 'attachment_incomplete', error: 'attachment_incomplete' }, null],
+    [409, { message: 'x', code: 'idempotency_account_changed', error: 'idempotency_account_changed' }, null],
+    [503, { message: 'x', code: 'provider_unavailable', error: 'provider_unavailable' }, null],
+    [502, { message: 'x', code: 'provider_outcome_unknown', error: 'provider_outcome_unknown' }, null],
+  ]
+  for (const [status, cuerpo, esperado] of cuerpos) {
+    const { client } = clientWith(() => json(cuerpo, status), { accessToken: 'at-1' })
+    const error = await client.mail.mailboxes().catch((e) => e)
+    assert.equal(mailAccessClosure(error), esperado, `${status} ${cuerpo.code}`)
+  }
+})
+
+test('miembros y conexión llevan su Idempotency-Key si se da, también el DELETE', async () => {
+  const { client, calls } = clientWith(() => json({ data: [] }), { accessToken: 'at-1' })
+  await client.mail.connection.connect({ api_key: 'clave-larga' }, { idempotencyKey: 'conectar-0001' })
+  await client.mail.admin.members.add('mb_1', 42, { idempotencyKey: 'alta-miembro-01' })
+  await client.mail.admin.members.remove('mb_1', 42, { idempotencyKey: 'baja-miembro-01' })
+  await client.mail.admin.members.remove('mb_1', 43)
+  const clave = (i) => new Headers(calls[i].init.headers).get('idempotency-key')
+  assert.equal(clave(0), 'conectar-0001')
+  assert.equal(clave(1), 'alta-miembro-01')
+  assert.equal(calls[2].init.method, 'DELETE')
+  assert.equal(clave(2), 'baja-miembro-01')
+  assert.equal(clave(3), null)
 })
