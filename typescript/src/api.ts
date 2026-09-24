@@ -3971,13 +3971,153 @@ export interface paths {
          */
         post: operations["mailConnection.store"];
         /**
-         * Desconecta la instancia: borra la clave (y el secreto del webhook) y
-         *     deja la conexión `revoked`. ⛔ No borra buzones, mensajes ni miembros:
-         *     vuelven a servir al reconectar con la misma cuenta. Idempotente: sin
-         *     conexión responde igual, `not_configured`
+         * Desconecta la instancia, como TRANSICIÓN DURABLE: la conexión pasa a
+         *     `disconnecting` (la recepción se apaga al momento), se retira el webhook
+         *     en el proveedor y, confirmado eso, se borra la clave: `200`,
+         *     `not_configured`. ⛔ No borra buzones, mensajes ni miembros: vuelven a
+         *     servir al reconectar con la misma cuenta
          * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Si el proveedor no deja retirar el webhook: `202` con
+         *     `status: "disconnect_pending"`. La clave se conserva cifrada SOLO para
+         *     terminar la limpieza; la terminan el reintento de este DELETE (misma
+         *     `Idempotency-Key`) o el barrido. Mientras tanto, reconectar es `409
+         *     connection_disconnecting`.
          */
         delete: operations["mailConnection.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea un borrador en un buzón del que se es miembro. `201` con el borrador
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Errores: `404` buzón de otra empresa; `403 mailbox_access_revoked` sin
+         *     membresía viva; `403 send_mail_required`; `403 mailbox_inactive`; `422`
+         *     `invalid_recipients`, `invalid_content`, `reply_target_invalid` o
+         *     `idempotency_key_reused`. El reintento de una creación ya hecha (misma
+         *     `Idempotency-Key`) devuelve `200` con ese borrador.
+         */
+        post: operations["mailDrafts.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts/{draft}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El borrador de quien mira, con su `pending_operation`: si tiene un envío
+         *     sin resolver (`pending`/`unknown`) está BLOQUEADO y la web recupera la
+         *     operación y su `idempotency_key`
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailDrafts.show"];
+        /**
+         * Guarda el borrador con la `version` que tenía delante quien edita. Solo
+         *     cambian las claves presentes. `409 draft_changed` si otro escribió
+         *     entretanto, `409 draft_locked` con un envío sin resolver, `409
+         *     draft_not_editable` si ya salió
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        put: operations["mailDrafts.update"];
+        post?: never;
+        /**
+         * Borra el borrador y sus adjuntos. `204`. `409 draft_locked` con un envío
+         *     sin resolver; `409 draft_not_editable` si ya salió
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["mailDrafts.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts/{draft}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjunta un fichero (multipart `file`), dentro de los límites de
+         *     `connection.limits`. Sube la versión del borrador. Con `Idempotency-Key`,
+         *     el reintento no lo adjunta dos veces
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["mailDrafts.attach"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts/{draft}/attachments/{attachment}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Quita un adjunto del borrador (sube la versión). `version` opcional en la
+         *     query. Un adjunto de otro borrador es 404
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        delete: operations["mailDrafts.detach"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/drafts/{draft}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envía el borrador en la `version` que tenía delante la persona, con la
+         *     cabecera `Idempotency-Key` OBLIGATORIA (la genera la web, una por
+         *     intento). `202` con la operación: el envío sale en segundo plano
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     - La misma clave, el mismo borrador y la misma persona → la MISMA
+         *       operación (doble clic, reintento de red).
+         *     - Otra clave con un envío sin resolver → `409 send_in_progress`.
+         *     - `409 draft_changed` (versión vieja), `409 proposal_changed` (la
+         *       propuesta de la que nació cambió), `409 mail_not_configured`, `422
+         *       draft_incomplete`, `422 idempotency_key_required` /
+         *       `idempotency_key_invalid` / `idempotency_key_reused`.
+         */
+        post: operations["mailDrafts.send"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3991,13 +4131,19 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Una página de mensajes de una carpeta (`inbox` o `sent`), con búsqueda
+         * Una página de mensajes de una carpeta (`inbox`, `sent` o `drafts`), con búsqueda
          *     `q` en el servidor (remitente, destinatarios, asunto y cuerpo) y
          *     paginación por cursor (`meta.next_cursor`, `null` en la última)
          * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     `unread` es POR USUARIO. `send_status` es el estado del envío que
-         *     produjo un saliente (`null` en los entrantes).
+         *     produjo un saliente (`null` en los entrantes). `possible_duplicate_of`
+         *     es la raíz de su grupo de candidatos a duplicado del proveedor.
+         *
+         *     `folder=drafts` son los borradores de QUIEN MIRA en ese buzón, con la
+         *     misma forma (su `send_status` es el del envío sin resolver, si lo hay).
+         *     `meta.history_complete` sale del estado de la sincronización
+         *     (`MailboxSyncStatus`); en `drafts` es siempre `true` (son locales).
          *
          *     Errores: `404` buzón de otra empresa o inexistente; `403
          *     mailbox_access_revoked` sin membresía viva (también un administrador);
@@ -4039,6 +4185,29 @@ export interface paths {
         patch: operations["mailMessages.update"];
         trace?: never;
     };
+    "/mail/mailboxes/{mailbox}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El estado de la sincronización del buzón, tal cual lo da
+         *     `MailboxSyncStatus` (sin cursor ni texto de errores). Mientras
+         *     `history_complete` sea `false`, la web vuelve a preguntar y no afirma
+         *     «no hay correo»
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        get: operations["mailMessages.sync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mail/mailboxes/{mailbox}/proposals": {
         parameters: {
             query?: never;
@@ -4073,6 +4242,81 @@ export interface paths {
          * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          */
         get: operations["mailProposals.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/proposals/{proposal}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abre (o reabre) el borrador de QUIEN MIRA ligado a la versión ACTUAL de
+         *     la propuesta: uno por persona y propuesta. Si ya existía y la propuesta
+         *     cambió, se reescribe con la nueva, SALVO que tenga un envío sin resolver
+         *     (se devuelve congelado, con su `pending_operation`) o ya haya salido.
+         *     `409 proposal_changed` si la propuesta ya no está pendiente
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["mailProposals.draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/proposals/{proposal}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descarta la propuesta en la `version` que tenía delante la persona. `204`.
+         *     Idempotente: repetir el mismo descarte vuelve a dar `204`. `409
+         *     proposal_changed` si Hermes la reescribió entretanto, si ya salió o si
+         *     tiene un envío en curso. Pide poder ENVIAR desde el buzón (miembro vivo
+         *     con `send-mail`): descartar es decidir sobre lo que saldría
+         * @description **Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         */
+        post: operations["mailProposals.discard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mail/send-operations/{operation}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El estado de un envío, para su autor o para quien lee el buzón (miembro
+         *     vivo con `view-mail`). Si sigue abierto (`pending`/`unknown`) y dentro
+         *     de la ventana, se reintenta YA con la MISMA clave del proveedor
+         *     (`SendService::checkStatus`); nunca crea un envío nuevo
+         * @description **Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     - `failed`: definitivo, no salió (la web ofrece reintentar con otra clave).
+         *     - `unknown`: no se sabe; la web NO ofrece reenviar.
+         *     - `review_required`: fuera de la ventana; lo mira una persona.
+         */
+        get: operations["mailSendOperations.show"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10358,6 +10602,63 @@ export interface components {
             domain?: string | null;
         };
         /**
+         * MailDraftAttachmentRequest
+         * @description Adjuntar un fichero a un borrador (`POST /api/v1/mail/drafts/{draft}/attachments`,
+         *     multipart con `file`). `version`, si se manda, es la versión que tenía
+         *     delante quien adjunta (`409 draft_changed` si cambió).
+         *
+         *     El tamaño, el total por mensaje, el número de adjuntos y el TIPO (por los
+         *     bytes, no por lo que diga el navegador) los decide el servicio con sus
+         *     límites (`connection.limits`): `422 attachment_too_large`,
+         *     `attachments_total_too_large`, `too_many_attachments` o
+         *     `attachment_type_not_allowed`.
+         */
+        MailDraftAttachmentRequest: {
+            /** Format: binary */
+            file: Blob;
+            version?: number | null;
+        };
+        /**
+         * MailDraftStoreRequest
+         * @description Crear un borrador de correo en texto plano (`POST /api/v1/mail/drafts`).
+         *
+         *     - `mailbox_id`: el buzón desde el que se escribe (su `public_id`).
+         *     - Direcciones: `to`, `cc` y `bcc` son listas de correos. Su validación fina
+         *       (`invalid_recipients`) la hace el servicio del envío, que es quien sabe qué
+         *       se puede enviar.
+         *     - `in_reply_to_message_id`: el `public_id` de un mensaje DE ESE BUZÓN.
+         */
+        MailDraftStoreRequest: {
+            mailbox_id: string;
+            to?: string[] | null;
+            cc?: string[] | null;
+            bcc?: string[] | null;
+            subject?: string | null;
+            text_body?: string | null;
+            in_reply_to_message_id?: string | null;
+        };
+        /**
+         * MailDraftUpdateRequest
+         * @description Guardar un borrador (`PUT /api/v1/mail/drafts/{draft}`).
+         *
+         *     - `version`: la versión que tenía delante quien edita, OBLIGATORIA: si otro
+         *       escribió entretanto, `409 draft_changed`; con un envío sin resolver,
+         *       `409 draft_locked`.
+         *     - Direcciones: `to`, `cc` y `bcc` son listas de correos. Su validación fina
+         *       (`invalid_recipients`) la hace el servicio del envío, que es quien sabe qué
+         *       se puede enviar.
+         *
+         *     Al guardar, solo cambian las claves presentes.
+         */
+        MailDraftUpdateRequest: {
+            version: number;
+            to?: string[] | null;
+            cc?: string[] | null;
+            bcc?: string[] | null;
+            subject?: string | null;
+            text_body?: string | null;
+        };
+        /**
          * MailEnvironmentRequest
          * @description Validación de la pantalla de configuración de correo.
          *
@@ -10424,6 +10725,15 @@ export interface components {
          */
         MailMessageUpdateRequest: {
             read: boolean;
+        };
+        /**
+         * MailVersionRequest
+         * @description Una acción del Correo que se hace sobre la VERSIÓN que tenía delante la
+         *     persona: enviar un borrador (`POST /mail/drafts/{draft}/send`) o descartar
+         *     una propuesta (`POST /mail/proposals/{proposal}/discard`).
+         */
+        MailVersionRequest: {
+            version: number;
         };
         /**
          * MailboxMemberRequest
@@ -21835,6 +22145,11 @@ export interface operations {
                             limits: {
                                 max_attachment_bytes: number;
                                 max_message_bytes: number;
+                                max_attachments: number;
+                                allowed_types: string[];
+                            };
+                            inbound: {
+                                mode: string;
                             };
                             capabilities: {
                                 can_configure: boolean;
@@ -21877,6 +22192,11 @@ export interface operations {
                             limits: {
                                 max_attachment_bytes: number;
                                 max_message_bytes: number;
+                                max_attachments: number;
+                                allowed_types: string[];
+                            };
+                            inbound: {
+                                mode: string;
                             };
                             capabilities: {
                                 can_configure: boolean;
@@ -21916,6 +22236,41 @@ export interface operations {
                             limits: {
                                 max_attachment_bytes: number;
                                 max_message_bytes: number;
+                                max_attachments: number;
+                                allowed_types: string[];
+                            };
+                            inbound: {
+                                mode: string;
+                            };
+                            capabilities: {
+                                can_configure: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Aceptado: queda pendiente y se termina en segundo plano. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string | null;
+                            provider: string;
+                            status: string;
+                            domain: string | null;
+                            account_label: string | null;
+                            checked_at: string | null;
+                            limits: {
+                                max_attachment_bytes: number;
+                                max_message_bytes: number;
+                                max_attachments: number;
+                                allowed_types: string[];
+                            };
+                            inbound: {
+                                mode: string;
                             };
                             capabilities: {
                                 can_configure: boolean;
@@ -21926,10 +22281,418 @@ export interface operations {
             };
         };
     };
+    "mailDrafts.store": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailDraftStoreRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description El recurso recién creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailDrafts.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailDrafts.update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailDraftUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailDrafts.destroy": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "mailDrafts.attach": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["MailDraftAttachmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailDrafts.detach": {
+        parameters: {
+            query?: {
+                version?: string;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+                attachment: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailDrafts.send": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                draft: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Aceptado: se procesa en segundo plano. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": 202;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "mailMessages.index": {
         parameters: {
             query?: {
-                folder?: "inbox" | "sent";
+                folder?: "inbox" | "sent" | "drafts";
                 q?: string | null;
                 cursor?: string | null;
                 limit?: number;
@@ -21969,6 +22732,7 @@ export interface operations {
                             unread: boolean;
                             attachment_count: number;
                             send_status: string | null;
+                            possible_duplicate_of: string | null;
                         }[];
                         meta: {
                             next_cursor: string | null;
@@ -22019,6 +22783,7 @@ export interface operations {
                             unread: boolean;
                             attachment_count: number;
                             send_status: string | null;
+                            possible_duplicate_of: string | null;
                             cc: {
                                 name: string | null;
                                 address: string | null;
@@ -22071,6 +22836,38 @@ export interface operations {
                 content?: never;
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailMessages.sync": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                mailbox: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            history_complete: boolean;
+                            imported_count: number | null;
+                            estimated_total: number | null;
+                            last_synced_at: string | null;
+                            status: string;
+                        };
+                    };
+                };
+            };
         };
     };
     "mailProposals.index": {
@@ -22165,6 +22962,127 @@ export interface operations {
                             rationale: string | null;
                             in_reply_to_message_id: string | null;
                             created_at: string | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailProposals.draft": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                proposal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            mailbox_id: string;
+                            status: string;
+                            version: number;
+                            to: string[];
+                            cc: string[];
+                            bcc: string[];
+                            subject: string;
+                            text_body: string;
+                            in_reply_to_message_id: string | null;
+                            proposal: {
+                                id: string;
+                                version: number;
+                            } | null;
+                            attachments: {
+                                id: string;
+                                filename: string;
+                                content_type: string | null;
+                                size_bytes: number | null;
+                                is_inline: boolean;
+                            }[];
+                            pending_operation: {
+                                id: string;
+                                draft_id: string | null;
+                                status: string;
+                                message_id: string | null;
+                                failure_reason: string | null;
+                                review_required: boolean;
+                                updated_at: string | null;
+                                idempotency_key: string;
+                            } | null;
+                            updated_at: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "mailProposals.discard": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                proposal: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "mailSendOperations.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                operation: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            draft_id: string | null;
+                            status: string;
+                            message_id: string | null;
+                            failure_reason: string | null;
+                            review_required: boolean;
                             updated_at: string | null;
                         };
                     };

@@ -1432,8 +1432,9 @@ export class PimiaClient {
   }
 
   /**
-   * El correo de la empresa sobre Dead Simple Email (módulo de pago `mail`),
-   * fase A del núcleo: conexión, buzones, lectura y administración. Exige
+   * El correo de la empresa sobre Dead Simple Email (módulo de pago `mail`):
+   * conexión, buzones, lectura y administración (fase A del núcleo) y
+   * borradores, envío y acciones sobre propuestas (fase B). Exige
    * `mail:read` / `mail:write`, que son de **primera parte**: un client de
    * integrador no los obtiene.
    *
@@ -1475,8 +1476,16 @@ export class PimiaClient {
          */
         connect: (body: components['schemas']['MailConnectionRequest'], options?: WriteOptions) =>
           this.post<Ok<'mailConnection.store'>>('/mail/connection', body, options),
-        /** Desconecta la instancia entera. Idempotente: responde `not_configured`. */
-        disconnect: (options?: ReadOptions) => this.delete<Ok<'mailConnection.destroy'>>('/mail/connection', options),
+        /**
+         * Desconecta la instancia entera. Idempotente: responde `not_configured`.
+         * Si el proveedor no deja retirar el webhook, **`202`** con `status:
+         * "disconnect_pending"`: la terminan el reintento de este DELETE (con la
+         * MISMA `idempotencyKey`) o el barrido; mientras tanto, reconectar es
+         * `409 connection_disconnecting`. (Va por `request` porque `delete()` no
+         * lleva clave.)
+         */
+        disconnect: (options?: WriteOptions) =>
+          this.request<Ok<'mailConnection.destroy'>>('/mail/connection', { ...options, method: 'DELETE' }),
       },
 
       /** Los buzones que quien mira puede LEER (membresía viva). `[]` si no hay ninguno. */
@@ -1519,6 +1528,104 @@ export class PimiaClient {
           this.get<Ok<'mailProposals.index'>>(`/mail/mailboxes/${encodeURIComponent(mailboxId)}/proposals`, query, options),
         get: (proposalId: string, options?: ReadOptions) =>
           this.get<Ok<'mailProposals.show'>>(`/mail/proposals/${encodeURIComponent(proposalId)}`, undefined, options),
+        /**
+         * Abre (o reabre: uno por persona y propuesta) el borrador nacido de una
+         * propuesta, para revisarla y enviarla con {@link mail.drafts.send}. Si
+         * la persona edita el texto, sale SU texto y la propuesta no se aprueba.
+         */
+        draft: (proposalId: string, options?: WriteOptions) =>
+          this.post<Ok<'mailProposals.draft'>>(`/mail/proposals/${encodeURIComponent(proposalId)}/draft`, undefined, options),
+        /**
+         * Descarta la propuesta en la `version` que vio la persona. Otra versión
+         * (Hermes la reescribió), o una propuesta que ya no está pendiente, es
+         * `409 proposal_changed`. Responde `204`.
+         */
+        discard: (proposalId: string, version: number, options?: WriteOptions) =>
+          this.post<void>(
+            `/mail/proposals/${encodeURIComponent(proposalId)}/discard`,
+            { version } satisfies components['schemas']['MailVersionRequest'],
+            options,
+          ),
+      },
+
+      /**
+       * Borradores y envío (fase B, factSaas#957). Texto plano: no sale HTML.
+       * Los borradores son de QUIEN LOS ESCRIBE, también en un buzón
+       * compartido: el de otra persona es `404`.
+       *
+       * La carpeta «Borradores» es {@link mail.messages.list} con `folder:
+       * 'drafts'`. Guardar, adjuntar con versión, quitar un adjunto y enviar
+       * van con la `version` que tenía delante la persona: si cambió, `409
+       * draft_changed`; con un envío sin resolver, `409 draft_locked`; si ya
+       * salió, `409 draft_not_editable`.
+       */
+      drafts: {
+        /**
+         * Crea un borrador en `mailbox_id`. Para RESPONDER, `in_reply_to_message_id`
+         * con el id de un mensaje de ese buzón (`422 reply_target_invalid` si no).
+         * Con `idempotencyKey`, el reintento de una creación ya hecha responde
+         * `200` con ese borrador (la primera vez, `201`).
+         */
+        create: (body: components['schemas']['MailDraftStoreRequest'], options?: WriteOptions) =>
+          this.post<Ok<'mailDrafts.store'>>('/mail/drafts', body, options),
+        get: (draftId: string, options?: ReadOptions) =>
+          this.get<Ok<'mailDrafts.show'>>(`/mail/drafts/${encodeURIComponent(draftId)}`, undefined, options),
+        /** Guarda solo las claves presentes. `version` es OBLIGATORIA. */
+        update: (draftId: string, body: components['schemas']['MailDraftUpdateRequest'], options?: WriteOptions) =>
+          this.put<Ok<'mailDrafts.update'>>(`/mail/drafts/${encodeURIComponent(draftId)}`, body, options),
+        /** Borra el borrador y sus ficheros. Responde `204`. */
+        delete: (draftId: string, options?: ReadOptions) =>
+          this.delete<void>(`/mail/drafts/${encodeURIComponent(draftId)}`, options),
+        /**
+         * Adjunta un fichero (multipart con `file`). Los límites y los tipos
+         * permitidos están en `connection.limits`; el tipo lo decide el servidor
+         * por los bytes: `422 attachment_too_large`, `attachments_total_too_large`,
+         * `too_many_attachments` o `attachment_type_not_allowed`. Adjuntar SUBE
+         * la versión del borrador.
+         */
+        attach: (draftId: string, file: Blob, version?: number, options?: WriteOptions) =>
+          this.post<Ok<'mailDrafts.attach'>>(
+            `/mail/drafts/${encodeURIComponent(draftId)}/attachments`,
+            toFormData(version === undefined ? { file } : { file, version }),
+            options,
+          ),
+        /** Quita un adjunto en la `version` que tenía delante la persona. Sube la versión. */
+        detach: (draftId: string, attachmentId: string, version?: number, options?: WriteOptions) =>
+          this.request<Ok<'mailDrafts.detach'>>(
+            `/mail/drafts/${encodeURIComponent(draftId)}/attachments/${encodeURIComponent(attachmentId)}`,
+            { ...options, method: 'DELETE', query: { ...options?.query, ...(version === undefined ? {} : { version }) } },
+          ),
+        /**
+         * Pide el envío de la `version` que tenía delante la persona. Responde
+         * **`202`** con la operación (`pending`): su estado se sigue con
+         * {@link mail.sendOperations.get}.
+         *
+         * **`idempotencyKey` es OBLIGATORIA**, una por INTENTO de envío y la
+         * MISMA en cada reintento: la misma clave, el mismo borrador y la misma
+         * persona devuelven la MISMA operación (doble clic, red caída). Otra
+         * clave con un envío sin resolver es `409 send_in_progress`; la de otro
+         * borrador, `422 idempotency_key_reused`.
+         */
+        send: (draftId: string, version: number, options: WriteOptions & { idempotencyKey: string }) =>
+          this.post<Ok<'mailDrafts.send'>>(
+            `/mail/drafts/${encodeURIComponent(draftId)}/send`,
+            { version } satisfies components['schemas']['MailVersionRequest'],
+            options,
+          ),
+      },
+
+      sendOperations: {
+        /**
+         * El estado de un envío: `pending`, `accepted`, `delivered`, `failed`
+         * (definitivo: no salió), `unknown` (no se sabe: **no** reenviar) o
+         * `review_required` (lo mira una persona).
+         */
+        get: (operationId: string, options?: ReadOptions) =>
+          this.get<Ok<'mailSendOperations.show'>>(
+            `/mail/send-operations/${encodeURIComponent(operationId)}`,
+            undefined,
+            options,
+          ),
       },
 
       /** Administración (`configure-mail`): metadatos y miembros, SIN contenido. */

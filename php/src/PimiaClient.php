@@ -290,6 +290,56 @@ final class PimiaClient
     }
 
     /**
+     * `POST` en `multipart/form-data`: campos de texto y ficheros, con el
+     * `boundary` que arma el SDK (el transporte manda el cuerpo tal cual).
+     *
+     * ```php
+     * $client->postMultipart('/mail/drafts/drf_1/attachments',
+     *     ['version' => 3],
+     *     ['file' => ['contents' => $bytes, 'filename' => 'presupuesto.pdf', 'type' => 'application/pdf']],
+     * );
+     * ```
+     *
+     * @param  array<string, scalar|null>  $fields  Los `null` no se mandan; los booleanos van como `1`/`0`.
+     * @param  array<string, array{contents: string, filename: string, type?: string}>  $files
+     */
+    public function postMultipart(string $path, array $fields, array $files, ?string $idempotencyKey = null): mixed
+    {
+        $boundary = 'pimia-'.bin2hex(random_bytes(12));
+        $body = '';
+        foreach ($fields as $name => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $text = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+            $body .= "--{$boundary}\r\n"
+                .'Content-Disposition: form-data; name="'.self::multipartToken((string) $name)."\"\r\n\r\n"
+                .$text."\r\n";
+        }
+        foreach ($files as $name => $file) {
+            $body .= "--{$boundary}\r\n"
+                .'Content-Disposition: form-data; name="'.self::multipartToken((string) $name)
+                .'"; filename="'.self::multipartToken($file['filename'])."\"\r\n"
+                .'Content-Type: '.($file['type'] ?? 'application/octet-stream')."\r\n\r\n"
+                .$file['contents']."\r\n";
+        }
+        $body .= "--{$boundary}--\r\n";
+
+        return $this->send(
+            'POST',
+            $path,
+            idempotencyKey: $idempotencyKey,
+            rawBody: [$body, 'multipart/form-data; boundary='.$boundary],
+        )->body;
+    }
+
+    /** Un nombre de campo o de fichero no puede cerrar la comilla ni partir la cabecera. */
+    private static function multipartToken(string $value): string
+    {
+        return str_replace(['"', "\r", "\n"], ['%22', '', ''], $value);
+    }
+
+    /**
      * Descarga un fichero y devuelve SUS BYTES, exactos, sea cual sea su tipo.
      *
      * Existe porque `request()` DECODIFICA lo que llega como JSON (y `+json`,
@@ -326,6 +376,7 @@ final class PimiaClient
      *
      * @param  array<string, mixed>  $query
      * @param  array<string, string>  $headers
+     * @param  array{0: string, 1: string}|null  $rawBody  Un cuerpo ya armado y su `content-type` (multipart).
      */
     private function send(
         string $method,
@@ -334,6 +385,7 @@ final class PimiaClient
         mixed $body = null,
         ?string $idempotencyKey = null,
         array $headers = [],
+        ?array $rawBody = null,
     ): Response {
         $tokens = $this->currentTokens();
 
@@ -343,7 +395,8 @@ final class PimiaClient
 
         $attempt = 0;
         $refreshedOn401 = false;
-        $payload = $body === null ? null : json_encode($body, JSON_THROW_ON_ERROR);
+        $payload = $rawBody !== null ? $rawBody[0] : ($body === null ? null : json_encode($body, JSON_THROW_ON_ERROR));
+        $contentType = $rawBody !== null ? $rawBody[1] : 'application/json';
 
         while (true) {
             $response = $this->transport->send(
@@ -351,7 +404,7 @@ final class PimiaClient
                 $this->urlFor($path, $query),
                 array_merge(
                     ['accept' => 'application/json'],
-                    $payload === null ? [] : ['content-type' => 'application/json'],
+                    $payload === null ? [] : ['content-type' => $contentType],
                     $this->config->headers,
                     $headers,
                     // Después de $headers para que la opción con nombre mande

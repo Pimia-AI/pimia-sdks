@@ -8,9 +8,9 @@ use Pimia\Exception\ApiException;
 use Pimia\PimiaClient;
 
 /**
- * El correo de la empresa sobre Dead Simple Email (módulo de pago `mail`),
- * fase A del núcleo (factSaas#954): conexión, buzones, lectura y
- * administración. Exige `mail:read` / `mail:write`, que son de PRIMERA PARTE:
+ * El correo de la empresa sobre Dead Simple Email (módulo de pago `mail`):
+ * conexión, buzones, lectura y administración (fase A, factSaas#954) y
+ * borradores, envío y acciones sobre propuestas (fase B, factSaas#957). Exige `mail:read` / `mail:write`, que son de PRIMERA PARTE:
  * un client de integrador no los obtiene.
  *
  * Tres puertas en todas las rutas, y el cuerpo de error trae el `code`
@@ -53,10 +53,16 @@ final class Mail
         return $this->client->post('/mail/connection', $data, $idempotencyKey);
     }
 
-    /** Desconecta la instancia entera. Idempotente: responde `not_configured`. */
-    public function disconnect(): mixed
+    /**
+     * Desconecta la instancia entera. Idempotente: responde `not_configured`.
+     * Si el proveedor no deja retirar el webhook, `202` con `status:
+     * "disconnect_pending"`: la terminan el reintento de esta baja (con la
+     * MISMA `$idempotencyKey`) o el barrido; mientras tanto, reconectar es
+     * `409 connection_disconnecting`.
+     */
+    public function disconnect(?string $idempotencyKey = null): mixed
     {
-        return $this->client->delete('/mail/connection');
+        return $this->client->request('DELETE', '/mail/connection', idempotencyKey: $idempotencyKey);
     }
 
     /** Los buzones que quien mira puede LEER (membresía viva). */
@@ -112,6 +118,124 @@ final class Mail
     public function proposal(string $proposalId): mixed
     {
         return $this->client->get('/mail/proposals/'.rawurlencode($proposalId));
+    }
+
+    /**
+     * Abre (o reabre: uno por persona y propuesta) el borrador nacido de una
+     * propuesta, para revisarla y enviarla con {@see sendDraft()}.
+     */
+    public function draftFromProposal(string $proposalId): mixed
+    {
+        return $this->client->post('/mail/proposals/'.rawurlencode($proposalId).'/draft');
+    }
+
+    /**
+     * Descarta la propuesta en la `$version` que vio la persona. Otra versión,
+     * o una propuesta que ya no está pendiente, es `409 proposal_changed`.
+     * Responde `204`.
+     */
+    public function discardProposal(string $proposalId, int $version): mixed
+    {
+        return $this->client->post('/mail/proposals/'.rawurlencode($proposalId).'/discard', ['version' => $version]);
+    }
+
+    /**
+     * La carpeta «Borradores»: los de QUIEN MIRA en ese buzón, con la forma de
+     * {@see messages()}.
+     *
+     * @param  array<string, mixed>  $query  `cursor`, `limit`
+     */
+    public function drafts(string $mailboxId, array $query = []): mixed
+    {
+        return $this->messages($mailboxId, ['folder' => 'drafts'] + $query);
+    }
+
+    /**
+     * Crea un borrador en `mailbox_id`. Para RESPONDER,
+     * `in_reply_to_message_id` con el id de un mensaje de ese buzón. Con
+     * `$idempotencyKey`, el reintento devuelve `200` con ese borrador.
+     *
+     * @param  array<string, mixed>  $data  `mailbox_id`, `to`, `cc`, `bcc`, `subject`, `text_body`, `in_reply_to_message_id`
+     */
+    public function createDraft(array $data, ?string $idempotencyKey = null): mixed
+    {
+        return $this->client->post('/mail/drafts', $data, $idempotencyKey);
+    }
+
+    /** El borrador (solo el de su AUTOR: el de otra persona es `404`). */
+    public function draft(string $draftId): mixed
+    {
+        return $this->client->get('/mail/drafts/'.rawurlencode($draftId));
+    }
+
+    /**
+     * Guarda solo las claves presentes. `version` es OBLIGATORIA: si cambió,
+     * `409 draft_changed`; con un envío sin resolver, `409 draft_locked`.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateDraft(string $draftId, array $data): mixed
+    {
+        return $this->client->put('/mail/drafts/'.rawurlencode($draftId), $data);
+    }
+
+    /** Borra el borrador y sus ficheros. Responde `204`. */
+    public function deleteDraft(string $draftId): mixed
+    {
+        return $this->client->delete('/mail/drafts/'.rawurlencode($draftId));
+    }
+
+    /**
+     * Adjunta un fichero (multipart con `file`). Los límites están en
+     * `connection.limits`; el tipo lo decide el servidor por los bytes. SUBE la
+     * versión del borrador.
+     */
+    public function attach(
+        string $draftId,
+        string $contents,
+        string $filename,
+        ?int $version = null,
+        string $contentType = 'application/octet-stream',
+        ?string $idempotencyKey = null,
+    ): mixed {
+        return $this->client->postMultipart(
+            '/mail/drafts/'.rawurlencode($draftId).'/attachments',
+            ['version' => $version],
+            ['file' => ['contents' => $contents, 'filename' => $filename, 'type' => $contentType]],
+            $idempotencyKey,
+        );
+    }
+
+    /** Quita un adjunto en la `$version` que tenía delante la persona. */
+    public function detach(string $draftId, string $attachmentId, ?int $version = null): mixed
+    {
+        return $this->client->request(
+            'DELETE',
+            '/mail/drafts/'.rawurlencode($draftId).'/attachments/'.rawurlencode($attachmentId),
+            query: $version === null ? [] : ['version' => $version],
+        );
+    }
+
+    /**
+     * Pide el envío de la `$version` que tenía delante la persona. Responde
+     * `202` con la operación (`pending`); su estado, {@see sendOperation()}.
+     *
+     * La `$idempotencyKey` es OBLIGATORIA, una por intento y la MISMA en cada
+     * reintento: misma clave, borrador y persona → la MISMA operación. Otra
+     * clave con un envío sin resolver es `409 send_in_progress`.
+     */
+    public function sendDraft(string $draftId, int $version, string $idempotencyKey): mixed
+    {
+        return $this->client->post('/mail/drafts/'.rawurlencode($draftId).'/send', ['version' => $version], $idempotencyKey);
+    }
+
+    /**
+     * El estado de un envío: `pending`, `accepted`, `delivered`, `failed`
+     * (no salió), `unknown` (no se sabe: NO reenviar) o `review_required`.
+     */
+    public function sendOperation(string $operationId): mixed
+    {
+        return $this->client->get('/mail/send-operations/'.rawurlencode($operationId));
     }
 
     /** Administración (`configure-mail`): todos los buzones de la empresa, SIN contenido. */
@@ -195,6 +319,35 @@ final class Mail
      * que ya no se pertenece: se cierra el ámbito entero) o `null` —un fallo
      * del proveedor no cierra nada: no se sabe qué hay—.
      */
+    public const SENDING_ERROR_CODES = [
+        'draft_changed',
+        'draft_locked',
+        'draft_not_editable',
+        'send_in_progress',
+        'proposal_changed',
+        'mail_not_configured',
+        'connection_disconnecting',
+        'idempotency_key_required',
+        'idempotency_key_invalid',
+        'idempotency_key_reused',
+    ];
+
+    /**
+     * El código estable del ENVÍO de un error de `/mail` (fase B) —
+     * `draft_changed`, `draft_locked`, `draft_not_editable`,
+     * `send_in_progress`, `proposal_changed`, `mail_not_configured`,
+     * `connection_disconnecting`, `idempotency_key_*`— o `null`.
+     */
+    public static function sendingError(\Throwable $error): ?string
+    {
+        if (! $error instanceof ApiException || ! is_array($error->body)) {
+            return null;
+        }
+        $code = $error->body['code'] ?? $error->body['error'] ?? null;
+
+        return in_array($code, self::SENDING_ERROR_CODES, true) ? $code : null;
+    }
+
     public static function accessClosure(\Throwable $error): ?string
     {
         if (! $error instanceof ApiException) {

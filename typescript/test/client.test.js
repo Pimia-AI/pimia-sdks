@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { mailAccessClosure,
+import { mailAccessClosure, mailSendingError,
   DuplicateExternalRefError,
   MemoryTokenStore,
   MissingScopeError,
@@ -1078,4 +1078,106 @@ test('miembros y conexión llevan su Idempotency-Key si se da, también el DELET
   assert.equal(calls[2].init.method, 'DELETE')
   assert.equal(clave(2), 'baja-miembro-01')
   assert.equal(clave(3), null)
+})
+
+// Fase B del correo (factSaas#957): borradores, adjuntos del borrador, envío
+// con su Idempotency-Key obligatoria, estado del envío y acciones sobre
+// propuestas.
+test('borradores, adjuntos, envío y propuestas pegan en sus rutas con su versión y su clave', async () => {
+  const { client, calls } = clientWith(
+    (url, init) => (init.method === 'DELETE' && url.endsWith('/drafts/drf_1') ? new Response(null, { status: 204 }) : json({ data: {} })),
+    { accessToken: 'at-1' },
+  )
+  const fichero = new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])], { type: 'application/pdf' })
+
+  await client.mail.drafts.create(
+    { mailbox_id: 'mb_1', to: ['ana@vera.es'], subject: 'Re: obra', text_body: 'Hola', in_reply_to_message_id: 'msg_7' },
+    { idempotencyKey: 'borrador-0001' },
+  )
+  await client.mail.drafts.get('drf_1')
+  await client.mail.drafts.update('drf_1', { version: 3, subject: 'Nuevo' })
+  await client.mail.drafts.attach('drf_1', fichero, 4)
+  await client.mail.drafts.detach('drf_1', 'att 9', 5)
+  await client.mail.drafts.send('drf_1', 6, { idempotencyKey: 'envio-0001' })
+  await client.mail.sendOperations.get('op_1')
+  await client.mail.proposals.draft('prp_1')
+  await client.mail.proposals.discard('prp_1', 2)
+  await client.mail.drafts.delete('drf_1')
+  await client.mail.messages.list('mb_1', { folder: 'drafts' })
+  await client.mail.connection.disconnect({ idempotencyKey: 'baja-0001' })
+
+  const url = (i) => calls[i].url
+  const method = (i) => calls[i].init.method
+  const body = (i) => JSON.parse(calls[i].init.body)
+  const clave = (i) => new Headers(calls[i].init.headers).get('idempotency-key')
+
+  assert.equal(url(0), `${BASE}/api/v1/mail/drafts`)
+  assert.equal(method(0), 'POST')
+  assert.equal(body(0).in_reply_to_message_id, 'msg_7')
+  assert.equal(clave(0), 'borrador-0001')
+  assert.equal(url(1), `${BASE}/api/v1/mail/drafts/drf_1`)
+  assert.equal(method(2), 'PUT')
+  assert.deepEqual(body(2), { version: 3, subject: 'Nuevo' })
+  assert.equal(url(3), `${BASE}/api/v1/mail/drafts/drf_1/attachments`)
+  assert.ok(calls[3].init.body instanceof FormData, 'multipart')
+  assert.equal(calls[3].init.body.get('version'), '4')
+  assert.equal(calls[3].init.body.get('file').size, 4)
+  assert.equal(new Headers(calls[3].init.headers).get('content-type'), null, 'el runtime pone el boundary')
+  assert.equal(url(4), `${BASE}/api/v1/mail/drafts/drf_1/attachments/att%209?version=5`)
+  assert.equal(method(4), 'DELETE')
+  assert.equal(url(5), `${BASE}/api/v1/mail/drafts/drf_1/send`)
+  assert.deepEqual(body(5), { version: 6 })
+  assert.equal(clave(5), 'envio-0001')
+  assert.equal(url(6), `${BASE}/api/v1/mail/send-operations/op_1`)
+  assert.equal(url(7), `${BASE}/api/v1/mail/proposals/prp_1/draft`)
+  assert.equal(method(7), 'POST')
+  assert.equal(url(8), `${BASE}/api/v1/mail/proposals/prp_1/discard`)
+  assert.deepEqual(body(8), { version: 2 })
+  assert.equal(method(9), 'DELETE')
+  assert.equal(url(10), `${BASE}/api/v1/mail/mailboxes/mb_1/messages?folder=drafts`)
+  assert.equal(method(11), 'DELETE')
+  assert.equal(clave(11), 'baja-0001')
+})
+
+test('adjuntar sin versión no manda el campo', async () => {
+  const { client, calls } = clientWith(() => json({ data: {} }), { accessToken: 'at-1' })
+  await client.mail.drafts.attach('drf_1', new Blob(['x']))
+  assert.equal(calls[0].init.body.has('version'), false)
+})
+
+test('el envío responde 202 con la operación, y la baja de la conexión 202 disconnect_pending', async () => {
+  const { client } = clientWith(
+    (url) =>
+      url.endsWith('/send')
+        ? json({ data: { id: 'op_1', status: 'pending' } }, 202)
+        : json({ data: { status: 'disconnect_pending' } }, 202),
+    { accessToken: 'at-1' },
+  )
+  const envio = await client.mail.drafts.send('drf_1', 1, { idempotencyKey: 'envio-0002' })
+  assert.equal(envio.data.status, 'pending')
+  const baja = await client.mail.connection.disconnect({ idempotencyKey: 'baja-0002' })
+  assert.equal(baja.data.status, 'disconnect_pending')
+})
+
+test('mailSendingError reconoce los códigos del envío y nada más', async () => {
+  const casos = [
+    [409, 'draft_changed', 'draft_changed'],
+    [409, 'draft_locked', 'draft_locked'],
+    [409, 'draft_not_editable', 'draft_not_editable'],
+    [409, 'send_in_progress', 'send_in_progress'],
+    [409, 'proposal_changed', 'proposal_changed'],
+    [409, 'mail_not_configured', 'mail_not_configured'],
+    [409, 'connection_disconnecting', 'connection_disconnecting'],
+    [422, 'idempotency_key_required', 'idempotency_key_required'],
+    [422, 'idempotency_key_invalid', 'idempotency_key_invalid'],
+    [422, 'idempotency_key_reused', 'idempotency_key_reused'],
+    [403, 'mailbox_access_revoked', null],
+    [502, 'provider_outcome_unknown', null],
+  ]
+  for (const [status, code, esperado] of casos) {
+    const { client } = clientWith(() => json({ message: 'x', code, error: code }, status), { accessToken: 'at-1' })
+    const error = await client.mail.drafts.send('drf_1', 1, { idempotencyKey: 'envio-0003' }).catch((e) => e)
+    assert.equal(mailSendingError(error), esperado, code)
+  }
+  assert.equal(mailSendingError(new Error('x')), null)
 })

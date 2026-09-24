@@ -10,9 +10,36 @@ pública puede cambiar entre minors.
 
 ## [Sin publicar]
 
-El correo de la empresa (módulo de pago `mail`, sobre Dead Simple Email), fase
-A del núcleo. **Sin versión todavía**: se sube y se publica al tagear,
-repitiendo antes el paso 0 contra `origin/main`.
+El correo de la empresa (módulo de pago `mail`, sobre Dead Simple Email),
+fases A y B del núcleo. **Sin versión todavía**: se sube y se publica al
+tagear, repitiendo antes el paso 0 contra `origin/main`.
+
+### Fase B (factSaas#957): borradores, envío y propuestas
+
+Contrato de instancia sincronizado desde **`origin/main` del núcleo:
+factSaas@e2f5419c (2026-09-24) — 484 operaciones** (`e2f5419ca934eb72af8df05ca0ffce3069298e71`,
+merge del PR #957): 11 más que la fase A.
+
+- `client.mail.drafts` (TS) y `$client->mail->…Draft…` (PHP): crear (también
+  para RESPONDER, con `in_reply_to_message_id`), leer, guardar con `version`,
+  borrar, adjuntar en multipart (con `version` opcional) y quitar un adjunto.
+  La carpeta «Borradores» es `messages.list` con `folder: 'drafts'` (PHP:
+  `drafts()`).
+- **Enviar exige su `Idempotency-Key`** (`drafts.send` / `sendDraft`),
+  obligatoria en el tipo y sin valor por defecto en PHP; responde `202` con la
+  operación. `sendOperations.get` / `sendOperation()` sigue su estado.
+- Propuestas: `proposals.draft` / `draftFromProposal()` y `proposals.discard`
+  / `discardProposal()` con la versión que vio la persona.
+- La baja de la conexión acepta `idempotencyKey` y puede responder `202
+  disconnect_pending`.
+- `mailSendingError(error)` (TS) y `Mail::sendingError($e)` (PHP): los códigos
+  estables del envío (`draft_changed`, `draft_locked`, `draft_not_editable`,
+  `send_in_progress`, `proposal_changed`, `mail_not_configured`,
+  `connection_disconnecting`, `idempotency_key_*`).
+- PHP: `PimiaClient::postMultipart()`, el primer `multipart/form-data` del SDK
+  de PHP (arma su `boundary`; el transporte manda el cuerpo tal cual).
+
+### Fase A (factSaas#954)
 
 Contrato de instancia sincronizado desde **`origin/main` del núcleo:
 factSaas@025a5b84 (2026-09-24) — 473 operaciones**

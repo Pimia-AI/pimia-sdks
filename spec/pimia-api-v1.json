@@ -24343,11 +24343,33 @@
                                                         },
                                                         "max_message_bytes": {
                                                             "type": "integer"
+                                                        },
+                                                        "max_attachments": {
+                                                            "type": "integer"
+                                                        },
+                                                        "allowed_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
                                                         }
                                                     },
                                                     "required": [
                                                         "max_attachment_bytes",
-                                                        "max_message_bytes"
+                                                        "max_message_bytes",
+                                                        "max_attachments",
+                                                        "allowed_types"
+                                                    ]
+                                                },
+                                                "inbound": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "mode": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "mode"
                                                     ]
                                                 },
                                                 "capabilities": {
@@ -24370,6 +24392,7 @@
                                                 "account_label",
                                                 "checked_at",
                                                 "limits",
+                                                "inbound",
                                                 "capabilities"
                                             ]
                                         }
@@ -24470,11 +24493,33 @@
                                                         },
                                                         "max_message_bytes": {
                                                             "type": "integer"
+                                                        },
+                                                        "max_attachments": {
+                                                            "type": "integer"
+                                                        },
+                                                        "allowed_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
                                                         }
                                                     },
                                                     "required": [
                                                         "max_attachment_bytes",
-                                                        "max_message_bytes"
+                                                        "max_message_bytes",
+                                                        "max_attachments",
+                                                        "allowed_types"
+                                                    ]
+                                                },
+                                                "inbound": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "mode": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "mode"
                                                     ]
                                                 },
                                                 "capabilities": {
@@ -24497,6 +24542,7 @@
                                                 "account_label",
                                                 "checked_at",
                                                 "limits",
+                                                "inbound",
                                                 "capabilities"
                                             ]
                                         }
@@ -24526,8 +24572,8 @@
             },
             "delete": {
                 "operationId": "mailConnection.destroy",
-                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
-                "summary": "Desconecta la instancia: borra la clave (y el secreto del webhook) y\ndeja la conexi\u00f3n `revoked`. \u26d4 No borra buzones, mensajes ni miembros:\nvuelven a servir al reconectar con la misma cuenta. Idempotente: sin\nconexi\u00f3n responde igual, `not_configured`",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nSi el proveedor no deja retirar el webhook: `202` con\n`status: \"disconnect_pending\"`. La clave se conserva cifrada SOLO para\nterminar la limpieza; la terminan el reintento de este DELETE (misma\n`Idempotency-Key`) o el barrido. Mientras tanto, reconectar es `409\nconnection_disconnecting`.",
+                "summary": "Desconecta la instancia, como TRANSICI\u00d3N DURABLE: la conexi\u00f3n pasa a\n`disconnecting` (la recepci\u00f3n se apaga al momento), se retira el webhook\nen el proveedor y, confirmado eso, se borra la clave: `200`,\n`not_configured`. \u26d4 No borra buzones, mensajes ni miembros: vuelven a\nservir al reconectar con la misma cuenta",
                 "tags": [
                     "MailConnection"
                 ],
@@ -24590,11 +24636,33 @@
                                                         },
                                                         "max_message_bytes": {
                                                             "type": "integer"
+                                                        },
+                                                        "max_attachments": {
+                                                            "type": "integer"
+                                                        },
+                                                        "allowed_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
                                                         }
                                                     },
                                                     "required": [
                                                         "max_attachment_bytes",
-                                                        "max_message_bytes"
+                                                        "max_message_bytes",
+                                                        "max_attachments",
+                                                        "allowed_types"
+                                                    ]
+                                                },
+                                                "inbound": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "mode": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "mode"
                                                     ]
                                                 },
                                                 "capabilities": {
@@ -24617,6 +24685,116 @@
                                                 "account_label",
                                                 "checked_at",
                                                 "limits",
+                                                "inbound",
+                                                "capabilities"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Aceptado: queda pendiente y se termina en segundo plano.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "provider": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "domain": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "account_label": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "limits": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "max_attachment_bytes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_message_bytes": {
+                                                            "type": "integer"
+                                                        },
+                                                        "max_attachments": {
+                                                            "type": "integer"
+                                                        },
+                                                        "allowed_types": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "max_attachment_bytes",
+                                                        "max_message_bytes",
+                                                        "max_attachments",
+                                                        "allowed_types"
+                                                    ]
+                                                },
+                                                "inbound": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "mode": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "mode"
+                                                    ]
+                                                },
+                                                "capabilities": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "can_configure": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "can_configure"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "provider",
+                                                "status",
+                                                "domain",
+                                                "account_label",
+                                                "checked_at",
+                                                "limits",
+                                                "inbound",
                                                 "capabilities"
                                             ]
                                         }
@@ -24642,11 +24820,1519 @@
                 ]
             }
         },
+        "/mail/drafts": {
+            "post": {
+                "operationId": "mailDrafts.store",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\nErrores: `404` buz\u00f3n de otra empresa; `403 mailbox_access_revoked` sin\nmembres\u00eda viva; `403 send_mail_required`; `403 mailbox_inactive`; `422`\n`invalid_recipients`, `invalid_content`, `reply_target_invalid` o\n`idempotency_key_reused`. El reintento de una creaci\u00f3n ya hecha (misma\n`Idempotency-Key`) devuelve `200` con ese borrador.",
+                "summary": "Crea un borrador en un buz\u00f3n del que se es miembro. `201` con el borrador",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailDraftStoreRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/drafts/{draft}": {
+            "get": {
+                "operationId": "mailDrafts.show",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "El borrador de quien mira, con su `pending_operation`: si tiene un env\u00edo\nsin resolver (`pending`/`unknown`) est\u00e1 BLOQUEADO y la web recupera la\noperaci\u00f3n y su `idempotency_key`",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            },
+            "put": {
+                "operationId": "mailDrafts.update",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Guarda el borrador con la `version` que ten\u00eda delante quien edita. Solo\ncambian las claves presentes. `409 draft_changed` si otro escribi\u00f3\nentretanto, `409 draft_locked` con un env\u00edo sin resolver, `409\ndraft_not_editable` si ya sali\u00f3",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailDraftUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            },
+            "delete": {
+                "operationId": "mailDrafts.destroy",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Borra el borrador y sus adjuntos. `204`. `409 draft_locked` con un env\u00edo\nsin resolver; `409 draft_not_editable` si ya sali\u00f3",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/drafts/{draft}/attachments": {
+            "post": {
+                "operationId": "mailDrafts.attach",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Adjunta un fichero (multipart `file`), dentro de los l\u00edmites de\n`connection.limits`. Sube la versi\u00f3n del borrador. Con `Idempotency-Key`,\nel reintento no lo adjunta dos veces",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailDraftAttachmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/drafts/{draft}/attachments/{attachment}": {
+            "delete": {
+                "operationId": "mailDrafts.detach",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Quita un adjunto del borrador (sube la versi\u00f3n). `version` opcional en la\nquery. Un adjunto de otro borrador es 404",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "attachment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/drafts/{draft}/send": {
+            "post": {
+                "operationId": "mailDrafts.send",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n- La misma clave, el mismo borrador y la misma persona \u2192 la MISMA\n  operaci\u00f3n (doble clic, reintento de red).\n- Otra clave con un env\u00edo sin resolver \u2192 `409 send_in_progress`.\n- `409 draft_changed` (versi\u00f3n vieja), `409 proposal_changed` (la\n  propuesta de la que naci\u00f3 cambi\u00f3), `409 mail_not_configured`, `422\n  draft_incomplete`, `422 idempotency_key_required` /\n  `idempotency_key_invalid` / `idempotency_key_reused`.",
+                "summary": "Env\u00eda el borrador en la `version` que ten\u00eda delante la persona, con la\ncabecera `Idempotency-Key` OBLIGATORIA (la genera la web, una por\nintento). `202` con la operaci\u00f3n: el env\u00edo sale en segundo plano",
+                "tags": [
+                    "MailDrafts"
+                ],
+                "parameters": [
+                    {
+                        "name": "draft",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailVersionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Aceptado: se procesa en segundo plano.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 202
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
         "/mail/mailboxes/{mailbox}/messages": {
             "get": {
                 "operationId": "mailMessages.index",
-                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`unread` es POR USUARIO. `send_status` es el estado del env\u00edo que\nprodujo un saliente (`null` en los entrantes).\n\nErrores: `404` buz\u00f3n de otra empresa o inexistente; `403\nmailbox_access_revoked` sin membres\u00eda viva (tambi\u00e9n un administrador);\n`422 invalid_cursor`.",
-                "summary": "Una p\u00e1gina de mensajes de una carpeta (`inbox` o `sent`), con b\u00fasqueda\n`q` en el servidor (remitente, destinatarios, asunto y cuerpo) y\npaginaci\u00f3n por cursor (`meta.next_cursor`, `null` en la \u00faltima)",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n`unread` es POR USUARIO. `send_status` es el estado del env\u00edo que\nprodujo un saliente (`null` en los entrantes). `possible_duplicate_of`\nes la ra\u00edz de su grupo de candidatos a duplicado del proveedor.\n\n`folder=drafts` son los borradores de QUIEN MIRA en ese buz\u00f3n, con la\nmisma forma (su `send_status` es el del env\u00edo sin resolver, si lo hay).\n`meta.history_complete` sale del estado de la sincronizaci\u00f3n\n(`MailboxSyncStatus`); en `drafts` es siempre `true` (son locales).\n\nErrores: `404` buz\u00f3n de otra empresa o inexistente; `403\nmailbox_access_revoked` sin membres\u00eda viva (tambi\u00e9n un administrador);\n`422 invalid_cursor`.",
+                "summary": "Una p\u00e1gina de mensajes de una carpeta (`inbox`, `sent` o `drafts`), con b\u00fasqueda\n`q` en el servidor (remitente, destinatarios, asunto y cuerpo) y\npaginaci\u00f3n por cursor (`meta.next_cursor`, `null` en la \u00faltima)",
                 "tags": [
                     "MailMessages"
                 ],
@@ -24666,7 +26352,8 @@
                             "type": "string",
                             "enum": [
                                 "inbox",
-                                "sent"
+                                "sent",
+                                "drafts"
                             ]
                         }
                     },
@@ -24800,6 +26487,12 @@
                                                             "string",
                                                             "null"
                                                         ]
+                                                    },
+                                                    "possible_duplicate_of": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
                                                     }
                                                 },
                                                 "required": [
@@ -24813,7 +26506,8 @@
                                                     "received_at",
                                                     "unread",
                                                     "attachment_count",
-                                                    "send_status"
+                                                    "send_status",
+                                                    "possible_duplicate_of"
                                                 ]
                                             }
                                         },
@@ -24984,6 +26678,12 @@
                                                         "null"
                                                     ]
                                                 },
+                                                "possible_duplicate_of": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
                                                 "cc": {
                                                     "type": "array",
                                                     "items": {
@@ -25096,6 +26796,7 @@
                                                 "unread",
                                                 "attachment_count",
                                                 "send_status",
+                                                "possible_duplicate_of",
                                                 "cc",
                                                 "reply_to",
                                                 "text_body",
@@ -25187,6 +26888,98 @@
                 "x-pimia-partner-availability": "first-party-only",
                 "x-pimia-required-scopes": [
                     "mail:write"
+                ]
+            }
+        },
+        "/mail/mailboxes/{mailbox}/sync": {
+            "get": {
+                "operationId": "mailMessages.sync",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "El estado de la sincronizaci\u00f3n del buz\u00f3n, tal cual lo da\n`MailboxSyncStatus` (sin cursor ni texto de errores). Mientras\n`history_complete` sea `false`, la web vuelve a preguntar y no afirma\n\u00abno hay correo\u00bb",
+                "tags": [
+                    "MailMessages"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "history_complete": {
+                                                    "type": "boolean"
+                                                },
+                                                "imported_count": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "estimated_total": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_synced_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "history_complete",
+                                                "imported_count",
+                                                "estimated_total",
+                                                "last_synced_at",
+                                                "status"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
                 ]
             }
         },
@@ -25550,6 +27343,399 @@
                                                 "rationale",
                                                 "in_reply_to_message_id",
                                                 "created_at",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:read"
+                ]
+            }
+        },
+        "/mail/proposals/{proposal}/draft": {
+            "post": {
+                "operationId": "mailProposals.draft",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Abre (o reabre) el borrador de QUIEN MIRA ligado a la versi\u00f3n ACTUAL de\nla propuesta: uno por persona y propuesta. Si ya exist\u00eda y la propuesta\ncambi\u00f3, se reescribe con la nueva, SALVO que tenga un env\u00edo sin resolver\n(se devuelve congelado, con su `pending_operation`) o ya haya salido.\n`409 proposal_changed` si la propuesta ya no est\u00e1 pendiente",
+                "tags": [
+                    "MailProposals"
+                ],
+                "parameters": [
+                    {
+                        "name": "proposal",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "mailbox_id": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "integer"
+                                                },
+                                                "to": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "cc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "bcc": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "subject": {
+                                                    "type": "string"
+                                                },
+                                                "text_body": {
+                                                    "type": "string"
+                                                },
+                                                "in_reply_to_message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "proposal": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "version"
+                                                    ]
+                                                },
+                                                "attachments": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "filename": {
+                                                                "type": "string"
+                                                            },
+                                                            "content_type": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "size_bytes": {
+                                                                "type": [
+                                                                    "integer",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "is_inline": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "filename",
+                                                            "content_type",
+                                                            "size_bytes",
+                                                            "is_inline"
+                                                        ]
+                                                    }
+                                                },
+                                                "pending_operation": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "draft_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "message_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "failure_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "review_required": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "updated_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "idempotency_key": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "draft_id",
+                                                        "status",
+                                                        "message_id",
+                                                        "failure_reason",
+                                                        "review_required",
+                                                        "updated_at",
+                                                        "idempotency_key"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "mailbox_id",
+                                                "status",
+                                                "version",
+                                                "to",
+                                                "cc",
+                                                "bcc",
+                                                "subject",
+                                                "text_body",
+                                                "in_reply_to_message_id",
+                                                "proposal",
+                                                "attachments",
+                                                "pending_operation",
+                                                "updated_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/proposals/{proposal}/discard": {
+            "post": {
+                "operationId": "mailProposals.discard",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Descarta la propuesta en la `version` que ten\u00eda delante la persona. `204`.\nIdempotente: repetir el mismo descarte vuelve a dar `204`. `409\nproposal_changed` si Hermes la reescribi\u00f3 entretanto, si ya sali\u00f3 o si\ntiene un env\u00edo en curso. Pide poder ENVIAR desde el buz\u00f3n (miembro vivo\ncon `send-mail`): descartar es decidir sobre lo que saldr\u00eda",
+                "tags": [
+                    "MailProposals"
+                ],
+                "parameters": [
+                    {
+                        "name": "proposal",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MailVersionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
+            }
+        },
+        "/mail/send-operations/{operation}": {
+            "get": {
+                "operationId": "mailSendOperations.show",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n- `failed`: definitivo, no sali\u00f3 (la web ofrece reintentar con otra clave).\n- `unknown`: no se sabe; la web NO ofrece reenviar.\n- `review_required`: fuera de la ventana; lo mira una persona.",
+                "summary": "El estado de un env\u00edo, para su autor o para quien lee el buz\u00f3n (miembro\nvivo con `view-mail`). Si sigue abierto (`pending`/`unknown`) y dentro\nde la ventana, se reintenta YA con la MISMA clave del proveedor\n(`SendService::checkStatus`); nunca crea un env\u00edo nuevo",
+                "tags": [
+                    "MailSendOperations"
+                ],
+                "parameters": [
+                    {
+                        "name": "operation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "draft_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "message_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "failure_reason": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "review_required": {
+                                                    "type": "boolean"
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "draft_id",
+                                                "status",
+                                                "message_id",
+                                                "failure_reason",
+                                                "review_required",
                                                 "updated_at"
                                             ]
                                         }
@@ -62442,6 +64628,157 @@
                 ],
                 "title": "MailConnectionRequest"
             },
+            "MailDraftAttachmentRequest": {
+                "type": "object",
+                "description": "Adjuntar un fichero a un borrador (`POST /api/v1/mail/drafts/{draft}/attachments`,\nmultipart con `file`). `version`, si se manda, es la versi\u00f3n que ten\u00eda\ndelante quien adjunta (`409 draft_changed` si cambi\u00f3).\n\nEl tama\u00f1o, el total por mensaje, el n\u00famero de adjuntos y el TIPO (por los\nbytes, no por lo que diga el navegador) los decide el servicio con sus\nl\u00edmites (`connection.limits`): `422 attachment_too_large`,\n`attachments_total_too_large`, `too_many_attachments` o\n`attachment_type_not_allowed`.",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream"
+                    },
+                    "version": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "file"
+                ],
+                "title": "MailDraftAttachmentRequest"
+            },
+            "MailDraftStoreRequest": {
+                "type": "object",
+                "description": "Crear un borrador de correo en texto plano (`POST /api/v1/mail/drafts`).\n\n- `mailbox_id`: el buz\u00f3n desde el que se escribe (su `public_id`).\n- Direcciones: `to`, `cc` y `bcc` son listas de correos. Su validaci\u00f3n fina\n  (`invalid_recipients`) la hace el servicio del env\u00edo, que es quien sabe qu\u00e9\n  se puede enviar.\n- `in_reply_to_message_id`: el `public_id` de un mensaje DE ESE BUZ\u00d3N.",
+                "properties": {
+                    "mailbox_id": {
+                        "type": "string",
+                        "maxLength": 40
+                    },
+                    "to": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "cc": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "bcc": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "subject": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 998
+                    },
+                    "text_body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000000
+                    },
+                    "in_reply_to_message_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    }
+                },
+                "required": [
+                    "mailbox_id"
+                ],
+                "title": "MailDraftStoreRequest"
+            },
+            "MailDraftUpdateRequest": {
+                "type": "object",
+                "description": "Guardar un borrador (`PUT /api/v1/mail/drafts/{draft}`).\n\n- `version`: la versi\u00f3n que ten\u00eda delante quien edita, OBLIGATORIA: si otro\n  escribi\u00f3 entretanto, `409 draft_changed`; con un env\u00edo sin resolver,\n  `409 draft_locked`.\n- Direcciones: `to`, `cc` y `bcc` son listas de correos. Su validaci\u00f3n fina\n  (`invalid_recipients`) la hace el servicio del env\u00edo, que es quien sabe qu\u00e9\n  se puede enviar.\n\nAl guardar, solo cambian las claves presentes.",
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "to": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "cc": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "bcc": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 320
+                        },
+                        "maxItems": 100
+                    },
+                    "subject": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 998
+                    },
+                    "text_body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000000
+                    }
+                },
+                "required": [
+                    "version"
+                ],
+                "title": "MailDraftUpdateRequest"
+            },
             "MailEnvironmentRequest": {
                 "type": "object",
                 "description": "Validaci\u00f3n de la pantalla de configuraci\u00f3n de correo.\n\nEl driver se valida contra `TenantMailSettings::DRIVERS`, que son los que\nesta imagen puede usar de verdad. Antes el `default` del switch dejaba pasar\ncualquier cadena con solo remitente y nombre: se pod\u00eda guardar `mailgun` sin\ncredenciales, o un driver inexistente, y el fallo aparec\u00eda \u2014si acaso\u2014 al\nenviar.\n\nLos secretos son opcionales por dise\u00f1o: el panel no puede reenviar lo que no\npuede leer, as\u00ed que omitirlos significa \u00abdeja la que hay\u00bb. Ver\n`TenantMailSettings::save()`.\n\n`mail_timeout` est\u00e1 acotado por arriba para que un SMTP colgado no se coma el\n`$timeout = 60` de `App\\Jobs\\SendDocumentMail`. (Va aqu\u00ed y no junto a la\nclave: un comentario pegado a un campo de `rules()` se PUBLICA como su\n`description` en el contrato, y esto es una nota para quien mantiene el\nc\u00f3digo, no para el integrador.)\n\n\u2500\u2500 Por qu\u00e9 las reglas son UNA lista y no un `match` por driver \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nLo eran, y el efecto no se ve\u00eda aqu\u00ed sino en el contrato: el generador del\nOpenAPI ejecuta `rules()` EN FR\u00cdO, sin petici\u00f3n, as\u00ed que `$this->get('mail_driver')`\nes `null`, el `match` ca\u00eda en su rama `default` y el cuerpo publicado de\n`POST /mail/config` eran TRES campos \u2014driver, remitente y nombre\u2014. Ni el\nservidor, ni el puerto, ni la clave de SES: justo lo que hay que mandar para\nque la llamada haga algo. Quien la implementara desde el SDK no ten\u00eda de d\u00f3nde\nsacarlos.\n\nCon la lista plana y `required_if`, la condici\u00f3n viaja al documento en vez de\ndesaparecer. Y la validaci\u00f3n no se afloja: lo que era `required` para un\ndriver sigue si\u00e9ndolo para ese driver. Lo \u00fanico que cambia es que un campo del\nOTRO driver, si llega, se valida en vez de ignorarse \u2014 y `save()` solo\npersiste los del driver elegido, as\u00ed que no acaba en la base de datos.",
@@ -62564,6 +64901,20 @@
                     "read"
                 ],
                 "title": "MailMessageUpdateRequest"
+            },
+            "MailVersionRequest": {
+                "type": "object",
+                "description": "Una acci\u00f3n del Correo que se hace sobre la VERSI\u00d3N que ten\u00eda delante la\npersona: enviar un borrador (`POST /mail/drafts/{draft}/send`) o descartar\nuna propuesta (`POST /mail/proposals/{proposal}/discard`).",
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "version"
+                ],
+                "title": "MailVersionRequest"
             },
             "MailboxMemberRequest": {
                 "type": "object",
