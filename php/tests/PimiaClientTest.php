@@ -797,6 +797,10 @@ final class PimiaClientTest extends TestCase
     public function test_el_cierre_de_acceso_del_correo_se_distingue_de_un_fallo_del_proveedor(): void
     {
         $casos = [
+            // TODO 402 cierra el módulo, con cualquier código o sin ninguno.
+            [402, 'subscription_required', 'module_disabled'],
+            [402, 'tenant_suspended', 'module_disabled'],
+            [402, null, 'module_disabled'],
             [403, 'module_not_installed', 'module_disabled'],
             [403, 'mailbox_access_revoked', 'access_revoked'],
             [403, 'company_not_allowed', 'company_not_allowed'],
@@ -806,14 +810,14 @@ final class PimiaClientTest extends TestCase
         ];
         foreach ($casos as [$status, $code, $esperado]) {
             [$client] = $this->client(
-                static fn () => FakeTransport::json(['message' => 'x', 'code' => $code, 'error' => $code], $status),
+                static fn () => FakeTransport::json($code === null ? ['message' => 'x'] : ['message' => 'x', 'code' => $code, 'error' => $code], $status),
                 new TokenSet('at-1'),
             );
             try {
                 $client->mail->mailboxes();
-                $this->fail("{$status} {$code} debía lanzar");
+                $this->fail("{$status} ".($code ?? 'sin código').' debía lanzar');
             } catch (\Throwable $e) {
-                $this->assertSame($esperado, Mail::accessClosure($e), "{$status} {$code}");
+                $this->assertSame($esperado, Mail::accessClosure($e), "{$status} ".($code ?? 'sin código'));
             }
         }
     }

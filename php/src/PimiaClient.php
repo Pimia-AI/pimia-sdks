@@ -7,8 +7,10 @@ namespace Pimia;
 use Pimia\Exception\ApiException;
 use Pimia\Exception\NotAuthenticatedException;
 use Pimia\Exception\OAuthException;
+use Pimia\Exception\PimiaException;
 use Pimia\Exception\RateLimitException;
 use Pimia\Exception\UnauthorizedException;
+use Pimia\Http\Response;
 use Pimia\Http\ResponseMeta;
 use Pimia\Http\ResponseWithMeta;
 use Pimia\Http\Transport;
@@ -272,6 +274,67 @@ final class PimiaClient
         ?string $idempotencyKey = null,
         array $headers = [],
     ): ResponseWithMeta {
+        $response = $this->send($method, $path, $query, $body, $idempotencyKey, $headers);
+
+        return new ResponseWithMeta(
+            $response->body,
+            new ResponseMeta(
+                status: $response->status,
+                // Presente solo cuando Pimia reproduce; su ausencia
+                // significa «esta escritura ocurrió de verdad».
+                idempotentReplay: $response->header('idempotency-replayed') === 'true',
+                requestId: $response->header('x-request-id'),
+                rateLimit: $this->rateLimit,
+            ),
+        );
+    }
+
+    /**
+     * Descarga un fichero y devuelve SUS BYTES, exactos, sea cual sea su tipo.
+     *
+     * Existe porque `request()` DECODIFICA lo que llega como JSON (y `+json`,
+     * y un cuerpo vacío lo convierte en `null`): un adjunto que es un `.json`
+     * volvería como array y uno vacío como `null`, y ninguno de los dos es el
+     * fichero. Aquí la respuesta buena (2xx) se devuelve SIEMPRE cruda; los
+     * errores (4xx/5xx) se siguen interpretando como JSON, con sus excepciones
+     * de siempre.
+     *
+     * @param  array<string, mixed>  $query
+     */
+    public function download(string $path, array $query = []): string
+    {
+        $response = $this->send('GET', $path, $query, headers: ['accept' => '*/*']);
+
+        if ($response->raw !== null) {
+            return $response->raw;
+        }
+        // Un transporte propio que no conserva los bytes: solo es seguro si lo
+        // que devolvió no pasó por el decodificador.
+        if (is_string($response->body)) {
+            return $response->body;
+        }
+
+        throw new PimiaException(
+            'El transporte no conserva los bytes de la respuesta (Response::$raw): '
+            .'no se puede devolver el fichero sin arriesgarse a entregarlo decodificado.',
+        );
+    }
+
+    /**
+     * La petición con sus reintentos (refresco en 401, espera en 429). Devuelve
+     * la respuesta buena ENTERA; una mala sube como excepción.
+     *
+     * @param  array<string, mixed>  $query
+     * @param  array<string, string>  $headers
+     */
+    private function send(
+        string $method,
+        string $path,
+        array $query = [],
+        mixed $body = null,
+        ?string $idempotencyKey = null,
+        array $headers = [],
+    ): Response {
         $tokens = $this->currentTokens();
 
         if ($tokens->isExpired($this->config->expirySkewSeconds)) {
@@ -303,17 +366,7 @@ final class PimiaClient
             $this->captureRateLimit($response);
 
             if ($response->isSuccessful()) {
-                return new ResponseWithMeta(
-                    $response->body,
-                    new ResponseMeta(
-                        status: $response->status,
-                        // Presente solo cuando Pimia reproduce; su ausencia
-                        // significa «esta escritura ocurrió de verdad».
-                        idempotentReplay: $response->header('idempotency-replayed') === 'true',
-                        requestId: $response->header('x-request-id'),
-                        rateLimit: $this->rateLimit,
-                    ),
-                );
+                return $response;
             }
 
             $requestId = $response->header('x-request-id');

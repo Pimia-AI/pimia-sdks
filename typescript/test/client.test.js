@@ -1046,6 +1046,10 @@ test('el adjunto llega como Blob con sus bytes intactos', async () => {
 
 test('mailAccessClosure distingue los dos cierres de acceso de un fallo del proveedor', async () => {
   const cuerpos = [
+    // TODO 402 cierra el módulo, con cualquier código o sin ninguno.
+    [402, { message: 'x', code: 'subscription_required', error: 'subscription_required' }, 'module_disabled'],
+    [402, { message: 'x', error: 'tenant_suspended' }, 'module_disabled'],
+    [402, { message: 'x' }, 'module_disabled'],
     [403, { message: 'x', code: 'module_not_installed', error: 'module_not_installed' }, 'module_disabled'],
     [403, { message: 'x', code: 'mailbox_access_revoked', error: 'mailbox_access_revoked' }, 'access_revoked'],
     [403, { message: 'x', code: 'company_not_allowed', error: 'company_not_allowed' }, 'company_not_allowed'],

@@ -90,13 +90,16 @@ final class Mail
         );
     }
 
-    /** Los bytes del adjunto, como cadena binaria (el transporte no decodifica lo que no es JSON). */
-    public function attachment(string $mailboxId, string $attachmentId): mixed
+    /**
+     * Los bytes EXACTOS del adjunto, sea cual sea su tipo: un adjunto que es un
+     * `.json` (o `+json`, o un fichero vacío) vuelve como cadena, no decodificado.
+     * Va por {@see PimiaClient::download()}, que no pasa la respuesta buena por
+     * el decodificador; un error (4xx/5xx) sigue siendo su excepción.
+     */
+    public function attachment(string $mailboxId, string $attachmentId): string
     {
-        return $this->client->request(
-            'GET',
+        return $this->client->download(
             '/mail/mailboxes/'.rawurlencode($mailboxId).'/attachments/'.rawurlencode($attachmentId),
-            headers: ['accept' => '*/*'],
         );
     }
 
@@ -194,7 +197,16 @@ final class Mail
      */
     public static function accessClosure(\Throwable $error): ?string
     {
-        if (! $error instanceof ApiException || $error->status !== 403 || ! is_array($error->body)) {
+        if (! $error instanceof ApiException) {
+            return null;
+        }
+        // TODO 402 cierra el módulo, con o sin código: `subscription_required`
+        // (el módulo de pago sin plan), `tenant_suspended`… o ninguno. Es un
+        // NO del servidor al módulo entero, no un fallo pasajero.
+        if ($error->status === 402) {
+            return 'module_disabled';
+        }
+        if ($error->status !== 403 || ! is_array($error->body)) {
             return null;
         }
         $code = $error->body['code'] ?? $error->body['error'] ?? null;

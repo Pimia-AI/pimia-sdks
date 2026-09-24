@@ -261,8 +261,9 @@ function abilityFrom(body: unknown): string | undefined {
  * pintó de ese buzón, o del correo entero— o es otra cosa (un fallo pasajero
  * del proveedor, una validación). Lee el `code` estable del cuerpo:
  *
- * - `module_not_installed` → `'module_disabled'`: el módulo `mail` está
- *   apagado en la empresa;
+ * - `module_not_installed` (403) y **cualquier `402`** —`subscription_required`,
+ *   `tenant_suspended` o sin código— → `'module_disabled'`: el módulo `mail`
+ *   no se sirve en la empresa;
  * - `mailbox_access_revoked` → `'access_revoked'`: quien mira ya no es
  *   miembro del buzón (también un admin sin membresía que pide contenido);
  * - `company_not_allowed` → `'company_not_allowed'`: la cabecera `company`
@@ -276,7 +277,12 @@ function abilityFrom(body: unknown): string | undefined {
 export function mailAccessClosure(
   error: unknown,
 ): 'module_disabled' | 'access_revoked' | 'company_not_allowed' | null {
-  if (!(error instanceof PimiaApiError) || error.status !== 403) return null
+  if (!(error instanceof PimiaApiError)) return null
+  // TODO 402 cierra el módulo, con cualquier código o sin ninguno:
+  // `subscription_required` (el módulo de pago sin plan), `tenant_suspended`…
+  // Es un NO del servidor al módulo entero, no un fallo pasajero.
+  if (error.status === 402) return 'module_disabled'
+  if (error.status !== 403) return null
   if (error.code === 'module_not_installed') return 'module_disabled'
   if (error.code === 'mailbox_access_revoked') return 'access_revoked'
   if (error.code === 'company_not_allowed') return 'company_not_allowed'
