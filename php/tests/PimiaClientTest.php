@@ -16,6 +16,7 @@ use Pimia\Http\Response;
 use Pimia\OAuth\InMemoryTokenStore;
 use Pimia\OAuth\TokenSet;
 use Pimia\PimiaClient;
+use Pimia\Resource\Mail;
 
 /**
  * Foco: lo que puede tumbar una integración de verdad — la rotación del
@@ -754,5 +755,60 @@ final class PimiaClientTest extends TestCase
         );
 
         return [$client, $transport];
+    }
+
+    /**
+     * El correo (factSaas#954, fase A): rutas, ids opacos escapados, el alta
+     * de buzón con su Idempotency-Key y el id de usuario numérico.
+     */
+    public function test_el_correo_pega_en_sus_rutas_y_el_alta_lleva_su_clave(): void
+    {
+        [$client, $transport] = $this->client(
+            static fn () => FakeTransport::json(['data' => []]),
+            new TokenSet('at-1'),
+        );
+
+        $client->mail->connection();
+        $client->mail->mailboxes();
+        $client->mail->messages('mb_1', ['folder' => 'inbox', 'cursor' => 'c/2']);
+        $client->mail->message('mb_1', 'msg 7');
+        $client->mail->markRead('mb_1', 'msg_1');
+        $client->mail->createMailbox(['kind' => 'shared', 'local_part' => 'obras'], 'alta-obras-1');
+        $client->mail->addMember('mb_1', 42);
+        $client->mail->removeMember('mb_1', 42);
+
+        $this->assertSame(self::BASE.'/api/v1/mail/connection', $transport->calls[0]['url']);
+        $this->assertSame(self::BASE.'/api/v1/mail/mailboxes', $transport->calls[1]['url']);
+        $this->assertSame(self::BASE.'/api/v1/mail/mailboxes/mb_1/messages?folder=inbox&cursor=c%2F2', $transport->calls[2]['url']);
+        $this->assertSame(self::BASE.'/api/v1/mail/mailboxes/mb_1/messages/msg%207', $transport->calls[3]['url']);
+        $this->assertSame('PATCH', $transport->calls[4]['method']);
+        $this->assertSame('POST', $transport->calls[5]['method']);
+        $this->assertSame('alta-obras-1', $transport->calls[5]['headers']['idempotency-key']);
+        $this->assertSame(self::BASE.'/api/v1/mail/admin/mailboxes/mb_1/members', $transport->calls[6]['url']);
+        $this->assertSame(self::BASE.'/api/v1/mail/admin/mailboxes/mb_1/members/42', $transport->calls[7]['url']);
+        $this->assertSame('DELETE', $transport->calls[7]['method']);
+    }
+
+    /** Los dos cierres de acceso se distinguen de un fallo pasajero del proveedor. */
+    public function test_el_cierre_de_acceso_del_correo_se_distingue_de_un_fallo_del_proveedor(): void
+    {
+        $casos = [
+            [403, 'module_not_installed', 'module_disabled'],
+            [403, 'mailbox_access_revoked', 'access_revoked'],
+            [403, 'configure_mail_required', null],
+            [503, 'provider_unavailable', null],
+        ];
+        foreach ($casos as [$status, $code, $esperado]) {
+            [$client] = $this->client(
+                static fn () => FakeTransport::json(['message' => 'x', 'code' => $code, 'error' => $code], $status),
+                new TokenSet('at-1'),
+            );
+            try {
+                $client->mail->mailboxes();
+                $this->fail("{$status} {$code} debía lanzar");
+            } catch (\Throwable $e) {
+                $this->assertSame($esperado, Mail::accessClosure($e), "{$status} {$code}");
+            }
+        }
     }
 }

@@ -255,3 +255,23 @@ function abilityFrom(body: unknown): string | undefined {
   if (b?.error !== 'token_sin_habilidad') return undefined
   return typeof b.required_ability === 'string' && b.required_ability !== '' ? b.required_ability : undefined
 }
+
+/**
+ * Si un error de la API del correo CIERRA el acceso —hay que retirar lo que se
+ * pintó de ese buzón, o del correo entero— o es otra cosa (un fallo pasajero
+ * del proveedor, una validación). Lee el `code` estable del cuerpo:
+ *
+ * - `module_not_installed` → `'module_disabled'`: el módulo `mail` está
+ *   apagado en la empresa;
+ * - `mailbox_access_revoked` → `'access_revoked'`: quien mira ya no es
+ *   miembro del buzón (también un admin sin membresía que pide contenido).
+ *
+ * Un `502`/`503` del proveedor NO cierra nada: no se sabe qué hay, y eso no es
+ * «no hay nada». Devuelve `null`.
+ */
+export function mailAccessClosure(error: unknown): 'module_disabled' | 'access_revoked' | null {
+  if (!(error instanceof PimiaApiError) || error.status !== 403) return null
+  if (error.code === 'module_not_installed') return 'module_disabled'
+  if (error.code === 'mailbox_access_revoked') return 'access_revoked'
+  return null
+}

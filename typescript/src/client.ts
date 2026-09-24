@@ -517,6 +517,16 @@ type Ok<O extends keyof operations> = operations[O] extends {
       : never
 
 /**
+ * Un buzón del inventario administrativo del correo. Se escribe a partir de la
+ * respuesta de `PATCH /mail/admin/mailboxes/{mailbox}` porque la del ALTA
+ * (`POST`, `201`) sale del generador como el literal `201` en vez del recurso:
+ * usarla tal cual tiparía `data` como un número. Misma forma en el núcleo
+ * (`MailPresenter::adminMailbox`).
+ */
+export type MailAdminMailboxResource = Ok<'mailAdminMailboxes.update'>['data']
+
+
+/**
  * El sobre `{ data: … }` de Laravel para las escrituras que el spec **no
  * tipa**.
  *
@@ -1417,6 +1427,141 @@ export class PimiaClient {
          */
         portal: (body: IntegradorBillingPortalRequest, options?: WriteOptions) =>
           this.post<Ok<'suscripcionIntegrador.portal'>>('/billing/integrador/portal', body, options),
+      },
+    }
+  }
+
+  /**
+   * El correo de la empresa sobre Dead Simple Email (módulo de pago `mail`),
+   * fase A del núcleo: conexión, buzones, lectura y administración. Exige
+   * `mail:read` / `mail:write`, que son de **primera parte**: un client de
+   * integrador no los obtiene.
+   *
+   * Tres puertas en todas las rutas, y el cuerpo de error trae el `code`
+   * estable ({@link PimiaApiError.code}):
+   *
+   * 1. el módulo: `403 module_not_installed` si está apagado;
+   * 2. la empresa activa: un id de otra empresa (o de otro buzón) es `404`;
+   * 3. la membresía: el contenido exige ser miembro **vivo**; administrar
+   *    (`configure-mail`) no da contenido y un admin sin membresía recibe
+   *    `403 mailbox_access_revoked`.
+   *
+   * {@link mailAccessClosure} dice si un error CIERRA el acceso (hay que
+   * retirar lo pintado) o es un fallo pasajero. Un fallo del proveedor es
+   * `502`/`503` y nunca un `200` con la lista vacía.
+   *
+   * ⚠️ Los ids de buzón, mensaje, adjunto y propuesta son `public_id`
+   * opacos (cadenas); los de USUARIO son el id numérico de Pimia.
+   */
+  get mail() {
+    return {
+      connection: {
+        /** La conexión de la INSTANCIA (una por proveedor). Sin conexión: `status: not_configured`, no un 404. */
+        get: (options?: ReadOptions) => this.get<Ok<'mailConnection.show'>>('/mail/connection', undefined, options),
+        /** Conecta (o reconecta) Dead Simple. La clave viaja una vez y no vuelve en ninguna respuesta. */
+        connect: (body: components['schemas']['MailConnectionRequest'], options?: WriteOptions) =>
+          this.post<Ok<'mailConnection.store'>>('/mail/connection', body, options),
+        /** Desconecta la instancia entera. Idempotente: responde `not_configured`. */
+        disconnect: (options?: ReadOptions) => this.delete<Ok<'mailConnection.destroy'>>('/mail/connection', options),
+      },
+
+      /** Los buzones que quien mira puede LEER (membresía viva). `[]` si no hay ninguno. */
+      mailboxes: (options?: ReadOptions) => this.get<Ok<'mailboxes.index'>>('/mail/mailboxes', undefined, options),
+
+      messages: {
+        /**
+         * Por cursor: `meta.next_cursor` (opaco, se devuelve tal cual) y
+         * `meta.history_complete` en cada página. `folder`: `inbox` o `sent`.
+         */
+        list: (mailboxId: string, query?: RequestOptions['query'], options?: ReadOptions) =>
+          this.get<Ok<'mailMessages.index'>>(`/mail/mailboxes/${encodeURIComponent(mailboxId)}/messages`, query, options),
+        /** El mensaje en TEXTO PLANO (`text_body`); el HTML no sale nunca. */
+        get: (mailboxId: string, messageId: string, options?: ReadOptions) =>
+          this.get<Ok<'mailMessages.show'>>(
+            `/mail/mailboxes/${encodeURIComponent(mailboxId)}/messages/${encodeURIComponent(messageId)}`,
+            undefined,
+            options,
+          ),
+        /** Leído o no leído, POR USUARIO. Responde `204`. */
+        markRead: (mailboxId: string, messageId: string, read: boolean, options?: WriteOptions) =>
+          this.patch<void>(
+            `/mail/mailboxes/${encodeURIComponent(mailboxId)}/messages/${encodeURIComponent(messageId)}`,
+            { read } satisfies components['schemas']['MailMessageUpdateRequest'],
+            options,
+          ),
+      },
+
+      /** Descarga un adjunto como `Blob` (el cuerpo es binario; `get()` lo corrompería). */
+      attachment: (mailboxId: string, attachmentId: string, options?: ReadOptions) =>
+        this.download(
+          `/mail/mailboxes/${encodeURIComponent(mailboxId)}/attachments/${encodeURIComponent(attachmentId)}`,
+          undefined,
+          options,
+        ),
+
+      proposals: {
+        /** Las propuestas de Hermes de un buzón, por cursor. */
+        list: (mailboxId: string, query?: RequestOptions['query'], options?: ReadOptions) =>
+          this.get<Ok<'mailProposals.index'>>(`/mail/mailboxes/${encodeURIComponent(mailboxId)}/proposals`, query, options),
+        get: (proposalId: string, options?: ReadOptions) =>
+          this.get<Ok<'mailProposals.show'>>(`/mail/proposals/${encodeURIComponent(proposalId)}`, undefined, options),
+      },
+
+      /** Administración (`configure-mail`): metadatos y miembros, SIN contenido. */
+      admin: {
+        mailboxes: {
+          /** Todos los buzones de la empresa activa, con su número de miembros. */
+          list: (options?: ReadOptions) =>
+            this.get<Ok<'mailAdminMailboxes.index'>>('/mail/admin/mailboxes', undefined, options),
+          /**
+           * Da de alta un buzón. **`idempotencyKey` es OBLIGATORIA** (el
+           * núcleo la exige y la reenvía al proveedor): una por alta, y la
+           * MISMA en el reintento tras un `502 provider_outcome_unknown`, o
+           * se crearían dos buzones. `personal` exige `owner_user_id`; un
+           * `shared` nace sin miembros (tampoco quien lo crea).
+           */
+          create: (
+            body: components['schemas']['MailboxStoreRequest'],
+            options: WriteOptions & { idempotencyKey: string },
+          ) => this.post<ResourceEnvelope<MailAdminMailboxResource>>('/mail/admin/mailboxes', body, options),
+          update: (mailboxId: string, body: components['schemas']['MailboxUpdateRequest'], options?: WriteOptions) =>
+            this.patch<Ok<'mailAdminMailboxes.update'>>(
+              `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}`,
+              body,
+              options,
+            ),
+          /** Los buzones de la cuenta del proveedor, para vincular (`mode: link`). Sin ids del proveedor. */
+          providerMailboxes: (query?: RequestOptions['query'], options?: ReadOptions) =>
+            this.get<Ok<'mailAdminMailboxes.providerMailboxes'>>('/mail/admin/provider-mailboxes', query, options),
+        },
+        members: {
+          list: (mailboxId: string, options?: ReadOptions) =>
+            this.get<Ok<'mailAdminMembers.index'>>(
+              `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/members`,
+              undefined,
+              options,
+            ),
+          /** Usuarios de la EMPRESA DEL BUZÓN que aún no son miembros. */
+          candidates: (mailboxId: string, options?: ReadOptions) =>
+            this.get<Ok<'mailAdminMembers.candidates'>>(
+              `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/member-candidates`,
+              undefined,
+              options,
+            ),
+          /** Un usuario de otra empresa es `422 user_not_in_company`; uno inexistente, `404`. */
+          add: (mailboxId: string, userId: number, options?: WriteOptions) =>
+            this.post<Ok<'mailAdminMembers.store'>>(
+              `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/members`,
+              { user_id: userId } satisfies components['schemas']['MailboxMemberRequest'],
+              options,
+            ),
+          /** Revoca la membresía (no la borra: queda en el libro). */
+          remove: (mailboxId: string, userId: number, options?: ReadOptions) =>
+            this.delete<Ok<'mailAdminMembers.destroy'>>(
+              `/mail/admin/mailboxes/${encodeURIComponent(mailboxId)}/members/${userId}`,
+              options,
+            ),
+        },
       },
     }
   }

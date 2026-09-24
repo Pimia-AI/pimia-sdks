@@ -52,6 +52,11 @@ const RESERVADOS_A_LA_PRIMERA_PARTE = [
   // spec marcadas `first-party-only`; el scope no lo pide un integrador.
   'billing:read',
   'billing:write',
+  // El correo de la empresa sobre Dead Simple (2026-09-24, factSaas#954): los
+  // dos `first_party_only`; `mail` además es dominio restringido, así que ni
+  // `api:read` lo alcanza. Las 18 operaciones salen marcadas `first-party-only`.
+  'mail:read',
+  'mail:write',
 ]
 
 test('SCOPES ofrece todo lo que un integrador puede pedir', () => {
