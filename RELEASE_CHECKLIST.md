@@ -182,7 +182,7 @@ que es lo único que se puede comprobar hoy.
 | 0.32.0 | 2026-09-22 | La firma del cliente en contratos, TS y PHP. Instancia **1.4.3, 446 operaciones** (`factSaas@0ca763c6`). | — |
 | 0.33.0 | *sin tag propio* (dentro de la 0.34.0) | Contrato del plano central **1.19.0, 65 operaciones** (`factSaas@e21d6d74`), con lo que la 1.18.0 dejó sin publicar: moneda y desglose de asientos en `anadidos`, `cartera[].activaciones` con nombre, el precio inicial de cada activación y el tramo mayorista del catálogo. ⚠️ Dos enums estrechados. Sólo TypeScript. | Pendiente de publicación |
 | 0.34.0 | 2026-09-23 | Contratos fase 2 en TS y PHP: instancia **455 operaciones** (`factSaas@57b3e03d`). Arrastra la 0.33.0. | — |
-| 0.35.0 | 2026-09-24 | El correo de la empresa (fases A y B) en TS y PHP y el driver `deadsimple` de `/mail/config`. Instancia **484 operaciones** (`factSaas@7d7df3a1`). | Pendiente tras publicar |
+| 0.35.0 | 2026-09-24 | El correo de la empresa (fases A y B) en TS y PHP y el driver `deadsimple` de `/mail/config`. Instancia **484 operaciones** (`factSaas@7d7df3a1`). | ✅ (y recupera lo pendiente desde la 0.32.0) |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,
