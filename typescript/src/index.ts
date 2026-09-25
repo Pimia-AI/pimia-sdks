@@ -129,6 +129,7 @@ export {
   MissingScopeError,
   mailAccessClosure,
   mailSendingError,
+  mensajeriaError,
   NotAuthenticatedError,
   NotFoundError,
   OAuthError,
@@ -138,7 +139,33 @@ export {
   UnauthorizedError,
   ValidationError,
 } from './errors.js'
-export type { MailSendingErrorCode } from './errors.js'
+export type { MailSendingErrorCode, MensajeriaErrorCode } from './errors.js'
+
+export type {
+  MensajeriaAccount,
+  MensajeriaAttachment,
+  MensajeriaAuthor,
+  MensajeriaContent,
+  MensajeriaConversation,
+  MensajeriaConversationsQuery,
+  MensajeriaDeliveryState,
+  MensajeriaFile,
+  MensajeriaFlags,
+  MensajeriaFlagsRequest,
+  MensajeriaLastMessage,
+  MensajeriaLink,
+  MensajeriaLinkIntent,
+  MensajeriaList,
+  MensajeriaListMeta,
+  MensajeriaMessage,
+  MensajeriaMessagesQuery,
+  MensajeriaNetwork,
+  MensajeriaOperation,
+  MensajeriaOperationState,
+  MensajeriaResource,
+  MensajeriaSendRequest,
+  MensajeriaService,
+} from './mensajeria.js'
 
 export {
   WEBHOOK_DEFAULT_TOLERANCE_SECONDS,

@@ -332,3 +332,87 @@ export function mailAccessClosure(
   if (error.code === 'company_not_allowed') return 'company_not_allowed'
   return null
 }
+
+/**
+ * Los códigos estables de `/mensajeria/*` (el catálogo de
+ * `MensajeriaApiError` del núcleo). Cada error de la Mensajería trae uno en
+ * `code`; los de la PUERTA —`module_not_installed`, `missing_scope`,
+ * `forbidden`, `company_mismatch` y `messaging_link_*`— cierran la Mensajería
+ * entera, y los demás son de la operación concreta.
+ */
+export type MensajeriaErrorCode =
+  | 'module_not_installed'
+  | 'missing_scope'
+  | 'forbidden'
+  | 'company_mismatch'
+  | 'messaging_link_missing'
+  | 'messaging_link_pending'
+  | 'messaging_link_revoked'
+  | 'messaging_link_exists'
+  | 'link_intent_in_progress'
+  | 'link_cleanup_pending'
+  | 'link_intent_expired'
+  | 'member_key_invalid'
+  | 'idempotency_key_reused'
+  | 'idempotency_key_expired'
+  | 'idempotency_in_progress'
+  | 'wab_quota_exceeded'
+  | 'wab_storage_quota_exceeded'
+  | 'conversation_not_found'
+  | 'operation_unknown'
+  | 'operation_already_sent'
+  | 'media_unavailable'
+  | 'attachment_not_found'
+  | 'attachment_too_large'
+  | 'unsupported_media_type'
+  | 'text_empty'
+  | 'text_too_long'
+  | 'send_not_supported'
+  | 'validation_failed'
+  | 'identifier_empty'
+  | 'identifier_not_found'
+  | 'network_not_configured'
+  | 'network_account_missing'
+  | 'wab_unavailable'
+
+const MENSAJERIA_CODES: ReadonlySet<string> = new Set<MensajeriaErrorCode>([
+  'module_not_installed',
+  'missing_scope',
+  'forbidden',
+  'company_mismatch',
+  'messaging_link_missing',
+  'messaging_link_pending',
+  'messaging_link_revoked',
+  'messaging_link_exists',
+  'link_intent_in_progress',
+  'link_cleanup_pending',
+  'link_intent_expired',
+  'member_key_invalid',
+  'idempotency_key_reused',
+  'idempotency_key_expired',
+  'idempotency_in_progress',
+  'wab_quota_exceeded',
+  'wab_storage_quota_exceeded',
+  'conversation_not_found',
+  'operation_unknown',
+  'operation_already_sent',
+  'media_unavailable',
+  'attachment_not_found',
+  'attachment_too_large',
+  'unsupported_media_type',
+  'text_empty',
+  'text_too_long',
+  'send_not_supported',
+  'validation_failed',
+  'identifier_empty',
+  'identifier_not_found',
+  'network_not_configured',
+  'network_account_missing',
+  'wab_unavailable',
+])
+
+/** El código de un error de `/mensajeria/*`, o `null` si no es uno del catálogo. */
+export function mensajeriaError(error: unknown): MensajeriaErrorCode | null {
+  if (!(error instanceof PimiaApiError) || typeof error.code !== 'string') return null
+  return MENSAJERIA_CODES.has(error.code) ? (error.code as MensajeriaErrorCode) : null
+}

@@ -15,6 +15,7 @@
  */
 
 import { normalizeBaseUrl } from './base-url.js'
+import { mensajeriaResource } from './mensajeria.js'
 import type { components, operations } from './api.js'
 import {
   NotAuthenticatedError,
@@ -502,7 +503,7 @@ export type IntegradorBillingCorteCode =
  * de firma solo publica `202`: conservar ese cuerpo evita inferir `never` y
  * no convierte el correo aceptado para envío en un correo ya entregado.
  */
-type Ok<O extends keyof operations> = operations[O] extends {
+export type Ok<O extends keyof operations> = operations[O] extends {
   responses: { 200: { content: { 'application/json': infer Body } } }
 }
   ? Body
@@ -1700,6 +1701,20 @@ export class PimiaClient {
         },
       },
     }
+  }
+
+  /**
+   * La Mensajería sobre wab-ai (`/mensajeria/*`): el vínculo personal, la
+   * bandeja, los mensajes, el envío idempotente, los adjuntos, los medios y
+   * los chats nuevos. Exige `messaging:read` / `messaging:write`, que son de
+   * **primera parte**: un client de integrador no los obtiene.
+   *
+   * Nunca recibe organizaciones ni claves de wab-ai: el servidor lo deriva
+   * todo del vínculo de quien mira en la empresa activa. El envío lleva
+   * SIEMPRE como `Idempotency-Key` su `operation_id`. Ver `mensajeria.ts`.
+   */
+  get mensajeria() {
+    return mensajeriaResource(this)
   }
 
   /**

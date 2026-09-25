@@ -57,6 +57,11 @@ const RESERVADOS_A_LA_PRIMERA_PARTE = [
   // `api:read` lo alcanza. Las 18 operaciones salen marcadas `first-party-only`.
   'mail:read',
   'mail:write',
+  // La Mensajería sobre wab-ai (2026-09-25, factSaas#963): el panel lee y
+  // contesta los chats con el vínculo PERSONAL de quien mira. Los dos son
+  // `first_party_only`; las 15 operaciones salen marcadas `first-party-only`.
+  'messaging:read',
+  'messaging:write',
 ]
 
 test('SCOPES ofrece todo lo que un integrador puede pedir', () => {
