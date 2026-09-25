@@ -1060,6 +1060,93 @@
                 ]
             }
         },
+        "/mensajeria/accounts": {
+            "get": {
+                "operationId": "accounts.index",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "tags": [
+                    "Accounts"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "service": {
+                                                        "type": "string"
+                                                    },
+                                                    "network": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "display_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "can_create_chat": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "address",
+                                                    "service",
+                                                    "network",
+                                                    "display_name",
+                                                    "status",
+                                                    "can_create_chat"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            }
+        },
         "/contracts/{contract}/activate": {
             "post": {
                 "operationId": "contract.activateContract",
@@ -3253,6 +3340,102 @@
                 "x-pimia-partner-availability": "any-token"
             }
         },
+        "/mensajeria/conversations/{conversation}/attachments": {
+            "post": {
+                "operationId": "attachments.store",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "201 `{data: WireAttachment}` o 202 `{data: {state: \"upload_uncertain\"}}`.\nNunca devuelve el `uri` ni una URL firmada",
+                "tags": [
+                    "Attachments"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadAttachmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "attachment_id": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "mime_type": {
+                                                    "type": "string"
+                                                },
+                                                "size": {
+                                                    "type": "integer"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "attachment_id",
+                                                "name",
+                                                "mime_type",
+                                                "size",
+                                                "kind"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
+                ]
+            }
+        },
         "/bank-accounts": {
             "get": {
                 "operationId": "bank-accounts.index",
@@ -4975,6 +5158,84 @@
                             "invoices:write"
                         ]
                     }
+                ]
+            }
+        },
+        "/mensajeria/chats": {
+            "post": {
+                "operationId": "chats.store",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "tags": [
+                    "Chats"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChatRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "conversation_id": {
+                                                    "type": "string"
+                                                },
+                                                "display_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "conversation_id",
+                                                "display_name"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
                 ]
             }
         },
@@ -7460,6 +7721,398 @@
                             "contracts:write"
                         ]
                     }
+                ]
+            }
+        },
+        "/mensajeria/conversations/{conversation}/read": {
+            "post": {
+                "operationId": "conversationActions.read",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 12",
+                "tags": [
+                    "ConversationActions"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "marked": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "marked"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
+                ]
+            }
+        },
+        "/mensajeria/conversations/{conversation}/flags": {
+            "patch": {
+                "operationId": "conversationActions.flags",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 13. Respuesta EXACTA: `{data: {flags: {paused_at, archived_at, pinned_at}}}`,\ncon los sellos que devuelve la RPC",
+                "tags": [
+                    "ConversationActions"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateConversationFlagsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "flags": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "paused_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "archived_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "pinned_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "paused_at",
+                                                        "archived_at",
+                                                        "pinned_at"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "flags"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
+                ]
+            }
+        },
+        "/mensajeria/conversations": {
+            "get": {
+                "operationId": "conversations.index",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 5",
+                "tags": [
+                    "Conversations"
+                ],
+                "parameters": [
+                    {
+                        "name": "filter",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "all",
+                                "pending",
+                                "24h",
+                                "archived",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 2048
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "service",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 32
+                        }
+                    },
+                    {
+                        "name": "network",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 32
+                        }
+                    },
+                    {
+                        "name": "address",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 255
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": {}
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "next_cursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "polled_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "next_cursor",
+                                                "polled_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            }
+        },
+        "/mensajeria/conversations/{conversation}": {
+            "get": {
+                "operationId": "conversations.show",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 6",
+                "tags": [
+                    "Conversations"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
                 ]
             }
         },
@@ -23119,6 +23772,366 @@
                 ]
             }
         },
+        "/mensajeria/link": {
+            "get": {
+                "operationId": "link.show",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 1. `connected` SOLO si `api_key_context` est\u00e1 activo en esta misma\nllamada; con incertidumbre, `pending`. Una lectura vac\u00eda no revoca si la\nURL de wab-ai cambi\u00f3",
+                "tags": [
+                    "Link"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "module": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "has_live_key": {
+                                                    "type": "boolean"
+                                                },
+                                                "organization": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
+                                                },
+                                                "me": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
+                                                },
+                                                "linked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": "string"
+                                                },
+                                                "reason": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "pending_intent": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "expires_at": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "expires_at"
+                                                    ]
+                                                },
+                                                "wab_manage_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "module",
+                                                "status",
+                                                "has_live_key",
+                                                "organization",
+                                                "me",
+                                                "linked_at",
+                                                "checked_at",
+                                                "reason",
+                                                "pending_intent",
+                                                "wab_manage_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            },
+            "delete": {
+                "operationId": "link.destroy",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 3. Idempotente: sin v\u00ednculo tambi\u00e9n es 200",
+                "tags": [
+                    "Link"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "module": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "has_live_key": {
+                                                    "type": "boolean"
+                                                },
+                                                "organization": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
+                                                },
+                                                "me": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
+                                                },
+                                                "linked_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "checked_at": {
+                                                    "type": "string"
+                                                },
+                                                "reason": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "pending_intent": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "expires_at": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "expires_at"
+                                                    ]
+                                                },
+                                                "wab_manage_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "module",
+                                                "status",
+                                                "has_live_key",
+                                                "organization",
+                                                "me",
+                                                "linked_at",
+                                                "checked_at",
+                                                "reason",
+                                                "pending_intent",
+                                                "wab_manage_url"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
+                ]
+            }
+        },
+        "/mensajeria/link/intents": {
+            "post": {
+                "operationId": "link.storeIntent",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 2. Un intento nuevo sustituye al vivo (salvo un doble clic)",
+                "tags": [
+                    "Link"
+                ],
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreLinkIntentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "intent_id": {
+                                                    "type": "string"
+                                                },
+                                                "authorize_url": {
+                                                    "type": "string"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "intent_id",
+                                                "authorize_url",
+                                                "expires_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
+                ]
+            }
+        },
         "/mail/admin/mailboxes": {
             "get": {
                 "operationId": "mailAdminMailboxes.index",
@@ -27016,6 +28029,56 @@
                 "x-pimia-required-scopes": [
                     "mail:read"
                 ]
+            },
+            "post": {
+                "operationId": "mailMessages.requestSync",
+                "description": "**Reservada al panel de Pimia.** Exige `mail:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.\n\n- Mismo permiso que LEER el buz\u00f3n (membres\u00eda viva). Es POST, as\u00ed que el\n  guardi\u00e1n de scopes exige `mail:write`: encola trabajo contra el\n  proveedor, no es una lectura pura.\n- Encola `SyncMailboxJob` en modo `recent` (o `history` si el hist\u00f3rico\n  a\u00fan no est\u00e1 completo). Si ya hay un job trabajando en el buz\u00f3n, no\n  encola otro: responde 202 con `status: syncing`.\n- Una petici\u00f3n por buz\u00f3n cada 30 s. Antes, 429 con `Retry-After` y el\n  estado actual, sin encolar nada.\n- Conexi\u00f3n sin configurar o inactiva \u2192 409 `mail_not_configured`; d\u00e1ndose\n  de baja \u2192 409 `connection_disconnecting`.\n\nResponde el mismo estado que `GET \u2026/sync` m\u00e1s `requested_at` (la hora de\nla petici\u00f3n aceptada). La web sigue preguntando `GET \u2026/sync` hasta que\n`status` deje de ser `syncing`.",
+                "summary": "El bot\u00f3n \u00abSincronizar\u00bb de la bandeja: pide al proveedor lo nuevo de ESTE\nbuz\u00f3n. Es la \u00fanica entrada de correo tras el hist\u00f3rico inicial: no hay\nsincronizaci\u00f3n peri\u00f3dica y el webhook de Dead Simple no entrega\n(CONTRATO-PROVEEDOR.md \u00a78.c)",
+                "tags": [
+                    "MailMessages"
+                ],
+                "parameters": [
+                    {
+                        "name": "mailbox",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "integer",
+                                    "const": 202
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "mail:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "mail:write"
+                ]
             }
         },
         "/mail/mailboxes/{mailbox}/proposals": {
@@ -27898,6 +28961,385 @@
                 "x-pimia-partner-availability": "first-party-only",
                 "x-pimia-required-scopes": [
                     "mail:read"
+                ]
+            }
+        },
+        "/mensajeria/messages/{message}/media": {
+            "get": {
+                "operationId": "media.show",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "tags": [
+                    "Media"
+                ],
+                "parameters": [
+                    {
+                        "name": "message",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            }
+        },
+        "/mensajeria/conversations/{conversation}/messages": {
+            "get": {
+                "operationId": "messages.index",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "tags": [
+                    "Messages"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "before",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 2048
+                        }
+                    },
+                    {
+                        "name": "updated_since",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": {}
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "next_cursor": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "polled_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "next_cursor",
+                                                "polled_at"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            },
+            "post": {
+                "operationId": "send.store",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "201 `sent`, 202 `uncertain` o 200 `conflict` (el mensaje con ese UUID\nexiste y no es este env\u00edo; \u00a78.12). La web decide por `operation.state`",
+                "tags": [
+                    "Send"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendMessageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "operation": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "conversation_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "state": {
+                                                            "type": "string"
+                                                        },
+                                                        "kind": {
+                                                            "type": "string"
+                                                        },
+                                                        "text": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "file_name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": "string"
+                                                        },
+                                                        "message": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "additionalProperties": {}
+                                                        },
+                                                        "error_code": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "conversation_id",
+                                                        "state",
+                                                        "kind",
+                                                        "text",
+                                                        "file_name",
+                                                        "created_at",
+                                                        "message",
+                                                        "error_code"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "operation"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "201": {
+                        "description": "El recurso reci\u00e9n creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "operation": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "conversation_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "state": {
+                                                            "type": "string"
+                                                        },
+                                                        "kind": {
+                                                            "type": "string"
+                                                        },
+                                                        "text": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "file_name": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "created_at": {
+                                                            "type": "string"
+                                                        },
+                                                        "message": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "additionalProperties": {}
+                                                        },
+                                                        "error_code": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "conversation_id",
+                                                        "state",
+                                                        "kind",
+                                                        "text",
+                                                        "file_name",
+                                                        "created_at",
+                                                        "message",
+                                                        "error_code"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "operation"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:write"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:write"
                 ]
             }
         },
@@ -28855,6 +30297,236 @@
                             "ocr:write"
                         ]
                     }
+                ]
+            }
+        },
+        "/mensajeria/conversations/{conversation}/operations": {
+            "get": {
+                "operationId": "operations.index",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 15: los env\u00edos no definitivos de la persona, en SU v\u00ednculo vivo y en\nesa conversaci\u00f3n, sin `message`. Una fila con solo la subida del adjunto\n(sin payload) no es un env\u00edo despachado y no sale",
+                "tags": [
+                    "Operations"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "conversation_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "state": {
+                                                        "type": "string"
+                                                    },
+                                                    "kind": {
+                                                        "type": "string"
+                                                    },
+                                                    "text": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "file_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string"
+                                                    },
+                                                    "message": {
+                                                        "type": "null"
+                                                    },
+                                                    "error_code": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "conversation_id",
+                                                    "state",
+                                                    "kind",
+                                                    "text",
+                                                    "file_name",
+                                                    "created_at",
+                                                    "message",
+                                                    "error_code"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
+                ]
+            }
+        },
+        "/mensajeria/operations/{operation}": {
+            "get": {
+                "operationId": "operations.show",
+                "description": "**Reservada al panel de Pimia.** Exige `messaging:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope \u2014se le rechaza en el registro y no se le anuncia\u2014 y con cualquier otro token la llamada recibe `403`. Est\u00e1 en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aqu\u00ed.",
+                "summary": "Op. 9: reconciliar un env\u00edo por su UUID. `{data: WireOperation}` SIN el\nenvoltorio `operation` (contrato). Si wab-ai no lo tiene y no es final,\n404 `operation_unknown`: la web repite el POST con el MISMO UUID",
+                "tags": [
+                    "Operations"
+                ],
+                "parameters": [
+                    {
+                        "name": "operation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "company",
+                        "in": "header",
+                        "description": "Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener m\u00e1s de una, y esta cabecera dice a cu\u00e1l se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "conversation_id": {
+                                                    "type": "string"
+                                                },
+                                                "state": {
+                                                    "type": "string"
+                                                },
+                                                "kind": {
+                                                    "type": "string"
+                                                },
+                                                "text": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "file_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string"
+                                                },
+                                                "message": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "additionalProperties": {}
+                                                },
+                                                "error_code": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "conversation_id",
+                                                "state",
+                                                "kind",
+                                                "text",
+                                                "file_name",
+                                                "created_at",
+                                                "message",
+                                                "error_code"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "oauth2": [
+                            "messaging:read"
+                        ]
+                    }
+                ],
+                "x-pimia-partner-availability": "first-party-only",
+                "x-pimia-required-scopes": [
+                    "messaging:read"
                 ]
             }
         },
@@ -55355,6 +57027,8 @@
                             "admin:write": "(solo el panel de Pimia) administrar tu empresa",
                             "mail:read": "(solo el panel de Pimia) leer el correo de tus buzones",
                             "mail:write": "(solo el panel de Pimia) usar y administrar el correo de tus buzones",
+                            "messaging:read": "(solo el panel de Pimia) leer tus conversaciones de wab-ai",
+                            "messaging:write": "(solo el panel de Pimia) leer y responder tus conversaciones de wab-ai",
                             "verifactu:read": "(solo el panel de Pimia) ver tu conexi\u00f3n con VeriFactu",
                             "verifactu:write": "(solo el panel de Pimia) configurar tu conexi\u00f3n con VeriFactu",
                             "delegation:read": "(solo el panel de Pimia) ver lo que delegas a tu agente",
@@ -57347,6 +59021,33 @@
                     "phone_code"
                 ],
                 "title": "CountryResource"
+            },
+            "CreateChatRequest": {
+                "type": "object",
+                "description": "`POST /mensajeria/chats` (op. 14): `{network, identifier}`.\n\n`identifier` admite null o vac\u00edo: eso es `identifier_empty` (c\u00f3digo propio),\nno `validation_failed`; lo decide el controlador tras el `trim`.",
+                "properties": {
+                    "network": {
+                        "type": "string",
+                        "enum": [
+                            "whatsapp",
+                            "telegram",
+                            "linkedin",
+                            "facebook",
+                            "instagram"
+                        ]
+                    },
+                    "identifier": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "network"
+                ],
+                "title": "CreateChatRequest"
             },
             "Currency": {
                 "type": "object",
@@ -67271,6 +68972,8 @@
                                 "create-stock-count",
                                 "edit-stock-count",
                                 "delete-stock-count",
+                                "view-mensajeria",
+                                "send-mensajeria",
                                 "configure-mail",
                                 "view-mail",
                                 "send-mail"
@@ -67445,6 +69148,8 @@
                                         "create-stock-count",
                                         "edit-stock-count",
                                         "delete-stock-count",
+                                        "view-mensajeria",
+                                        "send-mensajeria",
                                         "configure-mail",
                                         "view-mail",
                                         "send-mail"
@@ -67589,6 +69294,50 @@
                     "to"
                 ],
                 "title": "SendInvoiceRequest"
+            },
+            "SendMessageRequest": {
+                "type": "object",
+                "description": "`POST /mensajeria/conversations/{id}/messages` (op. 8): `WireSendRequest`.\n\nSolo la FORMA. Lo que tiene c\u00f3digo propio (`text_empty`, `text_too_long`,\n`send_not_supported`, `attachment_not_found`, la cabecera Idempotency-Key)\nlo decide `MensajeriaSendService::normalize()`, porque el 422 de aqu\u00ed es\nsiempre `validation_failed`. `text` admite null: el recorte de cadenas del\nn\u00facleo convierte \u00ab   \u00bb en null y eso es `text_empty`, no un fallo de forma.\n`re_message_id` se admite y se ignora en v1 (la web no lo env\u00eda).",
+                "properties": {
+                    "operation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "text",
+                            "file",
+                            "note"
+                        ]
+                    },
+                    "text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "attachment_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[0-9A-Za-z-]{1,64}$",
+                        "maxLength": 64
+                    },
+                    "re_message_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "operation_id",
+                    "kind"
+                ],
+                "title": "SendMessageRequest"
             },
             "SendPaymentRequest": {
                 "type": "object",
@@ -68231,6 +69980,23 @@
                     "proposal"
                 ],
                 "title": "StoreApprovalRequest"
+            },
+            "StoreLinkIntentRequest": {
+                "type": "object",
+                "description": "`POST /mensajeria/link/intents` (op. 2): `{return_to: \"ajustes\" | \"mensajes\"}`.",
+                "properties": {
+                    "return_to": {
+                        "type": "string",
+                        "enum": [
+                            "ajustes",
+                            "mensajes"
+                        ]
+                    }
+                },
+                "required": [
+                    "return_to"
+                ],
+                "title": "StoreLinkIntentRequest"
             },
             "SupplierRequest": {
                 "type": "object",
@@ -70126,6 +71892,22 @@
                 ],
                 "title": "UnitResource"
             },
+            "UpdateConversationFlagsRequest": {
+                "type": "object",
+                "description": "`PATCH /mensajeria/conversations/{id}/flags` (op. 13): `{paused?, archived?,\npinned?}`, booleanos JSON de verdad (ni `1`, ni `\"true\"`), al menos uno y\nNINGUNA otra clave. Si no, 422 `validation_failed`\n(docs/mensajeria/DISENO-BACKEND.md \u00a72.10). Es la escritura de la UI de\nwab-ai sobre `conversations.extra`: solo esas tres claves, nunca otras.",
+                "properties": {
+                    "paused": {
+                        "type": "string"
+                    },
+                    "archived": {
+                        "type": "string"
+                    },
+                    "pinned": {
+                        "type": "string"
+                    }
+                },
+                "title": "UpdateConversationFlagsRequest"
+            },
             "UpdateSettingsRequest": {
                 "type": "object",
                 "description": "Cuerpo de las dos escrituras de ajustes: los de la empresa\n(`POST /company/settings`) y los del usuario (`PUT /me/settings`).\n\n`settings` es un objeto de **nombre del ajuste \u2192 valor**, no una lista: los\nnombres son claves, no posiciones.",
@@ -70142,6 +71924,26 @@
                     "settings"
                 ],
                 "title": "UpdateSettingsRequest"
+            },
+            "UploadAttachmentRequest": {
+                "type": "object",
+                "description": "`POST /mensajeria/conversations/{id}/attachments` (op. 10): multipart con\n`file` y `operation_id`.\n\nEl tama\u00f1o y el tipo NO se validan aqu\u00ed: tienen c\u00f3digos propios (413\n`attachment_too_large`, 415 `unsupported_media_type`) y los decide\n`MensajeriaAttachmentService::inspect()`.",
+                "properties": {
+                    "operation_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream"
+                    }
+                },
+                "required": [
+                    "operation_id",
+                    "file"
+                ],
+                "title": "UploadAttachmentRequest"
             },
             "UploadExpenseReceiptRequest": {
                 "type": "object",

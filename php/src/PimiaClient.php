@@ -27,6 +27,7 @@ use Pimia\Resource\Estimates;
 use Pimia\Resource\Invoices;
 use Pimia\Resource\Opportunities;
 use Pimia\Resource\Mail;
+use Pimia\Resource\Mensajeria;
 use Pimia\Resource\StockCounts;
 use Pimia\Resource\StockMovements;
 use Pimia\Resource\Warehouses;
@@ -76,6 +77,9 @@ final class PimiaClient
     /** El correo de la empresa (módulo `mail`, scopes de primera parte). */
     public readonly Mail $mail;
 
+    /** La Mensajería sobre wab-ai (vínculo personal, scopes `messaging:*` de primera parte). */
+    public readonly Mensajeria $mensajeria;
+
     public readonly StockMovements $stockMovements;
 
     public readonly Opportunities $opportunities;
@@ -105,6 +109,7 @@ final class PimiaClient
         $this->warehouses = new Warehouses($this);
         $this->stockCounts = new StockCounts($this);
         $this->mail = new Mail($this);
+        $this->mensajeria = new Mensajeria($this);
         $this->stockMovements = new StockMovements($this);
         $this->opportunities = new Opportunities($this);
         $this->crm = new Crm($this);

@@ -8,6 +8,69 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
+## [Sin publicar]
+
+La Mensajería de Pimia sobre wab-ai (factSaas#963 y #964) en TypeScript y PHP.
+**No se publica todavía**: queda en `main` hasta que se decida versión y tag.
+
+Contrato de instancia sincronizado desde **`origin/main` del núcleo:
+factSaas@f7b84166 (2026-09-26) — 500 operaciones**
+(`f7b84166ac15a60b2abc2174770ead88af759bed`, merge del PR #964). Comparado
+operación a operación con la 0.35.0 (484): **16 nuevas, ninguna modificada,
+ninguna retirada**. `info.version` sigue en 1.5.0.
+
+- **Nuevas**: las 15 de `/mensajeria/*` y `POST /mail/mailboxes/{mailbox}/sync`
+  (esta última solo en tipos: ningún SDK la envuelve todavía, y su `200` sale
+  del generador como el literal `202`).
+- **Schemas**: cinco nuevos (`SendMessageRequest`, `UploadAttachmentRequest`,
+  `UpdateConversationFlagsRequest`, `StoreLinkIntentRequest`,
+  `CreateChatRequest`), y `RoleRequest` / `RoleAbilitiesRequest` ganan las
+  abilities `view-mensajeria` y `send-mensajeria`.
+
+### Añadido
+
+- `client.mensajeria` (TypeScript) y `$client->mensajeria` (PHP):
+  - el vínculo personal: `link.get` / `link()`, `link.createIntent` /
+    `createLinkIntent()` (devuelve la `authorize_url` de wab-ai) y
+    `link.unlink` / `unlink()`;
+  - `accounts`, la bandeja (`conversations.list/get`, por cursor), marcar
+    leída y pausar/archivar/fijar (`conversations.setFlags` / `setFlags()`);
+  - los mensajes (`before` o `updated_since`, nunca los dos) y el **envío**;
+  - la subida del adjunto en multipart (`file` + `operation_id`), el medio de
+    un mensaje como binario (`Blob` / bytes exactos, con `part` opcional), las
+    operaciones de envío (reconciliar una y listar las abiertas) y los chats
+    nuevos en redes puente.
+- **El envío lleva SIEMPRE como `Idempotency-Key` su `operation_id`** (el UUID
+  del mensaje en wab-ai). El SDK la pone y no deja mandar otra: en TypeScript
+  las opciones de escritura de la Mensajería no tienen `idempotencyKey`, y en
+  PHP la clave sale del cuerpo. Sin `operation_id` el envío no sale. Se decide
+  por `operation.state` (`sent` 201, `uncertain` 202, `conflict` 200), no por
+  el código HTTP.
+- `mensajeriaError(error)` (TS) y `Mensajeria::errorCode($e)` (PHP): el `code`
+  estable del catálogo del núcleo (`messaging_link_*`, `operation_unknown`,
+  `idempotency_*`, `wab_quota_exceeded`, `media_unavailable`…) o `null`.
+- Tipos escritos a mano, con su porqué:
+  - `MensajeriaConversation`, `MensajeriaMessage` (con `MensajeriaContent`) y
+    `MensajeriaOperation`: el contrato los publica como objeto opaco
+    (`additionalProperties`) porque los proyecta el presentador con una lista
+    blanca. La forma es la del contrato del panel y la del presentador del
+    núcleo (`docs/mensajeria/DISENO-BACKEND.md` §2.10);
+  - `MensajeriaFlagsRequest`: el spec tipa `paused`/`archived`/`pinned` como
+    `string` y el servidor **exige booleanos JSON** (una cadena es `422`).
+
+### Retirado antes de publicar
+
+Un borrador previo sin commitear describía rutas que el núcleo no tiene
+(`/mensajeria/accounts/{id}/conversations`, `/authorizations`, `/members`,
+`/assignee`) y los scopes `mensajeria:*`. Se descarta entero; nada de eso llegó
+a publicarse.
+
+### Scopes
+
+`messaging:read` y `messaging:write` son `first_party_only`: **no entran en
+`SCOPES`** y se añaden a la lista de reservados del test de deriva, como
+`mail:*`.
+
 ## [0.35.0] — 2026-09-24
 
 El correo de la empresa (módulo de pago `mail`, sobre Dead Simple Email),
