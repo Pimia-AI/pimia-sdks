@@ -8,10 +8,88 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y el versionado es [SemVer](https://semver.org/lang/es/). En 0.x la API
 pública puede cambiar entre minors.
 
-## [Sin publicar]
+## [0.36.0] — 2026-09-28
 
-La Mensajería de Pimia sobre wab-ai (factSaas#963 y #964) en TypeScript y PHP.
-**No se publica todavía**: queda en `main` hasta que se decida versión y tag.
+Mi día, fases 2 a 3.5 del núcleo (factSaas#967–#971), y la Mensajería sobre
+wab-ai que esperaba en `main` sin tag (factSaas#963 y #964, más abajo). La web
+del panel (`pimia-web-shadcn`) tipaba a mano todo lo de Mi día con
+`TODO(sdk-0.36)` y `TODO(sdk-0.37)`: los dos quedan cubiertos por esta versión,
+no habrá una 0.37.0 aparte para ello.
+
+Paso 0 contra **`origin/main` del núcleo: factSaas@47768cca (2026-09-28)**
+(`47768ccaa805a20917f4fd1fe9ee7b8096f4e6b1`, merge del PR #972). `info.version` pasa de **1.5.0 a 1.11.0**. La
+1.11.0 añade a `GET /appointments` `meta.visibility` (`company|own`) y
+`meta.capabilities` (citas propias, `view-own-appointment` /
+`edit-own-appointment`); el resto del recuento es el de la 1.10.0
+(factSaas@a6fc1257, #971): Comparado operación a
+operación con la sincronización de la Mensajería (`f7b84166`, 500): **16
+nuevas, 29 modificadas, ninguna retirada**. Ningún schema nuevo ni quitado;
+11 modificados.
+
+### Mi día (factSaas#967–#971): solo tipos
+
+Como `/mail/config` en la 0.35.0, **ningún SDK gana un recurso escrito a
+mano**: todo es de primera parte (`delegation:*`, `admin:*`, `pim:chat`) y se
+llama con `client.get`/`client.post`/… y los tipos de `@pimia/sdk/api`.
+
+- **Nuevas (16)**:
+  - catálogo de tareas delegables: `GET /delegable-tasks/operations`,
+    `GET /delegable-tasks/history`, `PATCH /delegable-tasks/{task_type}/effect`
+    (el efecto declarado) y `PATCH /delegable-tasks/{task_type}/agent` (a qué
+    bot va);
+  - `GET /leads/estimates` (presupuestos de los leads asignados a alguien);
+  - `PATCH /tasks/{task}/priority`;
+  - Pim por tenant: `GET /pim`, `PUT /pim/mode`, `GET /pim/agents`,
+    `GET /pim/execution`;
+  - bots con permisos (3.5): `GET /pim/bots/access`,
+    `PUT /pim/bots/{profile}/access`, `GET|PUT /pim/bots/{profile}/permissions`;
+  - la barra de Pim (3.4): `POST /pim/chat` (SSE; el tipo describe la petición,
+    no los eventos) y `GET /pim/conversations`.
+- **Modificadas (29)**, lo que cambia de forma:
+  - filtros nuevos en los listados: `GET /tasks` (`limit`, `page`, `search`,
+    `status`, `no_due`, `type`, `assigned_user_id`, `taskable_*`, `due_from`,
+    `due_to`, `overdue`), `GET /projects`, `GET /time-entries`,
+    `GET /absences`, `GET /appointments` (`staff_user_id`, `limit`),
+    `GET /estimates` (`creator_id`) y `GET /leads` (`inactive_since`);
+  - respuestas nuevas documentadas: `403` en `/appointments*`, `409` en
+    aprobar/rechazar/pedir cambios de una delegación, `404` en
+    `/roles/{role}*` y en `propose`/`fail` de `/delegated-tasks`, `422` en los
+    listados de citas y leads;
+  - `GET /delegable-tasks` y el resto del panel de delegación: el efecto
+    (`effect_abilities`, `suggested_effect`), `agent_profile`, el bloque
+    `hermes`, la versión y huella de la propuesta y `content_visible` /
+    `content_reason`;
+  - roles: las abilities `delegate-task`, `manage-pim` y `chat-with-pim` en
+    `RoleRequest` y `RoleAbilitiesRequest`.
+- **Schemas**: `TaskResource` gana `capabilities` (`delegate` y `decide`, con
+  su `reason`); `LeadResource` gana `last_activity_at`;
+  `EstimateSummaryResource` gana `creator_id`; `User` gana
+  `is_service_account` (la cuenta de servicio de un bot). Los cuatro son
+  obligatorios en la respuesta. Los `*_user_id` de citas, leads, proyectos,
+  tareas y partes solo cambian de descripción (nunca un bot).
+
+### Cómo migrar
+
+- ⚠️ **`TaskResource.delegation` deja de ser anulable en el tipo**: pasa de
+  `{…} | null` a `{…}` opcional. El núcleo la **omite** cuando no hay
+  delegación (`$this->when(...)`), así que la comprobación correcta es
+  `task.delegation === undefined` o `!task.delegation`; comparar con `null`
+  puede dejar de compilar con `strict`. Además la delegación puede venir
+  **recortada** (`content_visible: false`, `content_reason`) cuando quien
+  llama no puede ver su contenido.
+
+### Scopes
+
+`pim:chat` es `first_party_only`: **no entra en `SCOPES`** y se añade a la
+lista de reservados del test de deriva, como `mail:*` y `messaging:*`.
+
+### Plano central
+
+`spec/pimia-central-v1.json` sigue en **1.19.0, 65 operaciones**, pero el
+enum de módulos del catálogo gana `mail` y `mensajeria` (ensanchamiento; el
+núcleo no subió el `info.version`). Solo tipos.
+
+### La Mensajería (factSaas#963 y #964)
 
 Contrato de instancia sincronizado desde **`origin/main` del núcleo:
 factSaas@f7b84166 (2026-09-26) — 500 operaciones**
@@ -27,7 +105,7 @@ ninguna retirada**. `info.version` sigue en 1.5.0.
   `CreateChatRequest`), y `RoleRequest` / `RoleAbilitiesRequest` ganan las
   abilities `view-mensajeria` y `send-mensajeria`.
 
-### Añadido
+#### Añadido
 
 - `client.mensajeria` (TypeScript) y `$client->mensajeria` (PHP):
   - el vínculo personal: `link.get` / `link()`, `link.createIntent` /
@@ -58,14 +136,14 @@ ninguna retirada**. `info.version` sigue en 1.5.0.
   - `MensajeriaFlagsRequest`: el spec tipa `paused`/`archived`/`pinned` como
     `string` y el servidor **exige booleanos JSON** (una cadena es `422`).
 
-### Retirado antes de publicar
+#### Retirado antes de publicar
 
 Un borrador previo sin commitear describía rutas que el núcleo no tiene
 (`/mensajeria/accounts/{id}/conversations`, `/authorizations`, `/members`,
 `/assignee`) y los scopes `mensajeria:*`. Se descarta entero; nada de eso llegó
 a publicarse.
 
-### Scopes
+#### Scopes
 
 `messaging:read` y `messaging:write` son `first_party_only`: **no entran en
 `SCOPES`** y se añaden a la lista de reservados del test de deriva, como

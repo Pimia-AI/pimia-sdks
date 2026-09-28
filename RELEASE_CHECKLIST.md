@@ -1,5 +1,16 @@
 # Checklist de release
 
+**v0.36.0 preparada — 2026-09-28**: Mi día, fases 2 a 3.5 (factSaas#967–#971,
+solo tipos) y la Mensajería sobre wab-ai (factSaas#963 y #964, TS y PHP), que
+esperaba en `main` sin tag. Paso 0 contra `origin/main` del núcleo:
+`factSaas@a6fc1257`, **516 operaciones**, contrato **1.10.0**; frente a la
+sincronización de la Mensajería, 16 nuevas, 29 modificadas y ninguna
+retirada. `pim:chat` entra en los reservados a la primera parte. ⚠️
+`TaskResource.delegation` deja de ser anulable en el tipo (se omite, no llega
+`null`): va en «Cómo migrar». SDK y design tokens versionan 0.36.0; PHP hereda
+el tag del espejo. Pendiente de revisión, merge y tag por 👤; repetir el paso 0
+justo antes del tag. Tras publicar, paso 4.
+
 **v0.35.0 — 2026-09-24**: el correo de la empresa (módulo de pago `mail`, sobre
 Dead Simple Email) en TS y PHP, fases A (factSaas#954) y B (factSaas#957) —
 conexión, buzones, mensajes, adjuntos, propuestas, inventario administrativo,
@@ -183,6 +194,7 @@ que es lo único que se puede comprobar hoy.
 | 0.33.0 | *sin tag propio* (dentro de la 0.34.0) | Contrato del plano central **1.19.0, 65 operaciones** (`factSaas@e21d6d74`), con lo que la 1.18.0 dejó sin publicar: moneda y desglose de asientos en `anadidos`, `cartera[].activaciones` con nombre, el precio inicial de cada activación y el tramo mayorista del catálogo. ⚠️ Dos enums estrechados. Sólo TypeScript. | Pendiente de publicación |
 | 0.34.0 | 2026-09-23 | Contratos fase 2 en TS y PHP: instancia **455 operaciones** (`factSaas@57b3e03d`). Arrastra la 0.33.0. | — |
 | 0.35.0 | 2026-09-24 | El correo de la empresa (fases A y B) en TS y PHP y el driver `deadsimple` de `/mail/config`. Instancia **484 operaciones** (`factSaas@7d7df3a1`). | ✅ (y recupera lo pendiente desde la 0.32.0) |
+| 0.36.0 | *preparada, sin publicar* | Mi día fases 2–3.5 (solo tipos) y la Mensajería en TS y PHP. Instancia **1.10.0, 516 operaciones** (`factSaas@a6fc1257`). `pim:chat` reservado. | Pendiente tras publicar |
 
 ⛔ **Las 0.22.0 a 0.26.0 no tuvieron tag propio**: se mergearon sin publicar y
 salieron todas dentro de la **v0.27.0** (2026-09-08; npm y Packagist la sirven,

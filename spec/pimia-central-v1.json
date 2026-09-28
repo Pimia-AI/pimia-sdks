@@ -8790,6 +8790,8 @@
                             "contracts",
                             "agenda",
                             "stock",
+                            "mail",
+                            "mensajeria",
                             null
                         ]
                     },
@@ -8882,7 +8884,9 @@
                                 "people",
                                 "contracts",
                                 "agenda",
-                                "stock"
+                                "stock",
+                                "mail",
+                                "mensajeria"
                             ]
                         },
                         "maxItems": 40
