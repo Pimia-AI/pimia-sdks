@@ -1482,7 +1482,7 @@ export interface components {
             name: string;
             description?: string | null;
             /** @enum {string|null} */
-            en_lugar_de?: "purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | null;
+            en_lugar_de?: "purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | "mail" | "mensajeria" | null;
             /**
              * @description Lo que DECLARA que sabe distinguir. Frases en producto, no slugs:
              *     Pimia no las concede ni las aplica (13.29j).
@@ -1522,7 +1522,7 @@ export interface components {
             /** @description Las dos dimensiones de 13.29b. `-1` = sin tope, como en `plans`. */
             usuarios_incluidos?: number;
             empresas_incluidas?: number;
-            componentes_pimia?: ("purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock")[] | null;
+            componentes_pimia?: ("purchases" | "finance" | "reports" | "pos" | "crm" | "work" | "people" | "contracts" | "agenda" | "stock" | "mail" | "mensajeria")[] | null;
             modulos_propios?: string[] | null;
         };
         /**

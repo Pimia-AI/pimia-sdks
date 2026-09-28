@@ -473,6 +473,15 @@ dos SDKs— facturas, clientes, presupuestos, contratos, almacenes, recuentos y
 movimientos de stock, más el arranque de sesión, el censo de responsables y las
 oportunidades. Para lo demás, `client.get('/loquesea')` con los tipos del spec.
 
+**v0.36.0, preparada (2026-09-28)**: Mi día, fases 2 a 3.5 del núcleo, y la
+Mensajería sobre wab-ai, `factSaas@a6fc1257` — **516 operaciones** (contrato
+1.10.0). `client.mensajeria` / `$client->mensajeria` (vínculo personal,
+bandeja, mensajes y envío con su `operation_id` como `Idempotency-Key`), y
+solo tipos para lo de Mi día: el catálogo de delegables con su efecto y su bot,
+`/pim` (modo, agentes, ejecución, bots con permisos y el chat) y los filtros
+nuevos de tareas, proyectos, partes, citas, leads y presupuestos. Detalle en el
+[CHANGELOG](CHANGELOG.md).
+
 **v0.35.0, publicada (2026-09-24)**: el correo de la empresa (módulo de pago
 `mail`, sobre Dead Simple Email), `factSaas@7d7df3a1` — **484 operaciones**.
 `client.mail` / `$client->mail`: conexión, buzones, mensajes y adjuntos,

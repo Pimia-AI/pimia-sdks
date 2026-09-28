@@ -253,6 +253,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Citas de la empresa, por hora de comienzo
+         * @description Devuelve como mucho `limit` citas (200 por defecto). `meta.limit` es el
+         *     tope aplicado y `meta.truncated` es `true` si había más citas que
+         *     cumplían los filtros: con él, «llegaron exactamente 200» deja de ser
+         *     ambiguo. Las horas de la respuesta (`starts_at`, `ends_at`) llegan en
+         *     ISO-8601 UTC.
+         */
         get: operations["appointment.index"];
         put?: never;
         post: operations["appointment.store"];
@@ -1717,8 +1725,13 @@ export interface paths {
          *
          *     Solo las filas del propio tenant: lo que la instancia hereda no se pinta
          *     aquí, así que un tenant que no ha descubierto nada arranca vacío.
-         *     `hermes_configured` dice si hay instancia de agente operable — sin ella,
-         *     el resto de la pantalla no tiene nada que activar.
+         *
+         *     `hermes` dice qué servicios de la instancia están configurados, porque
+         *     sirven para cosas distintas: `agent_configured` para descubrir, verificar
+         *     y probar operaciones; `delivery_configured` para DELEGAR (la entrega va a
+         *     la WebUI). Ofrecer «delegar» exige `delivery_configured`.
+         *     `hermes_configured` se conserva por compatibilidad y es igual a
+         *     `agent_configured`: NO dice si se puede delegar.
          */
         get: operations["delegableCatalog.index"];
         put?: never;
@@ -1754,6 +1767,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/delegable-tasks/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Las operaciones con las que QUIEN PREGUNTA puede delegar: el selector de
+         *     «Dar a Pim»
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Son las operaciones activadas de la instancia, cada una con
+         *     `can_delegate` y, si no, `reason`, calculados con la MISMA regla que
+         *     aplica `POST /tasks/{task}/delegate` en la empresa activa: una operación
+         *     se abre a quien no es administración solo si su efecto está declarado y
+         *     es verificable —y solo lo es en las operaciones cuyo comportamiento
+         *     Pimia ha verificado; una declarada que no lo esté da
+         *     `effect_not_verifiable`—, y en modo autónomo (`applied`) solo a quien
+         *     tenga él mismo las abilities del efecto (`effect_undeclared`,
+         *     `effect_not_verifiable`, `effect_not_authorized`). Qué TAREAS
+         *     concretas puede delegar lo dice `capabilities.delegate` de cada tarea.
+         *
+         *     `can_delegate` y `reason` de primer nivel resumen si se puede usar alguna:
+         *     `no_instance` si la instancia no tiene configurada la entrega
+         *     (`instance.delivery`, la WebUI de Hermes, que es la que recibe una
+         *     delegación; `instance.agent` es el api_server del catálogo, y uno no
+         *     sustituye al otro), `no_enabled_operations` si no hay ninguna activada,
+         *     o el motivo de efecto más útil si ninguna se abre.
+         *
+         *     Solo con el módulo `work` (las tareas) y para quien puede delegar en
+         *     esta empresa: administración o el permiso `delegate-task`. Si no, `403`
+         *     con `code: no_permission`. Un token de app de partner, `403`.
+         */
+        get: operations["delegableCatalog.operations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/delegable-tasks/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * El historial de delegaciones de la instancia, por ámbito
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     - `scope=mine` (por defecto): las que **pedí yo** en esta instancia
+         *       (plano pyme). Cualquier usuario de la empresa. Si ya no puedo ver la
+         *       tarea de origen, la delegación es de otra empresa o ya no tengo las
+         *       abilities de **lectura** del efecto con el que se delegó
+         *       (`effect_not_authorized`; `effect_undeclared` si se delegó sin
+         *       declararlo), la fila sale solo como **traza** (`content_visible: false` y `content_reason`):
+         *       operación, estados, versión, quién pidió y quién decidió, y cuándo;
+         *       sin título, contexto, propuesta ni resultado. Haber pedido no
+         *       conserva el acceso al contenido.
+         *     - `scope=decidable`: las propuestas pendientes que **yo puedo decidir**
+         *       ahora, con la misma regla que aprobar y rechazar. Contenido completo.
+         *     - `scope=all`: todas. Solo administración.
+         *
+         *     Filtros: `company` (`current`, la empresa de la cabecera, por defecto; o
+         *     `all`, solo administración; las delegaciones sin empresa registrada solo
+         *     salen con `all`), `plane` (`pyme` por defecto o `integrator`, solo
+         *     administración; nunca se mezclan en una página), `status[]` y
+         *     `proposal_status[]`.
+         *
+         *     Paginación por cursor, la más reciente primero: se pide la siguiente
+         *     página con `cursor = meta.next_cursor`, y `next_cursor: null` es el
+         *     final. Cada delegación sale en una sola página. En `decidable` el cursor
+         *     avanza por las filas **examinadas**: una página puede traer menos de
+         *     `limit` —incluso ninguna— y seguir teniendo `next_cursor`.
+         *
+         *     `403` con `code: no_permission` si se pide lo que es de administración
+         *     (`scope=all`, `company=all` o `plane=integrator`). Un token de app de
+         *     partner, `403`.
+         */
+        get: operations["delegableCatalog.history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/delegable-tasks/delegations/{id}/approve": {
         parameters: {
             query?: never;
@@ -1777,6 +1882,25 @@ export interface paths {
          *     Opcionalmente se reporta lo que costó verificarla —`human_touch_minutes`
          *     y `verification_outcome` (`pass` si se aprobó tal cual, `edit` si hubo que
          *     corregir)—: es la medida del coste humano de la delegación.
+         *
+         *     **Se aprueba la versión que se vio.** `proposal_version` es obligatoria
+         *     cuando la delegación tiene versión (`proposal_version` no nulo en la
+         *     bandeja; `422` si falta) y `proposal_sha256` es opcional. Si la
+         *     propuesta cambió —el agente re-propuso, otra persona ya decidió o la
+         *     tarea se cerró—, `409` con `code: stale_proposal` y la fila actual en
+         *     `task`, sin cambiar nada: se vuelve a mirar y se decide sobre la nueva.
+         *     Las delegaciones anteriores al versionado (`proposal_version` nulo) se
+         *     deciden sin versión.
+         *
+         *     **Quién decide** (fase 2 de Mi día, D2): el dueño o un administrador,
+         *     siempre; y cualquier usuario que tenga, en la empresa de la tarea de
+         *     origen, las abilities del efecto con las que se delegó la operación
+         *     (`effect_abilities`), esté trabajando en esa empresa (cabecera
+         *     `company`) y pueda ver la tarea. Haber delegado no cuenta. Si no, `403`
+         *     con `code`: `effect_not_authorized`, `effect_undeclared`,
+         *     `effect_not_verifiable`, `wrong_company`, `origin_task_not_visible`,
+         *     `legacy_row_owner_only` (delegación sin origen o sin versión) o
+         *     `integrator_owner_only` (propuesta de una app externa).
          */
         post: operations["delegableCatalog.approveProposal"];
         delete?: never;
@@ -1802,6 +1926,21 @@ export interface paths {
          *     propuesta sobre esta tarea. Admite `reason` —que se guarda como resultado
          *     de la tarea— y los `human_touch_minutes` que costó decidirlo, porque
          *     rechazar también es verificar.
+         *
+         *     Como al aprobar, se rechaza la versión que se vio: `proposal_version`
+         *     obligatoria en las delegaciones versionadas (`422` si falta),
+         *     `proposal_sha256` opcional, y `409` `stale_proposal` con la fila actual
+         *     si la propuesta cambió o ya se decidió.
+         *
+         *     **Quién decide** (fase 2 de Mi día, D2): el dueño o un administrador,
+         *     siempre; y cualquier usuario que tenga, en la empresa de la tarea de
+         *     origen, las abilities del efecto con las que se delegó la operación
+         *     (`effect_abilities`), esté trabajando en esa empresa (cabecera
+         *     `company`) y pueda ver la tarea. Haber delegado no cuenta. Si no, `403`
+         *     con `code`: `effect_not_authorized`, `effect_undeclared`,
+         *     `effect_not_verifiable`, `wrong_company`, `origin_task_not_visible`,
+         *     `legacy_row_owner_only` (delegación sin origen o sin versión) o
+         *     `integrator_owner_only` (propuesta de una app externa).
          */
         post: operations["delegableCatalog.rejectProposal"];
         delete?: never;
@@ -1827,6 +1966,21 @@ export interface paths {
          *     agente re-arranca, lee el `reason` y vuelve a proponer. Desde aquí se
          *     puede seguir aprobando o rechazando —la propuesta original queda intacta—,
          *     así que pedir cambios no quema el checkpoint: lo mantiene abierto.
+         *
+         *     Los cambios se piden sobre la versión que se vio: `proposal_version`
+         *     obligatoria en las delegaciones versionadas (`422` si falta),
+         *     `proposal_sha256` opcional, y `409` `stale_proposal` con la fila actual
+         *     si la propuesta cambió o ya se decidió.
+         *
+         *     **Quién decide** (fase 2 de Mi día, D2): el dueño o un administrador,
+         *     siempre; y cualquier usuario que tenga, en la empresa de la tarea de
+         *     origen, las abilities del efecto con las que se delegó la operación
+         *     (`effect_abilities`), esté trabajando en esa empresa (cabecera
+         *     `company`) y pueda ver la tarea. Haber delegado no cuenta. Si no, `403`
+         *     con `code`: `effect_not_authorized`, `effect_undeclared`,
+         *     `effect_not_verifiable`, `wrong_company`, `origin_task_not_visible`,
+         *     `legacy_row_owner_only` (delegación sin origen o sin versión) o
+         *     `integrator_owner_only` (propuesta de una app externa).
          */
         post: operations["delegableCatalog.needsChangesProposal"];
         delete?: never;
@@ -1851,6 +2005,29 @@ export interface paths {
          *     La activación EXIGE verificación viva contra la instancia: si la skill no
          *     está montada, se responde `422` con `verified: false` y el catálogo no se
          *     toca. `201` si la fila se creó, `200` si ya existía.
+         *
+         *     `effect_abilities` declara las abilities (de `GET /abilities`) que exige
+         *     el EFECTO de la operación. Es lo que la abre a empleados: sin declarar
+         *     (`null`, lo de siempre) la delegan y deciden solo el dueño o un
+         *     administrador; declarada, la delega quien tenga «Delegar tareas en Pim»
+         *     y decide sus propuestas quien tenga esas abilities en la empresa de la
+         *     tarea. `[]` solo vale en una operación que no escribe (basta con poder
+         *     ver la tarea); en una que escribe es `422`. Una operación que escribe
+         *     en modo autónomo (`applied`) sigue siendo solo de administración aunque
+         *     la declare: no hay visto bueno que verifique su alcance
+         *     (`effect_verifiable: false`, `effect_reason`). Declarar tampoco basta
+         *     por sí solo: a empleados solo se abren las operaciones cuyo
+         *     comportamiento Pimia ha verificado (hoy, `cobros_pendientes_y_morosos`
+         *     y `diagnostico_iva_del_trimestre`); cualquier otra, declarada o no,
+         *     sigue siendo de administración (`effect_verifiable: false`,
+         *     `effect_reason: effect_not_verifiable`). Si no se manda, se
+         *     conserva la que hubiera. Las delegaciones ya hechas no cambian: se
+         *     deciden con lo declarado cuando se delegaron.
+         *
+         *     Para declarar SOLO el efecto usa `PATCH /delegable-tasks/{task_type}/effect`:
+         *     este alta vuelve a verificar el montaje, re-deriva el modo del
+         *     `verifiability_level` que mandes y supone `write_effect: true` si no lo
+         *     mandas.
          */
         put: operations["delegableCatalog.upsert"];
         post?: never;
@@ -1869,6 +2046,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/delegable-tasks/{task_type}/effect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Declara el efecto de una operación, sin tocar nada más
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Es lo que abre una operación a empleados (o la devuelve a
+         *     administración): `effect_abilities`, las abilities (de
+         *     `GET /abilities`) que exige su efecto, y `read_only`, la marca de solo
+         *     lectura (`write_effect: false`). Abre solo las operaciones cuyo
+         *     comportamiento Pimia ha verificado —hoy, `cobros_pendientes_y_morosos`
+         *     y `diagnostico_iva_del_trimestre`, las dos de solo lectura—: en las
+         *     demás (VeriFactu, conciliación, facturas de proveedor, citas…) la
+         *     declaración se guarda y describe la operación, pero sigue siendo de
+         *     administración (`effect_verifiable: false`,
+         *     `effect_reason: effect_not_verifiable`). A diferencia del alta
+         *     (`PUT /delegable-tasks/{task_type}`), **no** vuelve a verificar el
+         *     montaje en la instancia, **no** re-deriva el modo y **no** marca la
+         *     operación como de escritura: solo cambia lo que mandes.
+         *
+         *     Dos formas:
+         *
+         *     - **Declarar**: `effect_abilities` (obligatorio; `null` la devuelve a
+         *       administración) y, si quieres cambiarla, `read_only`. Si no mandas
+         *       `read_only`, se conserva la marca que hubiera.
+         *     - **Aceptar la sugerencia**: `accept_suggestion: true`, sin más campos.
+         *       Aplica el `suggested_effect` que enseñan «Descubrir» y el catálogo;
+         *       `422` si esa operación no tiene sugerencia.
+         *
+         *     Reglas: cada ability tiene que existir; una operación que escribe no
+         *     puede declarar `[]` (sería «no exige nada»), y una de solo lectura solo
+         *     puede declarar abilities de lectura (`view-*`). Un `422` no cambia
+         *     nada. Las delegaciones ya hechas tampoco cambian: se deciden con lo
+         *     declarado cuando se delegaron.
+         *
+         *     Solo administración (el dueño o un administrador); un token de app de
+         *     partner, `403`. `404` si la operación no está en el catálogo de esta
+         *     instancia.
+         */
+        patch: operations["delegableCatalog.declareEffect"];
+        trace?: never;
+    };
+    "/delegable-tasks/{task_type}/agent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Asigna el bot (perfil de Hermes) que ejecuta esta operación (fase 3 de
+         *     «Mi día», plan-mi-dia-real/21, contrato «factSaas»)
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `agent_profile` es el `name` de un perfil de la instancia
+         *     (`GET /pim/agents`). `null` o `"default"` la devuelven a Pim, y eso no
+         *     necesita preguntar a la instancia. Cualquier otro se valida contra los
+         *     perfiles que la instancia declara AHORA: `422` si no existe, `503
+         *     hermes_unavailable` si la instancia no responde (no se asigna a ciegas)
+         *     y `409 no_hermes_instance` si no hay instancia que preguntar.
+         *
+         *     Solo cambia `agent_profile`: ni el efecto, ni el modo, ni la
+         *     verificación. Vale para las delegaciones NUEVAS; las ya entregadas
+         *     siguen con el bot que las recibió (`hermes_assignee`).
+         *
+         *     Solo administración (el dueño o un administrador); un token de app de
+         *     partner, `403`. `404` si la operación no está en el catálogo de esta
+         *     instancia.
+         */
+        patch: operations["delegableCatalog.assignAgent"];
+        trace?: never;
+    };
     "/delegable-tasks/discover": {
         parameters: {
             query?: never;
@@ -1883,6 +2149,12 @@ export interface paths {
          *     Devuelve las skills montadas en la instancia del tenant marcando cuáles
          *     ya están en el catálogo (`in_catalog`) y cuáles están activadas
          *     (`enabled`). Es la lista sobre la que el dueño activa operaciones.
+         *
+         *     `suggested_effect` es lo que Pimia sugiere declarar como efecto de esa
+         *     skill —sus `effect_abilities` y si es de solo lectura—, o `null` si no
+         *     hay sugerencia: entonces la operación se queda en administración hasta
+         *     que el dueño declare otra cosa. No se aplica sola; se acepta con
+         *     `PATCH /delegable-tasks/{task_type}/effect`.
          *
          *     Llamada SALIENTE y síncrona: `409` si el tenant no tiene instancia y
          *     `502` si no se pudo determinar el inventario (la instancia no responde).
@@ -1967,9 +2239,14 @@ export interface paths {
          *     luego es `delegable-tasks/delegations`, no esta respuesta. Si se indica
          *     `task_type`, la operación debe estar ACTIVADA (`422` si no).
          *
-         *     `201` cuando se entregó. Si la instancia no la acepta, la tarea queda
-         *     creada y `pending`, y se responde `502` con la tarea en el cuerpo: es una
-         *     entrega fallida, no una tarea perdida.
+         *     `201` cuando se entregó. Si la instancia no la acepta, se responde `502`
+         *     con la tarea en el cuerpo, ya cerrada (`status: failed`, con el motivo
+         *     en `result`): queda la traza de lo que se pidió, pero el agente no la
+         *     recogerá más tarde por su cuenta. Reintentar crea otra. (Antes de la API
+         *     1.8.0 quedaba `pending` y el agente podía ejecutarla horas después.)
+         *
+         *     Solo administración: es un encargo suelto, sin tarea que el usuario
+         *     gestione (13-decisiones, Q3).
          */
         post: operations["delegableCatalog.delegate"];
         delete?: never;
@@ -3551,6 +3828,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/leads/estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Presupuestos de los leads de un comercial
+         * @description «Tus presupuestos» en el trabajo comercial: los de las oportunidades que
+         *     lleva este usuario como responsable (`assigned_user_id` del lead), los
+         *     haya creado quien los haya creado. El autor es otra cosa y se filtra en
+         *     `GET /estimates?creator_id=`.
+         *
+         *     Un presupuesto es de un lead si está enlazado a su oportunidad o, en la
+         *     ventana de compatibilidad, por `lead_id`. Los leads borrados no cuentan.
+         *     Mismas filas que `GET /estimates?view=summary`, del más reciente al más
+         *     antiguo por fecha del presupuesto.
+         */
+        get: operations["lead.estimatesByAssignedUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/leads/{lead}/stage": {
         parameters: {
             query?: never;
@@ -5106,6 +5411,348 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pim en este tenant: el modo elegido, el estado de su instancia, lo que
+         *     cuesta y si quien mira lo puede cambiar (subfase 3.3, contrato
+         *     plan-mi-dia-real/22, «API»)
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Para cualquier usuario de la empresa. Pim es POR TENANT (U4): una
+         *     instancia y una cuota para todas sus empresas.
+         *
+         *     - `mode`: `off`, `desktop`, `server` o `server_desktop`.
+         *     - `status`: `inactive`, `requested` (pedido, sin cargo), `provisioning`
+         *       (en alta), `active`, `suspended` (con `purge_after`: hasta entonces
+         *       se puede recuperar la misma instancia) o `failed` (con
+         *       `failure_reason`).
+         *     - `price`: lo que paga (o pagaría) este tenant; `exempt: true` y 0 si
+         *       está exento (activado antes de 3.3). `server_price`: el precio de
+         *       catálogo de «Pim en servidor».
+         *     - `capabilities`: lo que el gate deja usar ahora mismo. Solo con
+         *       `status = active` en un modo con servidor.
+         *     - `can_manage`: si quien mira puede cambiar el modo (`manage-pim`).
+         *     - `purge_days`: días que se conservan los datos al suspender, para que
+         *       la confirmación lo diga.
+         *     - `suspended_reason`: por qué está suspendido (`mode_change`, lo apagó
+         *       el dueño; `dunning`, la mora; `plan_downgraded`, la suscripción se
+         *       canceló o bajó a Free). `null` si no lo está.
+         *     - `can_chat`: si quien mira puede usar la barra de Pim de la cabecera
+         *       (subfase 3.4): Pim activo en servidor con el agente configurado, algún
+         *       perfil en `chat_profiles` y, con token, el scope `pim:chat`.
+         *     - `chat_profiles`: con qué perfiles puede chatear quien mira en la
+         *       empresa activa (subfase 3.5): `default` (Pim) si es dueño o
+         *       administración con `chat-with-pim`, y los bots que tenga ASIGNADOS
+         *       (por persona o por rol) que además tengan su clave de chat en la
+         *       instancia. Vacío si `can_chat` es `false`.
+         *     - `desktop.available`: el modo escritorio llega en la fase 3.6.
+         */
+        get: operations["pim.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambia el modo de Pim del tenant. Cuerpo `{mode}`
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Solo con `manage-pim` (el dueño y la administración). Responde `200`
+         *     con el MISMO cuerpo que `GET /pim`, ya actualizado. Qué pasa según de
+         *     dónde se venga (contrato 22, «Transiciones»):
+         *
+         *     - a `server` o `server_desktop` sin instancia: exige un plan de pago
+         *       (`402 subscription_required`, con `plan_url`, como los módulos) y
+         *       queda `requested` **sin cargo**: se cobra cuando la instancia pasa a
+         *       `active`, al terminar el alta.
+         *     - entre `server` y `server_desktop`: solo cambia el modo.
+         *     - de `server*` a `off` o `desktop`: `suspended`, se retira el cargo y
+         *       Pim deja de funcionar al momento (se revoca el token del agente, sus
+         *       callbacks y el puente responden `403 pim_not_active` y sus
+         *       delegaciones vivas se cierran con ese motivo); los datos se guardan
+         *       `purge_days`.
+         *     - de `suspended` a `server*` antes de `purge_after`: vuelve a `active`
+         *       con la misma instancia y se cobra de nuevo (si el cobro falla, `402`
+         *       y sigue suspendido), con un token nuevo del agente que instala el
+         *       operador; después, es un alta nueva.
+         *     - de `requested` a `off` o `desktop`: cancela el alta.
+         *
+         *     Otros errores del cobro, con su código en `code`: `403 white_label`
+         *     (cuenta con integrador), `422 channel_seat`, `402 subscription_ending`,
+         *     `402 addon_payment_failed`, `503 stripe_price_missing`.
+         */
+        put: operations["pim.updateMode"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los bots de la instancia: Pim (`default`) y los perfiles que tenga
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Para cualquier usuario con `view-task` o con `delegate-task` en la
+         *     empresa activa (y administración), en un tenant con instancia. No
+         *     incluye rutas, claves ni el contenido de SOUL: la instancia no los manda
+         *     y aquí solo pasan los campos del contrato.
+         *
+         *     `default_assignee_set: true` quiere decir que la instancia tiene
+         *     `kanban.default_assignee` y rechazará las entregas (doble ejecución):
+         *     es configuración de la instancia, no de Pimia.
+         */
+        get: operations["pim.agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/execution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cómo va la ejecución en el kanban de Hermes de estas delegaciones
+         *     (`delegated_task_ids`, separados por comas, como mucho 100)
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Solo salen las delegaciones que quien pregunta puede VER con las reglas
+         *     de la fase 2 ({@see DelegationAccess::traceAccess}: administración, las
+         *     que pidió él o las de tareas que puede ver, en la empresa activa); el
+         *     resto se omite como si no existiera. De las que ve sin poder ver su
+         *     contenido ({@see DelegationAccess::contentAccess}), solo el estado:
+         *     el bot, la tarjeta, los intentos y la actividad van a null, con
+         *     `content_visible: false` y el motivo.
+         *
+         *     Una delegación que aún no se entregó (sin tarjeta) o que la instancia
+         *     no encuentra no aparece en `items`.
+         */
+        get: operations["pim.execution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/bots/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los bots con cuenta propia y a quién están asignados en la empresa
+         *     activa
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     - `sees.summary`: qué ve el bot con su plantilla, en una frase;
+         *       `sees.abilities`: las abilities que tiene AHORA su rol;
+         *       `sees.scopes`: los scopes que se derivan de ellas para su token;
+         *       `sees.read_only`: si todas solo leen.
+         *     - `users`: personas con el bot asignado (`id`, `name`).
+         *     - `roles`: nombres de los roles de la empresa con el bot asignado.
+         */
+        get: operations["pimBotAccess.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/bots/{profile}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Sustituye ENTERA la asignación de un bot en la empresa activa. Cuerpo
+         *     `{users: [ids], roles: [nombres]}`; las dos listas pueden ir vacías
+         *     (nadie lo usa)
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Los usuarios tienen que ser personas de la empresa (nunca una cuenta de
+         *     servicio) y los roles, roles de la empresa (ni los ocultos ni los de los
+         *     bots); si no, `422`. `default`, un nombre fuera de `[a-z0-9_-]` o un bot
+         *     sin cuenta definida: `422 unknown_agent_profile`.
+         *
+         *     Quitar a alguien corta sus streams abiertos con ese bot (evento `error`
+         *     con `access_revoked`) y sus turnos siguientes (`403
+         *     bot_not_assigned`). Responde `200` con el mismo objeto de ese bot que
+         *     `GET /pim/bots/access`.
+         */
+        put: operations["pimBotAccess.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/bots/{profile}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Los permisos del bot (enmienda de 26): las abilities que tiene ahora su
+         *     rol y las que se le pueden dar
+         * @description **Reservada al panel de Pimia.** Exige `delegation:read`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     - `abilities`: las que tiene (nace con la plantilla del bot).
+         *     - `assignable`: las que se le pueden dar: el catálogo de los roles de
+         *       las personas SIN las de administración (usuarios, roles, Pim,
+         *       delegar en terceros, configuración de la empresa, correo y
+         *       mensajería personales, aprobar fichajes y ausencias…).
+         *     - `catalog`: esas mismas con su `title` y su `module`, para pintarlas.
+         *     - `scopes`: los scopes que su token lleva por ellas (lectura o
+         *       escritura por dominio; nunca acceso total); `read_only`: si solo lee.
+         */
+        get: operations["pimBotAccess.permissions"];
+        /**
+         * Sustituye ENTERA la lista de abilities del bot. Cuerpo `{abilities:
+         *     [...]}` (puede ir vacía: el bot solo leerá su cola de delegaciones)
+         * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Vale para todas las empresas del tenant (Pim es por tenant). Los scopes
+         *     de su token se recalculan sin rotarlo, así que el cambio vale desde la
+         *     siguiente llamada del bot. Una ability que no esté en `assignable`:
+         *     `422`. Responde `200` con el mismo cuerpo que el `GET`.
+         */
+        put: operations["pimBotAccess.updatePermissions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Manda un mensaje a Pim (o a uno de sus bots) y responde en streaming
+         *     (`text/event-stream`)
+         * @description **Reservada al panel de Pimia.** Exige `pim:chat`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     Cuerpo: `message` (1 a 8000 caracteres), `agent_profile` (`default` o
+         *     un bot de la instancia con el chat habilitado), `conversation_id` (uuid
+         *     de una conversación PROPIA, o `null` para empezar una) y
+         *     `reasoning_effort` (`low`, `medium`, `high` o `null`).
+         *
+         *     Eventos SSE (cada uno con su `event:`; `data:` es JSON y repite el
+         *     nombre en `type`):
+         *
+         *     - `meta` `{conversation_id, agent_profile}`, el primero;
+         *     - `delta` `{text}`, tantos como haga falta;
+         *     - `done` `{finish_reason}`, al terminar;
+         *     - `error` `{code, message}`, si algo falla, y cierra el stream. `code`:
+         *       `hermes_unavailable`, `timeout` (pasados `pim.chat.max_seconds`, 180
+         *       s por defecto), `rate_limited` (lo dijo el agente) o
+         *       `access_revoked` (le han quitado el bot a quien chatea).
+         *
+         *     Antes de abrir el stream, en JSON con `code`: `403` sin permiso
+         *     (`no_permission`: Pim general es del dueño y la administración), con un
+         *     bot que no tiene asignado en esta empresa (`bot_not_assigned`), al que
+         *     le acaban de quitar (`access_revoked`), sin el scope `pim:chat`
+         *     (`missing_scope`) o con credencial de partner; `404
+         *     conversation_not_found` si la conversación
+         *     no es tuya (o es de otro bot); `409 pim_not_active` (con `mode` y
+         *     `status`) o `409 no_hermes_instance`; `422 too_long` o
+         *     `422 unknown_agent_profile` (con `reason: chat_not_enabled` si el bot
+         *     existe pero aún no tiene el chat habilitado); `429 rate_limited` (con
+         *     `retry_after` y `reason`: `per_minute`, `concurrent_user` o
+         *     `concurrent_tenant`); `503 hermes_unavailable` si no se pudieron leer
+         *     los bots.
+         *
+         *     `default` (Pim): el dueño y la administración (`chat-with-pim`). Un bot:
+         *     quien lo tenga asignado, por persona o por rol, en la empresa activa
+         *     (`PUT /pim/bots/{profile}/access`). Con Pim activo en servidor.
+         */
+        post: operations["pimChat.chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pim/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tus conversaciones recientes con Pim (o con un bot, con
+         *     `?agent_profile=`), las últimas 20 por fecha del último mensaje
+         * @description **Reservada al panel de Pimia.** Exige `pim:chat`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
+         *
+         *     `title` son los 60 primeros caracteres del primer mensaje. No hay ruta
+         *     de mensajes: el historial de la conversación abierta vive en el cliente,
+         *     y reanudar (`POST /pim/chat` con su `id`) solo continúa el contexto en
+         *     Hermes.
+         *
+         *     Solo de los perfiles que quien pregunta puede usar ahora en la empresa
+         *     activa (Pim si es dueño o administración, y sus bots asignados); con
+         *     `agent_profile` de un bot que no tiene, `403 bot_not_assigned`. Scope
+         *     `pim:chat`.
+         */
+        get: operations["pimChat.conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/profit-loss/{hash}": {
         parameters: {
             query?: never;
@@ -6470,6 +7117,41 @@ export interface paths {
         patch: operations["task.updateStatus"];
         trace?: never;
     };
+    "/tasks/{task}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambia SOLO la prioridad de la tarea
+         * @description Para mover una tarjeta entre cuadrantes (Eisenhower) o subir una tarea de
+         *     gravedad sin reenviar la tarea entera: `PUT /tasks/{task}` exige `title`,
+         *     y reenviar el que se tenía en pantalla deshacía el cambio de título que
+         *     otra persona hubiera hecho mientras tanto. Aquí se escribe `priority` y
+         *     nada más (y `updated_at`, si cambia).
+         *
+         *     **Última escritura gana.** No hay detección de conflictos: si dos
+         *     personas cambian la prioridad de la misma tarea a la vez, se queda la
+         *     que llegue después, y ninguna recibe aviso. La respuesta trae la tarea
+         *     tal como ha quedado. No se acepta `expected_updated_at` ni otra
+         *     precondición: `updated_at` tiene precisión de segundos y no serviría
+         *     de garantía; si algún día se promete detectar conflictos, será con una
+         *     versión de la tarea.
+         *
+         *     Misma autorización que editar la tarea: `edit-task`, o `edit-own-task`
+         *     si la tarea está asignada a quien llama.
+         */
+        patch: operations["task.updatePriority"];
+        trace?: never;
+    };
     "/tasks/{task}/delegation": {
         parameters: {
             query?: never;
@@ -6481,6 +7163,14 @@ export interface paths {
          * GET tasks/{task}/delegation — estado de la delegación de esta tarea (polling
          *     ligero del panel inline; no rehidrata la tarea entera ni pisa el formulario).
          *     null si la tarea no se ha delegado
+         * @description Poder ver la tarea da la TRAZA de su delegación (estado, versión, quién
+         *     pidió y decidió, y cuándo), no su contenido: el título, el contexto, la
+         *     propuesta y el resultado traen lo que el agente leyó, y solo salen si
+         *     quien llama es el dueño o un administrador, o tiene hoy las abilities de
+         *     LECTURA del efecto con el que se delegó, en la empresa de la tarea. Si
+         *     no, `content_visible: false` y `content_reason` (`effect_not_authorized`,
+         *     `effect_undeclared`, `origin_task_not_visible`, `wrong_company`,
+         *     `legacy_row_owner_only` o `integrator_owner_only`).
          */
         get: operations["task.delegation"];
         put?: never;
@@ -6511,6 +7201,25 @@ export interface paths {
          *
          *     Alcance (fundador): SOLO tipos delegables (todo/deadline) y SOLO una operación
          *     delegable ACTIVADA. El front filtra por compatibilidad; el back valida igual.
+         *
+         *     Una tarea tiene como mucho UNA delegación viva (`pending` o `in_progress`):
+         *     dos peticiones a la vez crean una sola y la otra recibe `409` con la que
+         *     ya existe. Si la entrega a la instancia falla, no queda nada y se puede
+         *     reintentar (`502`).
+         *
+         *     **Quién delega** (fase 2 de Mi día, D1): el dueño o un administrador,
+         *     cualquier operación activada, como siempre. Y quien tenga el permiso
+         *     «Delegar tareas en Pim» (`delegate-task`) y pueda editar la tarea (con
+         *     `edit-own-task`, solo las suyas), siempre que la operación tenga un
+         *     efecto verificable: declarado por el dueño (`effect_abilities`) y, si
+         *     escribe, con visto bueno (modo `preview`). En una operación autónoma
+         *     (`applied`) no hay visto bueno, así que quien delega tiene que tener él
+         *     mismo todas las abilities del efecto; con visto bueno, las de lectura
+         *     (`view-*`): la propuesta y el resultado que recibe traen lo que el
+         *     agente leyó. Si no, `403` con `code`: `no_permission`,
+         *     `effect_undeclared`, `effect_not_verifiable` o `effect_not_authorized`.
+         *     La delegación se queda con el contrato de efectos de ese momento: si el
+         *     dueño cambia el catálogo después, no cambia quién la decide.
          */
         post: operations["task.delegate"];
         delete?: never;
@@ -6775,6 +7484,12 @@ export interface paths {
          *     diría de más en cuanto dos empresas de la instancia tuvieran la misma
          *     —la segunda no vuelve a pagar—.
          *
+         *     **`pim` es la línea «Pim en servidor»** (desde el 2026-09-27, subfase
+         *     3.3 de Mi día): la cuota fija de la instancia Hermes del tenant, con su
+         *     precio congelado al activarse. `exempt: true` y 0 si se activó antes de
+         *     3.3. `null` si el tenant no tiene Pim activo en servidor. Entra en el
+         *     total de `addons` por lo que la suscripción cobra de verdad.
+         *
          *     ⛔ **Y el mismo defecto ha pasado DOS VECES en este campo.** `addons`
          *     nació porque el total decía 12 y se pagaban 14 (el plan no es la cuota);
          *     el 2026-09-05 decía 16 y se pagaban 25,90 (los módulos tampoco lo son).
@@ -6959,6 +7674,10 @@ export interface paths {
          *
          *     El sello de verifiabilidad lo deriva el servidor de los `evals`; el que
          *     venga en el cuerpo se reemplaza.
+         *
+         *     Idempotente: la MISMA propuesta que ya está guardada (misma huella)
+         *     devuelve la fila sin cambiarla ni subir la versión, sea cual sea su
+         *     estado (fase 3: la instancia reconcilia y repite).
          */
         post: operations["tenantDelegationCallback.taskPropose"];
         delete?: never;
@@ -6981,7 +7700,8 @@ export interface paths {
          * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Acepta el `result_data` estructurado (preferido) y/o un `result` en prosa;
-         *     al menos uno es obligatorio. Idempotente sobre una tarea ya completada.
+         *     al menos uno es obligatorio. Idempotente sobre una tarea ya cerrada
+         *     (`completed` o `failed`): devuelve la fila sin cambiarla.
          *
          *     Lo que puede cerrarse directo depende del modo: en modo autónomo sí, y en
          *     modo `preview` hace falta una propuesta aprobada — el agente no se salta
@@ -6992,6 +7712,14 @@ export interface paths {
          *     derivado de los `evals`—: un reporte que declara fallo, o que llega sin
          *     esa evidencia, cierra la tarea como `failed`. `applied_at` afirma que las
          *     escrituras aprobadas ocurrieron, así que no se presume del visto bueno.
+         *
+         *     Y quien aprobó tiene que seguir teniendo autoridad sobre el efecto al
+         *     cerrar: si la perdió (le quitaron el permiso, ya no es de la empresa, se
+         *     borró la tarea de origen), la tarea se cierra `failed` con
+         *     `result_data.apply_check.motivo = approval_revoked`. Es detección, no
+         *     prevención: el informe del agente se conserva, y
+         *     `apply_check.escrituras_reportadas` dice si reclamó escrituras con
+         *     evidencia.
          */
         post: operations["tenantDelegationCallback.taskComplete"];
         delete?: never;
@@ -7010,7 +7738,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * El agente reporta la tarea FALLIDA
+         * El agente reporta la tarea FALLIDA. Idempotente sobre una tarea ya
+         *     cerrada (`completed` o `failed`): devuelve la fila sin cambiarla
          * @description **Reservada al panel de Pimia.** Exige `delegation:write`, que el Authorization Server emite SOLO al client de primera parte: un client de integrador no puede pedir ese scope —se le rechaza en el registro y no se le anuncia— y con cualquier otro token la llamada recibe `403`. Está en el contrato porque es el panel web de Pimia quien la consume, y sus tipos salen de aquí.
          *
          *     Igual que al completar, hace falta al menos `result` (prosa) o
@@ -8184,6 +8913,7 @@ export interface components {
         AppointmentRequest: {
             customer_id?: number | null;
             item_id?: number | null;
+            /** @description Una persona: nunca la cuenta de servicio de un bot de Pim (3.5). */
             staff_user_id?: number | null;
             /** Format: date-time */
             starts_at: string;
@@ -9595,6 +10325,12 @@ export interface components {
             currency_id: number | null;
             customer_id: number | null;
             /**
+             * @description Quién lo creó en Pimia: el usuario de la sesión o del token que lo
+             *     dio de alta. Si lo creó un agente o una app, es el usuario de su
+             *     token, no el comercial que lleva la oportunidad.
+             */
+            creator_id: number | null;
+            /**
              * @description A qué oportunidad comercial pertenece, venga el CRM de Pimia o el
              *     que hayas puesto tú.
              */
@@ -10834,6 +11570,7 @@ export interface components {
             expected_close_date?: string | null;
             customer_id?: number | null;
             contact_id?: number | null;
+            /** @description Una persona: nunca la cuenta de servicio de un bot de Pim (3.5). */
             assigned_user_id?: number | null;
             description?: string | null;
             tags?: string[] | null;
@@ -10870,6 +11607,14 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            /**
+             * Format: date-time
+             * @description Último movimiento REGISTRADO del lead: su actividad en el CRM (alta,
+             *     cambio de etapa, conversión, nota) y la última modificación de sus
+             *     presupuestos. Las tareas y las citas del lead no cuentan todavía.
+             *     No es el último contacto con el cliente. `null` si no hay ninguno.
+             */
+            last_activity_at: string | null;
             estimates_count?: number;
             tasks_count?: number;
             notes_count?: number;
@@ -11287,6 +12032,7 @@ export interface components {
             start_date?: string | null;
             /** Format: date */
             end_date?: string | null;
+            /** @description Una persona: nunca la cuenta de servicio de un bot de Pim (3.5). */
             manager_user_id?: number | null;
         };
         /** ProjectResource */
@@ -11765,7 +12511,7 @@ export interface components {
              *     ningún permiso es una operación legítima, y `required` la
              *     prohibiría (un array vacío no pasa `required`).
              */
-            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail")[];
+            abilities: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "delegate-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "manage-pim" | "chat-with-pim" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail")[];
         };
         /**
          * RoleRequest
@@ -11790,7 +12536,7 @@ export interface components {
             name: string;
             abilities?: {
                 /** @enum {string} */
-                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail";
+                ability: "dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "delegate-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "manage-pim" | "chat-with-pim" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail";
             }[] | null;
         };
         /** RoleResource */
@@ -12164,6 +12910,7 @@ export interface components {
             /** Format: date-time */
             due_at?: string | null;
             estimated_minutes?: number | null;
+            /** @description Una persona: nunca la cuenta de servicio de un bot de Pim (3.5). */
             assigned_user_id?: number | null;
         };
         /** TaskResource */
@@ -12204,35 +12951,122 @@ export interface components {
                 label: string;
                 served_natively: boolean;
             } | null;
-            /**
-             * @description Delegación a Pim (capa 3 async) enlazada a la tarea, si la hay. Misma
-             *     forma que el panel de Config→Tareas delegables (DelegatedTask::toPanelArray).
-             */
+            /** @description Delegación a Pim (capa 3 async) enlazada a la tarea, si la hay. Misma forma que el panel de Config→Tareas delegables (DelegatedTask::toPanelArray) si quien llama puede ver su contenido —administración, o las abilities de lectura del efecto congelado y poder ver la tarea—; si no, solo la traza (estado, versión, quién y cuándo) con `content_visible: false` y `content_reason`. */
             delegation?: {
                 id: number;
-                title: string;
                 task_type: string | null;
-                agent_skill: string | null;
                 status: string;
-                hermes_kanban_id: string | null;
-                /**
-                 * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
-                 *     propuesta viene de una app de partner y no del agente Pim.
-                 */
                 plane: string;
-                origin_client_id: string | null;
-                origin_client_name: string | null;
-                /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
-                result: string | null;
-                result_data: unknown[] | null;
-                proposal: unknown[] | null;
                 proposal_status: string | null;
-                proposed_at: string;
-                applied_at: string;
-                delegated_at: string;
-                created_at: string;
-                updated_at: string;
-            } | null;
+                proposal_version: number | null;
+                autonomy_mode: string | null;
+                origin_company_id: number | null;
+                origin_task_id: number | null;
+                requested_by_user_id: number | null;
+                decided_by_user_id: number | null;
+                decided_at: string | null;
+                changes_requested_by_user_id: number | null;
+                delegated_at: string | null;
+                created_at: string | null;
+                updated_at: string | null;
+                content_visible: boolean;
+                /** @enum {string|null} */
+                content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission" | null;
+                title?: string | null;
+                agent_skill?: string | null;
+                hermes_kanban_id?: string | null;
+                origin_client_id?: string | null;
+                origin_client_name?: string | null;
+                result?: string | null;
+                result_data?: {
+                    [key: string]: unknown;
+                } | null;
+                proposal?: {
+                    [key: string]: unknown;
+                } | null;
+                proposal_sha256?: string | null;
+                proposed_at?: string | null;
+                applied_at?: string | null;
+                approved_proposal_version?: number | null;
+            };
+            /** @description Qué puede hacer quien llama con esta tarea y Pim, con el motivo cuando no (`reason` es null si y solo si `allowed`). `delegate`: lo que contestaría `POST /tasks/{task}/delegate` con alguna de las operaciones activadas (`no_permission`, `partner_credential`, `not_delegable_type`, `no_instance`, `no_enabled_operations`, `effect_undeclared`, `effect_not_verifiable`, `effect_not_authorized`, `already_delegated`). `decide`: lo que contestaría aprobar o rechazar la propuesta pendiente de su delegación (`not_pending` si no hay ninguna, `partner_credential`, `effect_not_authorized`, `effect_undeclared`, `effect_not_verifiable`, `wrong_company`, `origin_task_not_visible`, `legacy_row_owner_only`, `integrator_owner_only`). */
+            capabilities: {
+                delegate: {
+                    allowed: boolean;
+                    reason: null;
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "already_delegated";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "no_enabled_operations";
+                } | {
+                    allowed: boolean;
+                    /** @enum {string} */
+                    reason: "pim_not_active" | "no_instance";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "not_delegable_type";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "no_permission";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "partner_credential";
+                };
+                decide: {
+                    allowed: boolean;
+                    reason: null;
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "origin_task_not_visible";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "effect_not_authorized";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "effect_not_verifiable";
+                } | {
+                    allowed: boolean;
+                    reason: string;
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "effect_undeclared";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "wrong_company";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "legacy_row_owner_only";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "integrator_owner_only";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "not_pending";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "partner_credential";
+                } | {
+                    allowed: boolean;
+                    /** @constant */
+                    reason: "no_permission";
+                };
+            };
         };
         /** Tax */
         Tax: {
@@ -12465,6 +13299,7 @@ export interface components {
             project_id: number;
             item_id?: number | null;
             task_id?: number | null;
+            /** @description Una persona: nunca la cuenta de servicio de un bot de Pim (3.5). */
             user_id?: number | null;
             /** Format: date-time */
             date: string;
@@ -12609,6 +13444,7 @@ export interface components {
             updated_at: string | null;
             pos_pin_set_at: string | null;
             central_user_id: number | null;
+            is_service_account: boolean;
         };
         /** UserRequest */
         UserRequest: {
@@ -13006,8 +13842,20 @@ export interface operations {
     "absence.index": {
         parameters: {
             query?: {
-                scope?: string;
-                limit?: string;
+                /** @description Solo las de este estado. Un único valor: no admite lista. */
+                status?: "requested" | "approved" | "rejected" | "cancelled";
+                /** @description Solo las de este tipo. */
+                type?: "vacation" | "sick" | "personal_leave" | "parental" | "paid_leave" | "unpaid" | "other";
+                /** @description Las que SE SOLAPAN con el periodo a partir de este día (`AAAA-MM-DD`): terminan ese día o después. No es «empiezan desde»: una ausencia en curso entra. `from` y `to` filtran por separado. */
+                from?: string;
+                /** @description Las que se solapan con el periodo hasta este día (`AAAA-MM-DD`): empiezan ese día o antes. */
+                to?: string;
+                /** @description Página que se pide, desde 1. Sin él, la 1. No tiene efecto con `limit=all`. */
+                page?: number;
+                /** @description `mine` (por defecto): las tuyas. `team`: las de toda la empresa, SOLO si puedes aprobar ausencias (`meta.can_decide`); si no, se ignora y llegan las tuyas. */
+                scope?: "mine" | "team";
+                /** @description Cuántas filas por página. Sin él, 25. Con `all` no se pagina: llegan todas y la respuesta no trae `links` ni los campos del paginador en `meta`. */
+                limit?: number | "all";
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -13018,13 +13866,37 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `AbsenceResource` */
+            /** @description Paginada salvo con `limit=all`. El orden es fijo: por fecha de inicio, de la más reciente a la más antigua. `pending_team_count` cuenta las solicitudes pendientes de toda la empresa, sin filtros, y es 0 si no puedes aprobar (`can_decide`). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        data: components["schemas"]["AbsenceResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            path: string | null;
+                            per_page: number;
+                            to: number | null;
+                            total: number;
+                            pending_team_count: number;
+                            can_decide: boolean;
+                        };
+                    } | {
                         data: components["schemas"]["AbsenceResource"][];
                         meta: {
                             pending_team_count: number;
@@ -13259,14 +14131,18 @@ export interface operations {
     "appointment.index": {
         parameters: {
             query?: {
-                /** @description Desde esta fecha y hora de comienzo, inclusive. A diferencia de facturas y presupuestos, aquí `from` y `to` SÍ filtran por separado. */
+                /** @description Desde esta fecha y hora de comienzo, inclusive. A diferencia de facturas y presupuestos, aquí `from` y `to` SÍ filtran por separado. Con desplazamiento (`2026-09-26T08:00:00Z`, `…+01:00`; el `+` codificado como `%2B`) es un instante y se convierte a la hora de Europe/Madrid antes de comparar, así que puedes reenviar tal cual un `starts_at` de la respuesta, que llega en UTC. Sin desplazamiento (`2026-09-26 10:00`) es hora de pared de Europe/Madrid, la zona en la que se guardan las citas. Una fecha sola (`2026-09-26`) es las 00:00 de ese día. */
                 from?: string;
-                /** @description Hasta esta fecha y hora de comienzo, inclusive. */
+                /** @description Hasta esta fecha y hora de comienzo, inclusive, con la misma lectura que `from`. ⚠️ Una fecha sola es las 00:00 de ese día: `to=2026-09-26` NO incluye las citas de ese día; para un día entero manda `from=2026-09-26&to=2026-09-26 23:59:59`, o `to` como instante. */
                 to?: string;
                 /** @description Estado de la cita. */
                 status?: string;
                 /** @description Solo las de este cliente. */
                 customer_id?: number;
+                /** @description Solo las que atiende este usuario (el profesional de la cita). Filtra dentro de las citas que ya ves; no amplía nada. */
+                staff_user_id?: number;
+                /** @description Cuántas citas como máximo, de 1 a 500. Sin él, 200. La lista no se pagina: llegan las primeras por hora de comienzo y `meta.truncated` dice si quedaron más fuera; en ese caso, acota `from`/`to` o sube `limit`. */
+                limit?: number;
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -13284,9 +14160,15 @@ export interface operations {
                 content: {
                     "application/json": {
                         appointments: components["schemas"]["Appointment"][];
+                        meta: {
+                            limit: number;
+                            truncated: boolean;
+                        };
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "appointment.store": {
@@ -13326,6 +14208,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -13354,6 +14237,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -13386,6 +14270,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
@@ -13415,6 +14300,7 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["AuthorizationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -16820,6 +17706,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         hermes_configured: boolean;
+                        hermes: {
+                            slug: string | null;
+                            agent_configured: boolean;
+                            delivery_configured: boolean;
+                        };
                         slug: string | null;
                         tasks: {
                             task_type: string;
@@ -16837,6 +17728,18 @@ export interface operations {
                             skill_verified_at: string | null;
                             retired_at: string | null;
                             retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
                         }[];
                     };
                 };
@@ -16893,6 +17796,173 @@ export interface operations {
             403: components["responses"]["AuthorizationException"];
         };
     };
+    "delegableCatalog.operations": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        instance: {
+                            slug: string | null;
+                            agent: boolean;
+                            delivery: boolean;
+                            pim: {
+                                active: boolean;
+                                mode: string;
+                                status: string;
+                            };
+                        };
+                        can_delegate: boolean;
+                        /** @enum {string|null} */
+                        reason: "no_instance" | "pim_not_active" | "no_enabled_operations" | "effect_undeclared" | "effect_not_verifiable" | "effect_not_authorized" | "no_permission" | null;
+                        operations: {
+                            task_type: string;
+                            label: string;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            effect_verifiable: boolean;
+                            can_delegate: boolean;
+                            /** @enum {string|null} */
+                            reason: "effect_undeclared" | "effect_not_verifiable" | "effect_not_authorized" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Quien llama no puede delegar en esta empresa (`no_permission`), o es un token de app de partner. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "no_permission";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "delegableCatalog.history": {
+        parameters: {
+            query?: {
+                scope?: "mine" | "decidable" | "all" | null;
+                company?: "current" | "all" | null;
+                plane?: "pyme" | "integrator" | null;
+                "status[]"?: "pending" | "in_progress" | "completed" | "failed";
+                "proposal_status[]"?: "proposed" | "needs_changes" | "approved" | "rejected" | "applied";
+                cursor?: number | null;
+                limit?: number | null;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: number;
+                            task_type: string | null;
+                            status: string;
+                            plane: string;
+                            proposal_status: string | null;
+                            proposal_version: number | null;
+                            autonomy_mode: string | null;
+                            origin_company_id: number | null;
+                            origin_task_id: number | null;
+                            requested_by_user_id: number | null;
+                            decided_by_user_id: number | null;
+                            decided_at: string | null;
+                            changes_requested_by_user_id: number | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                            requested_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            decided_by: {
+                                id: number;
+                                name: string | null;
+                            } | null;
+                            content_visible: boolean;
+                            /** @enum {string|null} */
+                            content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | null;
+                            title?: string;
+                            agent_skill?: string | null;
+                            hermes_kanban_id?: string | null;
+                            origin_client_id?: string | null;
+                            origin_client_name?: string | null;
+                            result?: string | null;
+                            result_data?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_sha256?: string | null;
+                            proposed_at?: string | null;
+                            applied_at?: string | null;
+                            approved_proposal_version?: number | null;
+                        }[];
+                        meta: {
+                            /** @enum {string} */
+                            scope: "mine" | "decidable" | "all";
+                            /** @enum {string} */
+                            plane: "pyme" | "integrator";
+                            /** @enum {string} */
+                            company: "current" | "all";
+                            limit: number;
+                            examined: number;
+                            next_cursor: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Se pidió algo reservado a administración (`scope=all`, `company=all` o `plane=integrator`), o es un token de app de partner. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "no_permission";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "delegableCatalog.approveProposal": {
         parameters: {
             query?: never;
@@ -16911,6 +17981,9 @@ export interface operations {
                     human_touch_minutes?: number | null;
                     /** @enum {string|null} */
                     verification_outcome?: "pass" | "edit" | null;
+                    /** @description La versión que se vio: obligatoria si la delegación está versionada. */
+                    proposal_version?: number | null;
+                    proposal_sha256?: string | null;
                 };
             };
         };
@@ -16948,7 +18021,39 @@ export interface operations {
                     };
                 };
             };
-            403: components["responses"]["AuthorizationException"];
+            /** @description Quien llama no tiene autoridad sobre el efecto de esta delegación (`code` dice por qué), o es un token de app de partner. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "effect_not_authorized" | "effect_undeclared" | "effect_not_verifiable" | "wrong_company" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+            /** @description La propuesta ya no es la que se vio (`stale_proposal`, con la fila actual en `task`), o el tenant no tiene instancia (`no_instance`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stale_proposal";
+                        message: string;
+                        task: {
+                            [key: string]: unknown;
+                        };
+                    } | {
+                        message: string;
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -16969,6 +18074,9 @@ export interface operations {
                 "application/json": {
                     reason?: string | null;
                     human_touch_minutes?: number | null;
+                    /** @description La versión que se vio: obligatoria si la delegación está versionada. */
+                    proposal_version?: number | null;
+                    proposal_sha256?: string | null;
                 };
             };
         };
@@ -17006,7 +18114,39 @@ export interface operations {
                     };
                 };
             };
-            403: components["responses"]["AuthorizationException"];
+            /** @description Quien llama no tiene autoridad sobre el efecto de esta delegación (`code` dice por qué), o es un token de app de partner. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "effect_not_authorized" | "effect_undeclared" | "effect_not_verifiable" | "wrong_company" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+            /** @description La propuesta ya no es la que se vio (`stale_proposal`, con la fila actual en `task`), o el tenant no tiene instancia (`no_instance`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stale_proposal";
+                        message: string;
+                        task: {
+                            [key: string]: unknown;
+                        };
+                    } | {
+                        message: string;
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -17026,6 +18166,9 @@ export interface operations {
             content: {
                 "application/json": {
                     reason?: string | null;
+                    /** @description La versión que se vio: obligatoria si la delegación está versionada. */
+                    proposal_version?: number | null;
+                    proposal_sha256?: string | null;
                 };
             };
         };
@@ -17063,7 +18206,39 @@ export interface operations {
                     };
                 };
             };
-            403: components["responses"]["AuthorizationException"];
+            /** @description Quien llama no tiene autoridad sobre el efecto de esta delegación (`code` dice por qué), o es un token de app de partner. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "effect_not_authorized" | "effect_undeclared" | "effect_not_verifiable" | "wrong_company" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
+            /** @description La propuesta ya no es la que se vio (`stale_proposal`, con la fila actual en `task`), o el tenant no tiene instancia (`no_instance`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        code: "stale_proposal";
+                        message: string;
+                        task: {
+                            [key: string]: unknown;
+                        };
+                    } | {
+                        message: string;
+                    };
+                };
+            };
             422: components["responses"]["ValidationException"];
         };
     };
@@ -17088,6 +18263,11 @@ export interface operations {
                     verifiability_level?: number | null;
                     icon?: string | null;
                     color?: string | null;
+                    /**
+                     * @description Fase 2 de Mi día (D1/D2): las abilities del efecto, contra el
+                     *     catálogo de permisos. `null` = sin declarar (solo administración).
+                     */
+                    effect_abilities?: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "delegate-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "manage-pim" | "chat-with-pim" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail")[] | null;
                 };
             };
         };
@@ -17114,6 +18294,18 @@ export interface operations {
                             skill_verified_at: string | null;
                             retired_at: string | null;
                             retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
                         };
                         verified: boolean;
                     };
@@ -17159,11 +18351,153 @@ export interface operations {
                             skill_verified_at: string | null;
                             retired_at: string | null;
                             retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
                         };
                     };
                 };
             };
             403: components["responses"]["AuthorizationException"];
+        };
+    };
+    "delegableCatalog.declareEffect": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                task_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    accept_suggestion?: boolean;
+                    effect_abilities?: ("dashboard" | "view-customer" | "create-customer" | "edit-customer" | "delete-customer" | "view-estimate" | "create-estimate" | "edit-estimate" | "delete-estimate" | "send-estimate" | "view-invoice" | "create-invoice" | "edit-invoice" | "delete-invoice" | "send-invoice" | "view-recurring-invoice" | "create-recurring-invoice" | "edit-recurring-invoice" | "delete-recurring-invoice" | "view-payment" | "create-payment" | "edit-payment" | "delete-payment" | "send-payment" | "view-expense" | "create-expense" | "edit-expense" | "delete-expense" | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier" | "view-received-invoice" | "create-received-invoice" | "edit-received-invoice" | "delete-received-invoice" | "view-bank-account" | "create-bank-account" | "edit-bank-account" | "delete-bank-account" | "view-bank-transaction" | "import-bank-transaction" | "reconcile-bank-transaction" | "view-sepa-remittance" | "create-sepa-remittance" | "delete-sepa-remittance" | "view-investment-asset" | "create-investment-asset" | "edit-investment-asset" | "delete-investment-asset" | "view-delivery-note" | "create-delivery-note" | "edit-delivery-note" | "delete-delivery-note" | "view-item" | "create-item" | "edit-item" | "delete-item" | "view-lead" | "create-lead" | "edit-lead" | "delete-lead" | "convert-lead" | "view-contact" | "create-contact" | "edit-contact" | "delete-contact" | "view-project" | "create-project" | "edit-project" | "delete-project" | "view-task" | "create-task" | "edit-task" | "delete-task" | "view-own-task" | "edit-own-task" | "delegate-task" | "view-time-entry" | "create-time-entry" | "edit-time-entry" | "delete-time-entry" | "view-own-time-entry" | "create-own-time-entry" | "edit-own-time-entry" | "delete-own-time-entry" | "view-tax-type" | "create-tax-type" | "edit-tax-type" | "delete-tax-type" | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field" | "manage-pim" | "chat-with-pim" | "view-role" | "create-role" | "edit-role" | "delete-role" | "view-financial-reports" | "view-all-notes" | "manage-all-notes" | "time_clock.punch" | "time_clock.view_own" | "time_clock.view_team" | "time_clock.correct" | "absence.request" | "absence.approve" | "report.download_legal" | "view-employee" | "create-employee" | "edit-employee" | "delete-employee" | "view-work-schedule" | "manage-work-schedule" | "view-work-calendar" | "manage-work-calendar" | "pos.operate" | "pos.supervise" | "pos.void" | "pos.discount_high" | "pos.cash_movement" | "pos.return" | "pos.admin" | "pos.report" | "view-appointment" | "create-appointment" | "edit-appointment" | "delete-appointment" | "view-contract" | "create-contract" | "edit-contract" | "delete-contract" | "view-contract-model" | "create-contract-model" | "edit-contract-model" | "publish-contract-model" | "archive-contract-model" | "view-warehouse" | "create-warehouse" | "edit-warehouse" | "delete-warehouse" | "view-stock-count" | "create-stock-count" | "edit-stock-count" | "delete-stock-count" | "view-mensajeria" | "send-mensajeria" | "configure-mail" | "view-mail" | "send-mail")[] | null;
+                    read_only?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "delegableCatalog.assignAgent": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                task_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Presente siempre (null incluido), para que un cuerpo vacío no
+                     *     devuelva la operación a Pim por descuido.
+                     */
+                    agent_profile: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: {
+                            task_type: string;
+                            label: string;
+                            agent_skill: string | null;
+                            enabled: boolean;
+                            delegable: boolean;
+                            write_effect: boolean;
+                            default_mode: string;
+                            verifiability_level: number | null;
+                            icon: string | null;
+                            color: string | null;
+                            source: string | null;
+                            verified: boolean;
+                            skill_verified_at: string | null;
+                            retired_at: string | null;
+                            retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "delegableCatalog.discover": {
@@ -17195,6 +18529,10 @@ export interface operations {
                             verifiability_level: number | null;
                             in_catalog: boolean;
                             enabled: boolean;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
                         }[];
                     };
                 };
@@ -17238,6 +18576,18 @@ export interface operations {
                             skill_verified_at: string | null;
                             retired_at: string | null;
                             retired_reason: string | null;
+                            effect_abilities: string[] | null;
+                            effect_verifiable: boolean;
+                            effect_reason: string | null;
+                            suggested_effect: {
+                                effect_abilities: string[];
+                                read_only: boolean;
+                            } | null;
+                            effect_declared_at: string | null;
+                            effect_cleared_at: string | null;
+                            /** @enum {string|null} */
+                            effect_cleared_reason: "skill_changed" | "version_changed" | "write_effect_changed" | null;
+                            agent_profile: string | null;
                         };
                         verified: boolean;
                     };
@@ -18259,6 +19609,8 @@ export interface operations {
                 estimate_number?: string;
                 /** @description Solo los de esta serie de numeración. */
                 estimate_series_id?: number;
+                /** @description Solo los que dio de alta este usuario en Pimia (el autor, `creator_id`). No es el comercial responsable: si lo creó un agente o una app, el autor es el usuario de su token. Para los presupuestos de las oportunidades que lleva un comercial, usa `GET /leads/estimates`. */
+                creator_id?: number;
                 /** @description Devuelve solo el recurso que lleve esta referencia externa. El alcance es el client OAuth del token: cada integrador consulta las suyas y nunca ve las de otro. Combinado con la escritura de `external_ref`, es el find-or-create sin mantener ningún mapeo local. */
                 external_ref?: string;
             };
@@ -21657,6 +23009,67 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "lead.estimatesByAssignedUser": {
+        parameters: {
+            query: {
+                /** @description El comercial: se devuelven los presupuestos de los leads de los que es responsable. Obligatorio. */
+                assigned_user_id: number;
+                /** @description Estado del presupuesto (`DRAFT`, `SENT`, `VIEWED`, `EXPIRED`, `ACCEPTED`, `REJECTED`). */
+                status?: string;
+                /** @description Cuántas filas por página, de 1 a 100. Sin él, 25. */
+                limit?: number;
+                /** @description Página que se pide, desde 1. Sin él, la 1. */
+                page?: number;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated set of `EstimateSummaryResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EstimateSummaryResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            /** @description Generated paginator links. */
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            /** @description Base path for paginator generated URLs. */
+                            path: string | null;
+                            /** @description Number of items shown per page. */
+                            per_page: number;
+                            /** @description Number of the last item in the slice. */
+                            to: number | null;
+                            /** @description Total number of items being paginated. */
+                            total: number;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "lead.updateStage": {
         parameters: {
             query?: never;
@@ -21936,8 +23349,11 @@ export interface operations {
                 source?: string;
                 lead_type?: string;
                 tags?: string;
-                orderByField?: string;
+                /** @description Solo los leads sin movimiento registrado desde este día (`AAAA-MM-DD`, desde las 00:00 de Europe/Madrid): su `last_activity_at` es anterior, o no tienen ninguno. Movimiento es la actividad del CRM y los presupuestos del lead; ver `last_activity_at`. */
+                inactive_since?: string;
                 orderBy?: string;
+                /** @description Campo de orden. Sin él, o con otro valor, `created_at`. Con `last_activity_at`, los leads sin movimiento registrado van al final en los dos sentidos. */
+                orderByField?: "created_at" | "expected_close_date" | "expected_amount_cents" | "title" | "stage" | "last_activity_at";
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -21964,6 +23380,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "leads.store": {
@@ -25125,6 +26542,428 @@ export interface operations {
             403: components["responses"]["AuthorizationException"];
         };
     };
+    "pim.show": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mode: string;
+                        status: string;
+                        instance: string | null;
+                        price: {
+                            cents: number;
+                            currency: string;
+                            exempt: boolean;
+                        };
+                        server_price: {
+                            cents: number;
+                            currency: string;
+                        };
+                        capabilities: {
+                            agent: boolean;
+                            delivery: boolean;
+                        };
+                        can_manage: boolean;
+                        can_chat: boolean;
+                        chat_profiles: string[];
+                        desktop: {
+                            available: boolean;
+                            reason: string | null;
+                        };
+                        purge_after: string | null;
+                        purge_days: number;
+                        /** @enum {string|null} */
+                        suspended_reason: "mode_change" | "dunning" | "plan_downgraded" | null;
+                        failure_reason: string | null;
+                    };
+                };
+            };
+        };
+    };
+    "pim.updateMode": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    mode: "off" | "desktop" | "server" | "server_desktop";
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mode: string;
+                        status: string;
+                        instance: string | null;
+                        price: {
+                            cents: number;
+                            currency: string;
+                            exempt: boolean;
+                        };
+                        server_price: {
+                            cents: number;
+                            currency: string;
+                        };
+                        capabilities: {
+                            agent: boolean;
+                            delivery: boolean;
+                        };
+                        can_manage: boolean;
+                        can_chat: boolean;
+                        chat_profiles: string[];
+                        desktop: {
+                            available: boolean;
+                            reason: string | null;
+                        };
+                        purge_after: string | null;
+                        purge_days: number;
+                        /** @enum {string|null} */
+                        suspended_reason: "mode_change" | "dunning" | "plan_downgraded" | null;
+                        failure_reason: string | null;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "pim.agents": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        default_assignee_set: boolean;
+                        agents: {
+                            name: string;
+                            display_name: string;
+                            is_default: boolean;
+                            description: string | null;
+                            model: string | null;
+                            provider: string | null;
+                            skills: string[];
+                            last_active_at: string | null;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "pim.execution": {
+        parameters: {
+            query: {
+                delegated_task_ids: string;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            delegated_task_id: number;
+                            kanban_task_id: string | null;
+                            assignee: string | null;
+                            status: string;
+                            attempts: number | null;
+                            last_event: string | null;
+                            last_activity_at: string | null;
+                            content_visible: boolean;
+                            content_reason: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description An error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example
+                         */
+                        message: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "pimBotAccess.index": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bots: {
+                            agent_profile: string;
+                            display_name: string;
+                            sees: {
+                                summary: string;
+                                abilities: string[];
+                                scopes: string[];
+                                read_only: boolean;
+                            };
+                            users: {
+                                id: number;
+                                name: string;
+                            }[];
+                            roles: string[];
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    "pimBotAccess.update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                profile: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    users: number[];
+                    roles: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        agent_profile: string;
+                        display_name: string;
+                        sees: {
+                            summary: string;
+                            abilities: string[];
+                            scopes: string[];
+                            read_only: boolean;
+                        };
+                        users: {
+                            id: number;
+                            name: string;
+                        }[];
+                        roles: string[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "pimBotAccess.permissions": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                profile: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        agent_profile: string;
+                        abilities: string[];
+                        assignable: string[];
+                        catalog: {
+                            name: string;
+                            title: string;
+                            module: string | null;
+                        }[];
+                        scopes: string[];
+                        read_only: boolean;
+                    };
+                };
+            };
+        };
+    };
+    "pimBotAccess.updatePermissions": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                profile: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    abilities: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        agent_profile: string;
+                        abilities: string[];
+                        assignable: string[];
+                        catalog: {
+                            name: string;
+                            title: string;
+                            module: string | null;
+                        }[];
+                        scopes: string[];
+                        read_only: boolean;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "pimChat.chat": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    agent_profile: string;
+                    /** Format: uuid */
+                    conversation_id?: string | null;
+                    reasoning_effort?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "pimChat.conversations": {
+        parameters: {
+            query?: {
+                agent_profile?: string | null;
+            };
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conversations: {
+                            id: string;
+                            agent_profile: string;
+                            last_message_at: string | null;
+                            title: string | null;
+                        }[];
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "report.profitLossReport": {
         parameters: {
             query?: never;
@@ -25153,8 +26992,22 @@ export interface operations {
     "projects.index": {
         parameters: {
             query?: {
-                orderByField?: string;
-                orderBy?: string;
+                /** @description Cuántas filas por página. Sin él, 25. Con `all` no se pagina: llegan todas y la respuesta no trae `links` ni los campos del paginador en `meta`. */
+                limit?: number | "all";
+                /** @description Página que se pide, desde 1. Sin él, la 1. No tiene efecto con `limit=all`. */
+                page?: number;
+                /** @description Coincidencia parcial en el nombre o en el código de la obra, sin distinguir mayúsculas. */
+                search?: string;
+                /** @description Solo las de este cliente. */
+                customer_id?: number;
+                /** @description Solo las de este estado. Un único valor: no admite lista. */
+                status?: "active" | "paused" | "completed" | "archived";
+                /** @description Solo las obras de las que este usuario es responsable (`manager_user_id`). Filtra dentro de las obras que ya ves; no amplía nada. */
+                manager_user_id?: number;
+                /** @description Campo de orden. Sin él, o con otro valor, `created_at`. */
+                orderByField?: "created_at" | "name" | "start_date" | "end_date" | "status";
+                /** @description Sentido del orden. Sin él, o con otro valor, `desc`. */
+                orderBy?: "asc" | "desc";
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -25165,13 +27018,36 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `ProjectResource` */
+            /** @description Paginada salvo con `limit=all`. `meta.total` cuenta las obras de ESTA consulta, con sus filtros; `project_total_count` cuenta todas las de la empresa, sin filtros. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        data: components["schemas"]["ProjectResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            path: string | null;
+                            per_page: number;
+                            to: number | null;
+                            total: number;
+                            project_total_count: number;
+                        };
+                    } | {
                         data: components["schemas"]["ProjectResource"][];
                         meta: {
                             project_total_count: number;
@@ -26291,6 +28167,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "roles.updateAbilities": {
@@ -26338,6 +28215,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
             /** @description No se pudo enviar la confirmación al dueño; solicita otra acción. */
             503: {
@@ -26530,6 +28408,7 @@ export interface operations {
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "general.search": {
@@ -28343,6 +30222,44 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "task.updatePriority": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
+                company?: string;
+            };
+            path: {
+                /** @description The task ID */
+                task: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    priority: "low" | "medium" | "high" | "critical";
+                };
+            };
+        };
+        responses: {
+            /** @description `TaskResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskResource"];
+                    };
+                };
+            };
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "task.delegation": {
         parameters: {
             query?: never;
@@ -28366,29 +30283,41 @@ export interface operations {
                     "application/json": {
                         delegation: {
                             id: number;
-                            title: string;
                             task_type: string | null;
-                            agent_skill: string | null;
                             status: string;
-                            hermes_kanban_id: string | null;
-                            /**
-                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
-                             *     propuesta viene de una app de partner y no del agente Pim.
-                             */
                             plane: string;
-                            origin_client_id: string | null;
-                            origin_client_name: string | null;
-                            /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
-                            result: string | null;
-                            result_data: unknown[] | null;
-                            proposal: unknown[] | null;
                             proposal_status: string | null;
-                            proposed_at: string;
-                            applied_at: string;
-                            delegated_at: string;
-                            created_at: string;
-                            updated_at: string;
-                        } | null;
+                            proposal_version: number | null;
+                            autonomy_mode: string | null;
+                            origin_company_id: number | null;
+                            origin_task_id: number | null;
+                            requested_by_user_id: number | null;
+                            decided_by_user_id: number | null;
+                            decided_at: string | null;
+                            changes_requested_by_user_id: number | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                            content_visible: boolean;
+                            /** @enum {string|null} */
+                            content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission" | null;
+                            title?: string | null;
+                            agent_skill?: string | null;
+                            hermes_kanban_id?: string | null;
+                            origin_client_id?: string | null;
+                            origin_client_name?: string | null;
+                            result?: string | null;
+                            result_data?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_sha256?: string | null;
+                            proposed_at?: string | null;
+                            applied_at?: string | null;
+                            approved_proposal_version?: number | null;
+                        };
                         copilot_url: string | null;
                     };
                 };
@@ -28426,34 +30355,60 @@ export interface operations {
                     "application/json": {
                         delegation: {
                             id: number;
-                            title: string;
                             task_type: string | null;
-                            agent_skill: string | null;
                             status: string;
-                            hermes_kanban_id: string | null;
-                            /**
-                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
-                             *     propuesta viene de una app de partner y no del agente Pim.
-                             */
                             plane: string;
-                            origin_client_id: string | null;
-                            origin_client_name: string | null;
-                            /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
-                            result: string | null;
-                            result_data: unknown[] | null;
-                            proposal: unknown[] | null;
                             proposal_status: string | null;
-                            proposed_at: string;
-                            applied_at: string;
-                            delegated_at: string;
-                            created_at: string;
-                            updated_at: string;
+                            proposal_version: number | null;
+                            autonomy_mode: string | null;
+                            origin_company_id: number | null;
+                            origin_task_id: number | null;
+                            requested_by_user_id: number | null;
+                            decided_by_user_id: number | null;
+                            decided_at: string | null;
+                            changes_requested_by_user_id: number | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                            content_visible: boolean;
+                            /** @enum {string|null} */
+                            content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission" | null;
+                            title?: string | null;
+                            agent_skill?: string | null;
+                            hermes_kanban_id?: string | null;
+                            origin_client_id?: string | null;
+                            origin_client_name?: string | null;
+                            result?: string | null;
+                            result_data?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_sha256?: string | null;
+                            proposed_at?: string | null;
+                            applied_at?: string | null;
+                            approved_proposal_version?: number | null;
                         };
                         copilot_url: string | null;
                     };
                 };
             };
-            403: components["responses"]["AuthorizationException"];
+            /** @description Sin permiso para delegar esta tarea, o la operación no se abre a quien llama (`code` dice por qué). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code: "no_permission" | "effect_undeclared" | "effect_not_verifiable" | "effect_not_authorized";
+                        message: string;
+                    } | {
+                        message: string;
+                    };
+                };
+            };
             404: components["responses"]["ModelNotFoundException"];
             409: {
                 headers: {
@@ -28465,32 +30420,95 @@ export interface operations {
                         message: "Esta tarea ya está delegada a Pim y sigue en curso.";
                         delegation: {
                             id: number;
-                            title: string;
                             task_type: string | null;
-                            agent_skill: string | null;
                             status: string;
-                            hermes_kanban_id: string | null;
-                            /**
-                             * @description Paso 2 (integradores): el panel pinta «propuesto por X» cuando la
-                             *     propuesta viene de una app de partner y no del agente Pim.
-                             */
                             plane: string;
-                            origin_client_id: string | null;
-                            origin_client_name: string | null;
-                            /** @description Lazo de verificar (Fase 2): lo que el panel pinta del callback. */
-                            result: string | null;
-                            result_data: unknown[] | null;
-                            proposal: unknown[] | null;
                             proposal_status: string | null;
-                            proposed_at: string;
-                            applied_at: string;
-                            delegated_at: string;
-                            created_at: string;
-                            updated_at: string;
+                            proposal_version: number | null;
+                            autonomy_mode: string | null;
+                            origin_company_id: number | null;
+                            origin_task_id: number | null;
+                            requested_by_user_id: number | null;
+                            decided_by_user_id: number | null;
+                            decided_at: string | null;
+                            changes_requested_by_user_id: number | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                            content_visible: boolean;
+                            /** @enum {string|null} */
+                            content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission" | null;
+                            title?: string | null;
+                            agent_skill?: string | null;
+                            hermes_kanban_id?: string | null;
+                            origin_client_id?: string | null;
+                            origin_client_name?: string | null;
+                            result?: string | null;
+                            result_data?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_sha256?: string | null;
+                            proposed_at?: string | null;
+                            applied_at?: string | null;
+                            approved_proposal_version?: number | null;
+                        };
+                    } | {
+                        /** @constant */
+                        message: "Esta tarea ya está delegada a Pim y sigue en curso.";
+                        /**
+                         * @description La viva puede ser de OTRA operación, con otras lecturas:
+                         *     su contenido, solo si quien llama puede verlo.
+                         */
+                        delegation: {
+                            id: number;
+                            task_type: string | null;
+                            status: string;
+                            plane: string;
+                            proposal_status: string | null;
+                            proposal_version: number | null;
+                            autonomy_mode: string | null;
+                            origin_company_id: number | null;
+                            origin_task_id: number | null;
+                            requested_by_user_id: number | null;
+                            decided_by_user_id: number | null;
+                            decided_at: string | null;
+                            changes_requested_by_user_id: number | null;
+                            delegated_at: string | null;
+                            created_at: string | null;
+                            updated_at: string | null;
+                            content_visible: boolean;
+                            /** @enum {string|null} */
+                            content_reason: "wrong_company" | "effect_undeclared" | "effect_not_authorized" | "origin_task_not_visible" | "legacy_row_owner_only" | "integrator_owner_only" | "no_permission" | null;
+                            title?: string | null;
+                            agent_skill?: string | null;
+                            hermes_kanban_id?: string | null;
+                            origin_client_id?: string | null;
+                            origin_client_name?: string | null;
+                            result?: string | null;
+                            result_data?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal?: {
+                                [key: string]: unknown;
+                            } | null;
+                            proposal_sha256?: string | null;
+                            proposed_at?: string | null;
+                            applied_at?: string | null;
+                            approved_proposal_version?: number | null;
                         };
                     } | {
                         /** @constant */
                         message: "Esta cuenta no tiene una instancia de Pim (Hermes) configurada.";
+                    } | {
+                        /** @constant */
+                        code: "pim_not_active";
+                        mode: string;
+                        status: string;
+                        /** @constant */
+                        message: "Pim no está activado en el servidor para esta cuenta. Actívalo en Ajustes → Pim.";
                     };
                 };
             };
@@ -28500,10 +30518,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "No se pudo entregar la tarea a tu instancia de Pim. Revisa que esté disponible e inténtalo de nuevo.";
-                    };
+                    "application/json": unknown[];
                 };
             };
         };
@@ -28511,8 +30526,34 @@ export interface operations {
     "tasks.index": {
         parameters: {
             query?: {
-                orderByField?: string;
-                orderBy?: string;
+                /** @description Cuántas filas por página. Sin él, 50. Con `all` no se pagina: llegan todas y la respuesta no trae `links` ni los campos del paginador en `meta`. */
+                limit?: number | "all";
+                /** @description Página que se pide, desde 1. Sin él, la 1. No tiene efecto con `limit=all`. */
+                page?: number;
+                /** @description Coincidencia parcial en el título, sin distinguir mayúsculas. */
+                search?: string;
+                /** @description Solo las de este estado o estados. Un valor (`status=open`) funciona como siempre: si no es un estado conocido, la lista llega vacía, sin error. Varios, como lista: `status[]=open&status[]=in_progress` (o `status=open&status=in_progress`, repitiendo el nombre); en lista, un estado desconocido responde 422. No mezcles las dos formas en la misma petición (`status=open&status[]=done`): responde 422 `incompatible_filters`. */
+                status?: ("open" | "in_progress" | "done" | "cancelled")[] | ("open" | "in_progress" | "done" | "cancelled");
+                /** @description Con `1` (o `true`), solo las que no tienen vencimiento (`due_at` vacío). Con `0`, `false` o ausente, no filtra. No se combina con `due_from`, `due_to` ni `overdue=1`: la intersección sería siempre vacía y parecería un cero real, así que responde 422 `incompatible_filters`. */
+                no_due?: "1" | "0" | "true" | "false";
+                /** @description Solo las de este tipo. */
+                type?: "todo" | "call" | "meeting" | "lunch" | "deadline";
+                /** @description Solo las asignadas a este usuario. Quien solo puede ver sus propias tareas recibe las suyas igualmente: este filtro no amplía lo que ve. */
+                assigned_user_id?: number;
+                /** @description A qué está vinculada la tarea. Filtra SOLO junto con `taskable_id`: sin él, o con un tipo que no sea uno de estos, se ignora y la lista llega sin filtrar. Si el módulo de ese tipo lo sirve el proveedor de tu instalación (`lead` con el CRM sustituido), responde 422 `taskable_not_served`, aunque falte `taskable_id`. */
+                taskable_type?: "project" | "lead" | "customer" | "contact";
+                /** @description Id del registro vinculado. Filtra SOLO junto con `taskable_type`. */
+                taskable_id?: number;
+                /** @description Vencimiento desde esta fecha y hora, inclusive. Con desplazamiento (`2026-09-26T08:00:00Z`, `…+02:00`; el `+` codificado como `%2B`) es un instante y se convierte a la hora de Europe/Madrid antes de comparar, así que puedes reenviar tal cual un `due_at` de la respuesta. Sin desplazamiento (`2026-09-26 10:00:00`) es hora de pared de Europe/Madrid, la zona en la que se guardan los vencimientos. Una fecha sola es las 00:00 de ese día. Las tareas sin vencimiento quedan fuera. Filtra por separado de `due_to`. */
+                due_from?: string;
+                /** @description Vencimiento hasta esta fecha y hora, inclusive, con la misma lectura que `due_from`. Ojo: una fecha sola es las 00:00 de ese día, así que `due_to=2026-09-26` deja fuera las que vencen ese día más tarde; para el día entero, `2026-09-26 23:59:59` o un instante. */
+                due_to?: string;
+                /** @description Con `true` (o `1`), solo las vencidas: con vencimiento anterior a ahora y ni hechas ni canceladas. Con `false` o ausente, no filtra. */
+                overdue?: boolean;
+                /** @description Campo de orden. Sin él, o con otro valor, `due_at`. `priority` ordena por GRAVEDAD (`low` < `medium` < `high` < `critical`), no alfabéticamente: con `orderBy=desc` lo más grave va primero, y a igual prioridad desempata el vencimiento más próximo (sin vencimiento, al final). En todos los campos, las filas sin valor van al final en los dos sentidos y el último desempate es el `id`, así que el orden es estable entre páginas. */
+                orderByField?: "due_at" | "created_at" | "priority" | "title" | "status";
+                /** @description Sentido del orden. Sin él, o con otro valor, `asc`. */
+                orderBy?: "asc" | "desc";
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -28523,7 +30564,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `TaskResource` */
+            /** @description Paginada salvo con `limit=all`. `meta.total` cuenta las tareas de ESTA consulta, con sus filtros. `task_total_count`, `status_summary` y `overdue_count` son un resumen para las pestañas: no aplican los filtros de la petición y cuentan lo que quien pregunta puede listar (sin permiso para ver las de todos, solo las asignadas a él). `status_summary` va por estado (`{"open": 3, "done": 5}`) y llega como `[]` cuando no hay ninguna tarea. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -28531,21 +30572,61 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            path: string | null;
+                            per_page: number;
+                            to: number | null;
+                            total: number;
+                            task_total_count: number;
+                            status_summary: {
+                                [key: string]: number;
+                            };
+                            overdue_count: number;
+                        };
+                    } | {
+                        data: components["schemas"]["TaskResource"][];
                         meta: {
                             task_total_count: number;
-                            status_summary: unknown[];
+                            status_summary: {
+                                [key: string]: number;
+                            };
                             overdue_count: number;
                         };
                     };
                 };
             };
             403: components["responses"]["AuthorizationException"];
+            /** @description Filtros incompatibles, un estado desconocido en `status[]`, o un `taskable_type` servido por un proveedor externo. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        /** @constant */
+                        error: "incompatible_filters";
+                        message: string;
+                        filters: string[];
+                    } | {
+                        message: string;
+                        errors: {
+                            [key: string]: string[];
+                        };
+                    } | {
                         /** @constant */
                         error: "taskable_not_served";
                         message: string;
@@ -29145,6 +31226,13 @@ export interface operations {
                                 total_cents: number;
                                 total: string;
                             } | null;
+                            pim: {
+                                name: string;
+                                status: string;
+                                exempt: boolean;
+                                price_cents: number;
+                                price: string;
+                            } | null;
                             addons: {
                                 quantity: number;
                                 price_cents: number;
@@ -29473,6 +31561,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -29589,6 +31678,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["ModelNotFoundException"];
             422: components["responses"]["ValidationException"];
         };
     };
@@ -30235,10 +32325,36 @@ export interface operations {
     "time-entries.index": {
         parameters: {
             query?: {
+                /** @description Cuántas filas por página. Sin él, 100. Con `all` no se pagina: llegan todas y la respuesta no trae `links` ni los campos del paginador en `meta`. */
+                limit?: number | "all";
+                /** @description Página que se pide, desde 1. Sin él, la 1. No tiene efecto con `limit=all`. */
+                page?: number;
+                /** @description Coincidencia parcial en las notas del parte, sin distinguir mayúsculas. */
+                search?: string;
+                /** @description Solo los de esta obra. */
+                project_id?: number;
+                /** @description Solo los de esta tarea. */
+                task_id?: number;
+                /** @description Solo los de este artículo o servicio. */
+                item_id?: number;
+                /** @description Solo los de esta persona. Quien solo puede ver sus propios partes recibe los suyos igualmente: este filtro no amplía lo que ve. */
+                user_id?: number;
+                /** @description Solo los de obras de este cliente. */
+                customer_id?: number;
+                /** @description Desde este día, inclusive (`AAAA-MM-DD`, la fecha del parte). `date_from` y `date_to` filtran por separado. */
+                date_from?: string;
+                /** @description Hasta este día, inclusive (`AAAA-MM-DD`, la fecha del parte). */
+                date_to?: string;
+                /** @description Con `true`/`1`, solo los facturables; con `false`/`0`, solo los no facturables. Ausente o vacío, no filtra. */
                 billable?: boolean;
+                /** @description Con `true`/`1`, solo los bloqueados (ya facturados); con `false`/`0`, solo los abiertos. Ausente o vacío, no filtra. */
                 locked?: boolean;
-                orderByField?: string;
-                orderBy?: string;
+                /** @description Con `true`/`1`, solo los pendientes de facturar: facturables y sin bloquear. Con `false` o ausente, no filtra. */
+                pending_invoice?: boolean;
+                /** @description Campo de orden. Sin él, o con otro valor, `date`. A igualdad, el más reciente por id primero. */
+                orderByField?: "date" | "created_at" | "duration_minutes";
+                /** @description Sentido del orden. Sin él, o con otro valor, `desc`. */
+                orderBy?: "asc" | "desc";
             };
             header?: {
                 /** @description Id de la empresa sobre la que trabaja la llamada. Una instancia puede tener más de una, y esta cabecera dice a cuál se refieren los datos que se leen y se escriben. Si se omite, la API resuelve una empresa a la que la identidad del token pertenece; si se manda una a la que no pertenece, se ignora y se resuelve igual. Una identidad sin ninguna empresa recibe 403. */
@@ -30249,13 +32365,37 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of `TimeEntryResource` */
+            /** @description Paginada salvo con `limit=all`. `meta.total` cuenta los partes de ESTA consulta, con sus filtros. `total_minutes` suma la duración aplicando SOLO `date_from`, `date_to`, `project_id` y `user_id`: los demás filtros no entran en la suma. `time_entry_total_count` cuenta sin filtros. Los dos agregados se quedan en lo que quien pregunta puede listar: sin permiso para ver los partes de todos, solo los suyos (y con `user_id` de otra persona, `total_minutes` es 0, como la lista). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        data: components["schemas"]["TimeEntryResource"][];
+                        links: {
+                            first: string | null;
+                            last: string | null;
+                            prev: string | null;
+                            next: string | null;
+                        };
+                        meta: {
+                            current_page: number;
+                            from: number | null;
+                            last_page: number;
+                            links: {
+                                url: string | null;
+                                label: string;
+                                active: boolean;
+                            }[];
+                            path: string | null;
+                            per_page: number;
+                            to: number | null;
+                            total: number;
+                            total_minutes: number;
+                            time_entry_total_count: number;
+                        };
+                    } | {
                         data: components["schemas"]["TimeEntryResource"][];
                         meta: {
                             total_minutes: number;

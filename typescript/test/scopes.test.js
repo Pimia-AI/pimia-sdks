@@ -62,6 +62,11 @@ const RESERVADOS_A_LA_PRIMERA_PARTE = [
   // `first_party_only`; las 15 operaciones salen marcadas `first-party-only`.
   'messaging:read',
   'messaging:write',
+  // La barra de Pim de la cabecera de Mi día (subfase 3.4, factSaas#966 y
+  // siguientes): `POST /pim/chat` y `GET /pim/conversations` hablan con el
+  // agente del tenant en nombre de quien mira. `first_party_only`; las dos
+  // operaciones salen marcadas `first-party-only`.
+  'pim:chat',
 ]
 
 test('SCOPES ofrece todo lo que un integrador puede pedir', () => {
