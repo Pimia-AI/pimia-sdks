@@ -16,9 +16,12 @@ del panel (`pimia-web-shadcn`) tipaba a mano todo lo de Mi día con
 `TODO(sdk-0.36)` y `TODO(sdk-0.37)`: los dos quedan cubiertos por esta versión,
 no habrá una 0.37.0 aparte para ello.
 
-Paso 0 contra **`origin/main` del núcleo: factSaas@a6fc1257 (2026-09-28) —
-516 operaciones** (`a6fc1257f9ca5161c2a70360063a791f4823c345`, merge del PR
-#971). `info.version` pasa de **1.5.0 a 1.10.0**. Comparado operación a
+Paso 0 contra **`origin/main` del núcleo: factSaas@47768cca (2026-09-28)**
+(`47768ccaa805a20917f4fd1fe9ee7b8096f4e6b1`, merge del PR #972). `info.version` pasa de **1.5.0 a 1.11.0**. La
+1.11.0 añade a `GET /appointments` `meta.visibility` (`company|own`) y
+`meta.capabilities` (citas propias, `view-own-appointment` /
+`edit-own-appointment`); el resto del recuento es el de la 1.10.0
+(factSaas@a6fc1257, #971): Comparado operación a
 operación con la sincronización de la Mensajería (`f7b84166`, 500): **16
 nuevas, 29 modificadas, ninguna retirada**. Ningún schema nuevo ni quitado;
 11 modificados.

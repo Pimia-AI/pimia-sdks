@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Pimia API v1 \u2014 contrato de partner",
-        "version": "1.10.0",
+        "version": "1.11.0",
         "description": "Contrato p\u00fablico de la API de Pimia para apps de partner (superficie curada por scopes: facturaci\u00f3n, presupuestos, clientes, gastos, pagos, art\u00edculos, banca, CRM, agenda, informes y cat\u00e1logos meta). Autenticaci\u00f3n: OAuth 2.0 del Authorization Server de Pimia (PKCE o client confidencial) \u2014 ver docs/guia-integradores.md."
     },
     "servers": [
@@ -1472,7 +1472,7 @@
         "/appointments": {
             "get": {
                 "operationId": "appointment.index",
-                "description": "Devuelve como mucho `limit` citas (200 por defecto). `meta.limit` es el\ntope aplicado y `meta.truncated` es `true` si hab\u00eda m\u00e1s citas que\ncumpl\u00edan los filtros: con \u00e9l, \u00abllegaron exactamente 200\u00bb deja de ser\nambiguo. Las horas de la respuesta (`starts_at`, `ends_at`) llegan en\nISO-8601 UTC.",
+                "description": "Devuelve como mucho `limit` citas (200 por defecto). `meta.limit` es el\ntope aplicado y `meta.truncated` es `true` si hab\u00eda m\u00e1s citas que\ncumpl\u00edan los filtros: con \u00e9l, \u00abllegaron exactamente 200\u00bb deja de ser\nambiguo. Las horas de la respuesta (`starts_at`, `ends_at`) llegan en\nISO-8601 UTC.\n\n`meta.visibility` dice qu\u00e9 agenda es: `company` (toda la de la empresa,\ncon `view-appointment`) u `own` (solo las citas de las que eres el\nprofesional, con `view-own-appointment`). Con `own`, pedir con\n`staff_user_id` las de otra persona es un 403. `meta.capabilities` dice\nqu\u00e9 puedes hacer adem\u00e1s de mirar: `can_create`, `can_edit` (`company`,\n`own` o `null`) y `can_delete`.",
                 "summary": "Citas de la empresa, por hora de comienzo",
                 "tags": [
                     "Appointment"
@@ -1513,7 +1513,7 @@
                     {
                         "name": "staff_user_id",
                         "in": "query",
-                        "description": "Solo las que atiende este usuario (el profesional de la cita). Filtra dentro de las citas que ya ves; no ampl\u00eda nada.",
+                        "description": "Solo las que atiende este usuario (el profesional de la cita). Filtra dentro de las citas que ya ves; no ampl\u00eda nada. Si solo ves las tuyas (`meta.visibility: own`), pedir las de otra persona es un 403.",
                         "schema": {
                             "type": "integer"
                         }
@@ -1557,11 +1557,48 @@
                                                 },
                                                 "truncated": {
                                                     "type": "boolean"
+                                                },
+                                                "visibility": {
+                                                    "type": "string",
+                                                    "description": "`company` | `own`: qu\u00e9 agenda es esta. Con `own`, que falte\nuna cita de un compa\u00f1ero no es que no exista.",
+                                                    "enum": [
+                                                        "own",
+                                                        "company"
+                                                    ]
+                                                },
+                                                "capabilities": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "can_create": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "can_edit": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "enum": [
+                                                                "own",
+                                                                "company",
+                                                                null
+                                                            ]
+                                                        },
+                                                        "can_delete": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "can_create",
+                                                        "can_edit",
+                                                        "can_delete"
+                                                    ]
                                                 }
                                             },
                                             "required": [
                                                 "limit",
-                                                "truncated"
+                                                "truncated",
+                                                "visibility",
+                                                "capabilities"
                                             ]
                                         }
                                     },
@@ -12681,6 +12718,8 @@
                                                 "create-appointment",
                                                 "edit-appointment",
                                                 "delete-appointment",
+                                                "view-own-appointment",
+                                                "edit-own-appointment",
                                                 "view-contract",
                                                 "create-contract",
                                                 "edit-contract",
@@ -13322,6 +13361,8 @@
                                                 "create-appointment",
                                                 "edit-appointment",
                                                 "delete-appointment",
+                                                "view-own-appointment",
+                                                "edit-own-appointment",
                                                 "view-contract",
                                                 "create-contract",
                                                 "edit-contract",
@@ -74546,6 +74587,8 @@
                                 "create-appointment",
                                 "edit-appointment",
                                 "delete-appointment",
+                                "view-own-appointment",
+                                "edit-own-appointment",
                                 "view-contract",
                                 "create-contract",
                                 "edit-contract",
@@ -74725,6 +74768,8 @@
                                         "create-appointment",
                                         "edit-appointment",
                                         "delete-appointment",
+                                        "view-own-appointment",
+                                        "edit-own-appointment",
                                         "view-contract",
                                         "create-contract",
                                         "edit-contract",
